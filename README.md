@@ -20,8 +20,8 @@
 
 # Build information
 
-version : 5.4.0-beta.70+b06f13b6
-branch : pipelines/91222
+version : 5.4.0-beta.70+4d476bdd
+branch : remotes/origin/feature/public_spm_ci
 architecture : arm64
 
 Enabled features:
@@ -64,7 +64,7 @@ Enabled features:
 
 - Open your Xcode Project
 - Menu File -> Add Package Dependencies
-- On top right entry field enter https://gitlab.linphone.org:/public/linphone-sdk-swift-ios
+- On top right entry field enter https://gitlab.linphone.org/BC/public/linphone-sdk-swift-ios
 - Select your target
 - in your classes add :
 	import linphonesw (or linphone for C functions)
@@ -88,8 +88,8 @@ Enabled features:
 - from terminal navigate to <build folder>/linphone-sdk-swift-ios
 - git init
 - git add .
-- git commit -a -m "Swift package 5.4.0-beta.70+b06f13b6"
-- git tag -a 5.4.0-beta.70+b06f13b6 -m "linphone-sdk 5.4.0-beta.70+b06f13b6"
+- git commit -a -m "Swift package 5.4.0-beta.70+4d476bdd"
+- git tag -a 5.4.0-beta.70+4d476bdd -m "linphone-sdk 5.4.0-beta.70+4d476bdd"
 - Open your Xcode Project
 - Menu File -> Add Package Dependencies
 - On top right entry field enter file://<build folder>/linphone-sdk-swift-ios
