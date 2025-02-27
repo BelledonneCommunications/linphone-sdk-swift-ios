@@ -20,8 +20,8 @@
 
 # Build information
 
-version : 5.4.0-beta.70+d43ddbb7
-branch : remotes/origin/feature/public_spm_ci
+version : 5.4.0-beta.70+b06f13b6
+branch : pipelines/91222
 architecture : arm64
 
 Enabled features:
@@ -76,7 +76,7 @@ Enabled features:
 - Menu File -> Add Package Dependencies
 - Add Local
 - Navigate to the <build folder>
-- select linphone-sdk-swift-ios-5.4.0-beta.70+d43ddbb7
+- select linphone-sdk-swift-ios
 - Add Package
 - Select your target
 - in your classes add :
@@ -85,14 +85,14 @@ Enabled features:
 
 # How to use a locally built package with version control
 
-- from terminal navigate to <build folder>/linphone-sdk-swift-ios-5.4.0-beta.70+d43ddbb7
+- from terminal navigate to <build folder>/linphone-sdk-swift-ios
 - git init
 - git add .
-- git commit -a -m "Swift package 5.4.0-beta.70+d43ddbb7"
-- git tag -a 5.4.0-beta.70+d43ddbb7 -m "linphone-sdk 5.4.0-beta.70+d43ddbb7"
+- git commit -a -m "Swift package 5.4.0-beta.70+b06f13b6"
+- git tag -a 5.4.0-beta.70+b06f13b6 -m "linphone-sdk 5.4.0-beta.70+b06f13b6"
 - Open your Xcode Project
 - Menu File -> Add Package Dependencies
-- On top right entry field enter file://<build folder>/linphone-sdk-swift-ios-5.4.0-beta.70+d43ddbb7
+- On top right entry field enter file://<build folder>/linphone-sdk-swift-ios
 - Select your target
 - in your classes add :
 	import linphonesw (or linphone for C functions)
