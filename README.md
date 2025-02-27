@@ -20,9 +20,9 @@
 
 # Build information
 
-version : 5.4.0-beta.70+4d476bdd
-branch : remotes/origin/feature/public_spm_ci
-architecture : arm64
+version : 5.4.0-beta.70+e2eef218
+branch : pipelines/91232
+architecture : arm64 x86_64
 
 Enabled features:
  * Assets, Enable packaging of assets (ringtones) when building the SDK.
@@ -57,6 +57,7 @@ Enabled features:
  * SRTP, SRTP media encryption support.
  * ZRTP, Build with ZRTP support (needs ENABLE_SRTP=ON).
  * GoClear, Build with ZRTP GoClear message support (RFC 6189 - section 5.11) (needs ENABLE_ZRTP=ON).
+ * CSharp wrapper, Build the C# wrapper from Liblinphone.
  * Swift wrapper, Build the Swift wrapper sources from Liblinphone.
 
 
@@ -69,6 +70,12 @@ Enabled features:
 - in your classes add :
 	import linphonesw (or linphone for C functions)
 - use linphone-sdk functions
+
+Note that it might be necessary to do the following steps if the app builds but immediately stops not finding a framework :
+Open the "Build Settings" tab
+Search for "Runpath Search Paths" (LD_RUNPATH_SEARCH_PATHS)
+Ensure it contains:
+@loader_path/Frameworks
 
 # How to use a locally built package without version control
 
@@ -88,8 +95,8 @@ Enabled features:
 - from terminal navigate to <build folder>/linphone-sdk-swift-ios
 - git init
 - git add .
-- git commit -a -m "Swift package 5.4.0-beta.70+4d476bdd"
-- git tag -a 5.4.0-beta.70+4d476bdd -m "linphone-sdk 5.4.0-beta.70+4d476bdd"
+- git commit -a -m "Swift package 5.4.0-beta.70+e2eef218"
+- git tag -a 5.4.0-beta.70+e2eef218 -m "linphone-sdk 5.4.0-beta.70+e2eef218"
 - Open your Xcode Project
 - Menu File -> Add Package Dependencies
 - On top right entry field enter file://<build folder>/linphone-sdk-swift-ios
