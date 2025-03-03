@@ -38,12 +38,6 @@ Enabled features:
  * Speex, Speex audio encoding/decoding and DSP support.
  * WebRTC AEC, WebRTC echo canceller support.
  * WebRTC VAD, WebRTC voice activation detector support.
- * Video, Ability to capture and display video.
- * AV1, Build mediastreamer2 with AV1 support through libaom and dav1d (needs ENABLE_VIDEO=ON).
- * jpeg, JPEG support with libjpeg-turbo (needs ENABLE_VIDEO=ON).
- * LibYUV, Build mediastreamer2 with LibYUV support (needs ENABLE_VIDEO=ON).
- * qrcode, QRCode support with zxing (needs ENABLE_VIDEO=ON).
- * VPX, Build mediastreamer2 with VPX codec.
  * Advanced IM, Enable advanced instant messaging such as group chat.
  * DB Storage, Enable the database storage.
  * DNS_SERVICE, Enable Apple DNS Service. Available on Mac and iOS. Incompatible with ENABLE_MDNS=ON.
