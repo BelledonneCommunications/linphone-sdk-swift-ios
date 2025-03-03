@@ -20,8 +20,8 @@
 
 # Build information
 
-version : 5.4.0-beta.70+5701207a
-branch : remotes/origin/feature/public_spm_ci
+version : 5.4.0-beta.70+d4c6e717
+branch : pipelines/91367
 architecture : arm64 x86_64
 
 Enabled features:
@@ -38,6 +38,12 @@ Enabled features:
  * Speex, Speex audio encoding/decoding and DSP support.
  * WebRTC AEC, WebRTC echo canceller support.
  * WebRTC VAD, WebRTC voice activation detector support.
+ * Video, Ability to capture and display video.
+ * AV1, Build mediastreamer2 with AV1 support through libaom and dav1d (needs ENABLE_VIDEO=ON).
+ * jpeg, JPEG support with libjpeg-turbo (needs ENABLE_VIDEO=ON).
+ * LibYUV, Build mediastreamer2 with LibYUV support (needs ENABLE_VIDEO=ON).
+ * qrcode, QRCode support with zxing (needs ENABLE_VIDEO=ON).
+ * VPX, Build mediastreamer2 with VPX codec.
  * Advanced IM, Enable advanced instant messaging such as group chat.
  * DB Storage, Enable the database storage.
  * DNS_SERVICE, Enable Apple DNS Service. Available on Mac and iOS. Incompatible with ENABLE_MDNS=ON.
@@ -88,8 +94,8 @@ Ensure it contains:
 - from terminal navigate to <build folder>/linphone-sdk-swift-ios
 - git init
 - git add .
-- git commit -a -m "Swift package 5.4.0-beta.70+5701207a"
-- git tag -a 5.4.0-beta.70+5701207a -m "linphone-sdk 5.4.0-beta.70+5701207a"
+- git commit -a -m "Swift package 5.4.0-beta.70+d4c6e717"
+- git tag -a 5.4.0-beta.70+d4c6e717 -m "linphone-sdk 5.4.0-beta.70+d4c6e717"
 - Open your Xcode Project
 - Menu File -> Add Package Dependencies
 - On top right entry field enter file://<build folder>/linphone-sdk-swift-ios
