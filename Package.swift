@@ -16,98 +16,98 @@ let package = Package(
         
 			.binaryTarget(
 				name: "ZXing",
-				url: "https://download.linphone.org/snapshots/ios//spm//linphone-sdk-swift-ios-5.4.0-beta.77+351e2f9b/XCFrameworks/ZXing.xcframework.zip",
-				checksum: "7162e3442809d340a8e89843c7cd4067a8b56553d522989442f57a7515d61f1f"
+				url: "https://download.linphone.org/snapshots/ios//spm//linphone-sdk-swift-ios-5.4.0-beta.77+73c54be6/XCFrameworks/ZXing.xcframework.zip",
+				checksum: "ea575315e2701f2be7cbfc9ca81f5a40564a00876bb29938660f7a7f98568cba"
 			),
 			
 			.binaryTarget(
 				name: "bctoolbox-ios",
-				url: "https://download.linphone.org/snapshots/ios//spm//linphone-sdk-swift-ios-5.4.0-beta.77+351e2f9b/XCFrameworks/bctoolbox-ios.xcframework.zip",
-				checksum: "aee8543951e4e930d6c02d60ceb79ee987bdb9151dad11adf733f5b116055bd5"
+				url: "https://download.linphone.org/snapshots/ios//spm//linphone-sdk-swift-ios-5.4.0-beta.77+73c54be6/XCFrameworks/bctoolbox-ios.xcframework.zip",
+				checksum: "ee9a3e2d22150692976179d943c35457a6cd179726859116435f1d172f013629"
 			),
 			
 			.binaryTarget(
 				name: "bctoolbox-tester",
-				url: "https://download.linphone.org/snapshots/ios//spm//linphone-sdk-swift-ios-5.4.0-beta.77+351e2f9b/XCFrameworks/bctoolbox-tester.xcframework.zip",
-				checksum: "5cd217b1add5459b160446739a7e87d710dd1483c5de03262d6940d904cc45c1"
+				url: "https://download.linphone.org/snapshots/ios//spm//linphone-sdk-swift-ios-5.4.0-beta.77+73c54be6/XCFrameworks/bctoolbox-tester.xcframework.zip",
+				checksum: "42ef96479d58cd7b10622e073ad6737f5a09824505062d15d81031aebe7f87bb"
 			),
 			
 			.binaryTarget(
 				name: "bctoolbox",
-				url: "https://download.linphone.org/snapshots/ios//spm//linphone-sdk-swift-ios-5.4.0-beta.77+351e2f9b/XCFrameworks/bctoolbox.xcframework.zip",
-				checksum: "d661fbbee5a9a28727a3b4fc902980072d3ec74eca84785e2be7048aafa05210"
+				url: "https://download.linphone.org/snapshots/ios//spm//linphone-sdk-swift-ios-5.4.0-beta.77+73c54be6/XCFrameworks/bctoolbox.xcframework.zip",
+				checksum: "5513a10fcbf1a1c061611158c0e7d25606fb6219895843fee00ab56ea3a8a55f"
 			),
 			
 			.binaryTarget(
 				name: "belcard",
-				url: "https://download.linphone.org/snapshots/ios//spm//linphone-sdk-swift-ios-5.4.0-beta.77+351e2f9b/XCFrameworks/belcard.xcframework.zip",
-				checksum: "6981fedff271fa5d0178ab0ced0a981c94b320c0b1cc4a17b0334aec3bf57acf"
+				url: "https://download.linphone.org/snapshots/ios//spm//linphone-sdk-swift-ios-5.4.0-beta.77+73c54be6/XCFrameworks/belcard.xcframework.zip",
+				checksum: "d261386880c017a7ff74657ad181ba56cc1340c1c555703f7bf26203ccdb10a7"
 			),
 			
 			.binaryTarget(
 				name: "belle-sip",
-				url: "https://download.linphone.org/snapshots/ios//spm//linphone-sdk-swift-ios-5.4.0-beta.77+351e2f9b/XCFrameworks/belle-sip.xcframework.zip",
-				checksum: "54800e397ed115a859333762ecb1d5dff067fb71b7c602b21e8ea5a6d3e788e5"
+				url: "https://download.linphone.org/snapshots/ios//spm//linphone-sdk-swift-ios-5.4.0-beta.77+73c54be6/XCFrameworks/belle-sip.xcframework.zip",
+				checksum: "92c952584fb23534833ee89cfc832c01fb68b7cf92c734710d6a2236ff945830"
 			),
 			
 			.binaryTarget(
 				name: "belr",
-				url: "https://download.linphone.org/snapshots/ios//spm//linphone-sdk-swift-ios-5.4.0-beta.77+351e2f9b/XCFrameworks/belr.xcframework.zip",
-				checksum: "6458863cce14c853a8b3869d4fc4a1f1655a33598c08872ec05d313286cecc01"
+				url: "https://download.linphone.org/snapshots/ios//spm//linphone-sdk-swift-ios-5.4.0-beta.77+73c54be6/XCFrameworks/belr.xcframework.zip",
+				checksum: "d7443ba6964532df7f0431c007ab487e6d89a1350c3e9abd334a8359ff24af6a"
 			),
 			
 			.binaryTarget(
 				name: "lime",
-				url: "https://download.linphone.org/snapshots/ios//spm//linphone-sdk-swift-ios-5.4.0-beta.77+351e2f9b/XCFrameworks/lime.xcframework.zip",
-				checksum: "c1a7c425f229b6ef44fcaf97b17e8015dc572f05bcd1791ae26eadbb6a5aff88"
+				url: "https://download.linphone.org/snapshots/ios//spm//linphone-sdk-swift-ios-5.4.0-beta.77+73c54be6/XCFrameworks/lime.xcframework.zip",
+				checksum: "891a6a01388d74d22d79ba7426eba48d3e8f3bc00ce0e08bcba51fb3ba5a4419"
 			),
 			
 			.binaryTarget(
 				name: "linphone",
-				url: "https://download.linphone.org/snapshots/ios//spm//linphone-sdk-swift-ios-5.4.0-beta.77+351e2f9b/XCFrameworks/linphone.xcframework.zip",
-				checksum: "98bc44857850f36e39c355063b197c782d91439a43ddf8437b631eccbd1b7c18"
+				url: "https://download.linphone.org/snapshots/ios//spm//linphone-sdk-swift-ios-5.4.0-beta.77+73c54be6/XCFrameworks/linphone.xcframework.zip",
+				checksum: "cdced25ae5e90e30e476c5ad1499c574be9c265d36ae235094fc67ba671cd31e"
 			),
 			
 			.binaryTarget(
 				name: "linphonetester",
-				url: "https://download.linphone.org/snapshots/ios//spm//linphone-sdk-swift-ios-5.4.0-beta.77+351e2f9b/XCFrameworks/linphonetester.xcframework.zip",
-				checksum: "9c305172a69dd5e4bc06875f0bcb4f70273a83c20410546ac6822132c7bf7b1d"
+				url: "https://download.linphone.org/snapshots/ios//spm//linphone-sdk-swift-ios-5.4.0-beta.77+73c54be6/XCFrameworks/linphonetester.xcframework.zip",
+				checksum: "eac7ed5a6f92fe6802f7469aa1996f410c8f2ad0d37cc09e4e4cadca567fa8d5"
 			),
 			
 			.binaryTarget(
 				name: "mediastreamer2",
-				url: "https://download.linphone.org/snapshots/ios//spm//linphone-sdk-swift-ios-5.4.0-beta.77+351e2f9b/XCFrameworks/mediastreamer2.xcframework.zip",
-				checksum: "2728ee0fb2add85e03d6260f942ee7ff3f1d501ed70ac9a959d5bb6bacd9f880"
+				url: "https://download.linphone.org/snapshots/ios//spm//linphone-sdk-swift-ios-5.4.0-beta.77+73c54be6/XCFrameworks/mediastreamer2.xcframework.zip",
+				checksum: "8ab67c74e022c447461c579d1b5f8678be24b1353f51b908db873d6098eddbb5"
 			),
 			
 			.binaryTarget(
 				name: "msamr",
-				url: "https://download.linphone.org/snapshots/ios//spm//linphone-sdk-swift-ios-5.4.0-beta.77+351e2f9b/XCFrameworks/msamr.xcframework.zip",
-				checksum: "6443324331b6dc85168aeae3c5ac16290159bcbe2272272954b396c2824b8ba6"
+				url: "https://download.linphone.org/snapshots/ios//spm//linphone-sdk-swift-ios-5.4.0-beta.77+73c54be6/XCFrameworks/msamr.xcframework.zip",
+				checksum: "99dd24a092e3cbf2219094d03302308df6f3485dacf162757cef41172d1c68d1"
 			),
 			
 			.binaryTarget(
 				name: "mscodec2",
-				url: "https://download.linphone.org/snapshots/ios//spm//linphone-sdk-swift-ios-5.4.0-beta.77+351e2f9b/XCFrameworks/mscodec2.xcframework.zip",
-				checksum: "660672fd8a196d15390601ce81b41fa9f04b0b458363aa1c432f68f354a7994e"
+				url: "https://download.linphone.org/snapshots/ios//spm//linphone-sdk-swift-ios-5.4.0-beta.77+73c54be6/XCFrameworks/mscodec2.xcframework.zip",
+				checksum: "6acaf8518df0428ca83bc7f1bc20ebefc83444d50f5192ebc2f9d4607d65d4d9"
 			),
 			
 			.binaryTarget(
 				name: "msopenh264",
-				url: "https://download.linphone.org/snapshots/ios//spm//linphone-sdk-swift-ios-5.4.0-beta.77+351e2f9b/XCFrameworks/msopenh264.xcframework.zip",
-				checksum: "2df746a5f149d24cfe6ae0e2458e198de1a8d2774734215ac0cf9896b58e5467"
+				url: "https://download.linphone.org/snapshots/ios//spm//linphone-sdk-swift-ios-5.4.0-beta.77+73c54be6/XCFrameworks/msopenh264.xcframework.zip",
+				checksum: "e55377ac226a2b6a242161ceb7c0eb54c30ee5bce2507e55fa1de94614d58c8b"
 			),
 			
 			.binaryTarget(
 				name: "mssilk",
-				url: "https://download.linphone.org/snapshots/ios//spm//linphone-sdk-swift-ios-5.4.0-beta.77+351e2f9b/XCFrameworks/mssilk.xcframework.zip",
-				checksum: "1bc6087eade58d7a137dea777028b0f7900efe295a7aae739b0cf5fddaf0651d"
+				url: "https://download.linphone.org/snapshots/ios//spm//linphone-sdk-swift-ios-5.4.0-beta.77+73c54be6/XCFrameworks/mssilk.xcframework.zip",
+				checksum: "8c5eaab94208b846da9385fe6876d2eda6ac19bd01d9294a5e87d2ede0f0d09c"
 			),
 			
 			.binaryTarget(
 				name: "ortp",
-				url: "https://download.linphone.org/snapshots/ios//spm//linphone-sdk-swift-ios-5.4.0-beta.77+351e2f9b/XCFrameworks/ortp.xcframework.zip",
-				checksum: "de299133dd49256789bcc28eb558c9bcd8231a74b4f86cae9aab53dfc1f1ce9f"
+				url: "https://download.linphone.org/snapshots/ios//spm//linphone-sdk-swift-ios-5.4.0-beta.77+73c54be6/XCFrameworks/ortp.xcframework.zip",
+				checksum: "c82267b6505715962eea893373b5c5311ac065549e68d44761ab9d5953f37865"
 			),
 			
 		.target(
