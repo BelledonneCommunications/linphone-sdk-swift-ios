@@ -20416,6 +20416,23 @@ public class Content : LinphoneObject
 
 	}
 		
+	
+	/// Returns the chat message id for which this content is related to, if any. 
+	/// - Returns: The chat message ID if this content is related to a chat message,
+	/// nil otherwise.   
+	public var relatedChatMessageId: String?
+	{
+	
+			
+			let cPointer = linphone_content_get_related_chat_message_id(cPtr)
+			if (cPointer == nil) {
+				return nil
+			}
+			let result = charArrayToString(charPointer: cPointer)
+			return result
+
+	}
+		
 	/// Set the content data size, excluding null character despite null character is
 	/// always set for convenience. 
 	/// - Parameter size: The content data buffer size. 
@@ -26657,36 +26674,13 @@ public class Core : LinphoneObject
 	
 	
 	/// Create a chat room. 
-	/// - Parameter params: The chat room creation parameters ``ChatRoomParams``   
-	/// - Parameter localAddr: ``Address`` of a local ``Account`` identity or nil   
-	/// - Parameter participants: The initial list of participants of the chat room.    
-	/// - Returns: The newly created chat room (can be an existing one if backend is
-	/// Basic) or nil.   
-	/// - deprecated: 22/10/2024, use
-	/// ``createChatRoom(params:localAddr:participants:)`` instead
-	@available(*, deprecated)
-	public func createChatRoom(params:ChatRoomParams, localAddr:Address?, participants:[Address]) throws -> ChatRoom
-	{
-		let cPointer = linphone_core_create_chat_room_6(cPtr, params.cPtr, localAddr?.cPtr, ObjectArrayToBctbxList(list: participants))
-		if (cPointer == nil) {
-			throw LinphoneError.exception(result: "create null ChatRoom value")
-		}
-		let result = ChatRoom.getSwiftObject(cObject: cPointer!)
-		belle_sip_object_unref(UnsafeMutableRawPointer(cPointer))
-		return result
-	}
-	
-	
-	
-	/// Create a chat room. 
 	/// - Parameter params: The chat room creation parameters ``ConferenceParams``   
-	/// - Parameter localAddr: ``Address`` of a local ``Account`` identity or nil   
 	/// - Parameter participants: The initial list of participants of the chat room.    
 	/// - Returns: The newly created chat room (can be an existing one if backend is
 	/// Basic) or nil.   
-	public func createChatRoom(params:ConferenceParams, localAddr:Address?, participants:[Address]) throws -> ChatRoom
+	public func createChatRoom(params:ConferenceParams, participants:[Address]) throws -> ChatRoom
 	{
-		let cPointer = linphone_core_create_chat_room_7(cPtr, params.cPtr, localAddr?.cPtr, ObjectArrayToBctbxList(list: participants))
+		let cPointer = linphone_core_create_chat_room_7(cPtr, params.cPtr, ObjectArrayToBctbxList(list: participants))
 		if (cPointer == nil) {
 			throw LinphoneError.exception(result: "create null ChatRoom value")
 		}
@@ -26704,8 +26698,7 @@ public class Core : LinphoneObject
 	/// - Parameter subject: The subject of the group chat room   
 	/// - Parameter participants: The initial list of participants of the chat room    
 	/// - Returns: The newly created chat room.   
-	/// - deprecated: 02/07/2020, use
-	/// ``createChatRoom(params:localAddr:participants:)`` instead
+	/// - deprecated: 02/07/2020, use ``createChatRoom(params:participants:)`` instead
 	@available(*, deprecated)
 	public func createChatRoom(params:ChatRoomParams, localAddr:Address, subject:String, participants:[Address]) throws -> ChatRoom
 	{
@@ -26725,8 +26718,7 @@ public class Core : LinphoneObject
 	/// - Parameter subject: The subject of the group chat room   
 	/// - Parameter participants: The initial list of participants of the chat room.    
 	/// - Returns: The newly created chat room.   
-	/// - deprecated: 02/07/2020, use
-	/// ``createChatRoom(params:localAddr:participants:)`` instead
+	/// - deprecated: 02/07/2020, use ``createChatRoom(params:participants:)`` instead
 	@available(*, deprecated)
 	public func createChatRoom(params:ChatRoomParams, subject:String, participants:[Address]) throws -> ChatRoom
 	{
@@ -26744,8 +26736,7 @@ public class Core : LinphoneObject
 	/// - Parameter subject: The subject of the group chat room   
 	/// - Parameter participants: The initial list of participants of the chat room.    
 	/// - Returns: The newly created chat room.   
-	/// - deprecated: 02/07/2020, use
-	/// ``createChatRoom(params:localAddr:participants:)`` instead
+	/// - deprecated: 02/07/2020, use ``createChatRoom(params:participants:)`` instead
 	@available(*, deprecated)
 	public func createChatRoom(subject:String, participants:[Address]) throws -> ChatRoom
 	{
@@ -26766,8 +26757,7 @@ public class Core : LinphoneObject
 	/// - Parameter participant: ``Address`` representing the initial participant to
 	/// add to the chat room   
 	/// - Returns: The newly created chat room.   
-	/// - deprecated: 02/07/2020, use
-	/// ``createChatRoom(params:localAddr:participants:)`` instead
+	/// - deprecated: 02/07/2020, use ``createChatRoom(params:participants:)`` instead
 	@available(*, deprecated)
 	public func createChatRoom(params:ChatRoomParams, localAddr:Address, participant:Address) throws -> ChatRoom
 	{
@@ -26785,12 +26775,32 @@ public class Core : LinphoneObject
 	/// - Parameter participant: ``Address`` representing the initial participant to
 	/// add to the chat room   
 	/// - Returns: The newly created chat room.   
-	/// - deprecated: 02/07/2020, use
-	/// ``createChatRoom(params:localAddr:participants:)`` instead
+	/// - deprecated: 02/07/2020, use ``createChatRoom(params:participants:)`` instead
 	@available(*, deprecated)
 	public func createChatRoom(participant:Address) throws -> ChatRoom
 	{
 		let cPointer = linphone_core_create_chat_room_5(cPtr, participant.cPtr)
+		if (cPointer == nil) {
+			throw LinphoneError.exception(result: "create null ChatRoom value")
+		}
+		let result = ChatRoom.getSwiftObject(cObject: cPointer!)
+		belle_sip_object_unref(UnsafeMutableRawPointer(cPointer))
+		return result
+	}
+	
+	
+	
+	/// Create a chat room. 
+	/// - Parameter params: The chat room creation parameters ``ChatRoomParams``   
+	/// - Parameter localAddr: ``Address`` of a local ``Account`` identity or nil   
+	/// - Parameter participants: The initial list of participants of the chat room.    
+	/// - Returns: The newly created chat room (can be an existing one if backend is
+	/// Basic) or nil.   
+	/// - deprecated: 22/10/2024, use ``createChatRoom(params:participants:)`` instead
+	@available(*, deprecated)
+	public func createChatRoom(params:ChatRoomParams, localAddr:Address?, participants:[Address]) throws -> ChatRoom
+	{
+		let cPointer = linphone_core_create_chat_room_6(cPtr, params.cPtr, localAddr?.cPtr, ObjectArrayToBctbxList(list: participants))
 		if (cPointer == nil) {
 			throw LinphoneError.exception(result: "create null ChatRoom value")
 		}
