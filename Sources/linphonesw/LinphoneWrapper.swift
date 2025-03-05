@@ -20416,6 +20416,23 @@ public class Content : LinphoneObject
 
 	}
 		
+	
+	/// Returns the chat message id for which this content is related to, if any. 
+	/// - Returns: The chat message ID if this content is related to a chat message,
+	/// nil otherwise.   
+	public var relatedChatMessageId: String?
+	{
+	
+			
+			let cPointer = linphone_content_get_related_chat_message_id(cPtr)
+			if (cPointer == nil) {
+				return nil
+			}
+			let result = charArrayToString(charPointer: cPointer)
+			return result
+
+	}
+		
 	/// Set the content data size, excluding null character despite null character is
 	/// always set for convenience. 
 	/// - Parameter size: The content data buffer size. 
