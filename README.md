@@ -21,7 +21,7 @@
 # Build information
 
 version : 5.4.0-beta.84+e3264bac
-branch : pipelines/91655
+branch : pipelines/91685
 architecture : arm64 x86_64
 
 Enabled features:
