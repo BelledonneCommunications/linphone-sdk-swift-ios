@@ -8156,6 +8156,22 @@ public class AccountParams : LinphoneObject
 		}
 	}
 		
+	
+	/// Get the CCMP user ID. 
+	/// - Returns: The ID of the CCMP user.    
+	public var ccmpUserId: String?
+	{
+	
+			
+			let cPointer = linphone_account_params_get_ccmp_user_id(cPtr)
+			if (cPointer == nil) {
+				return nil
+			}
+			let result = charArrayToString(charPointer: cPointer)
+			return result
+
+	}
+		
 	/// Set the conference factory uri. 
 	/// - Parameter address: The ``Address`` to set.    
 	
@@ -36641,6 +36657,22 @@ public class ParticipantInfo : LinphoneObject
 				return nil
 			}
 			let result = Address.getSwiftObject(cObject:cPointer!)
+			return result
+
+	}
+		
+	
+	/// Get the CCMP uri of the object ``ParticipantInfo``. 
+	/// - Returns: the CCMP uri of the ``ParticipantInfo`` or nil.    
+	public var ccmpUri: String?
+	{
+	
+			
+			let cPointer = linphone_participant_info_get_ccmp_uri(cPtr)
+			if (cPointer == nil) {
+				return nil
+			}
+			let result = charArrayToString(charPointer: cPointer)
 			return result
 
 	}
