@@ -15970,6 +15970,21 @@ public class ChatRoom : LinphoneObject
 	}
 	
 	
+	/// Returns the local account to which this chat room is related. 
+	/// - Returns: the related ``Account`` object if any, nil otherwise.    
+	public var account: Account?
+	{
+	
+						let cPointer = linphone_chat_room_get_account(cPtr)
+			if (cPointer == nil) {
+				return nil
+			}
+			let result = Account.getSwiftObject(cObject:cPointer!)
+			return result
+
+	}
+		
+	
 	/// Gets the current call associated to this chatroom if any To commit a message,
 	/// use ``ChatMessage/send()`` 
 	/// - Returns: ``Call`` or nil.    
