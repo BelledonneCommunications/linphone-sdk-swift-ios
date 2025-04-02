@@ -17367,7 +17367,7 @@ public class ChatRoomParams : LinphoneObject
 	
 	/// Returns whether the given parameters are valid or not. 
 	/// - Returns: true if the given parameters are valid, false otherwise 
-	/// - deprecated: 20/05/2024. Use linphone_chat_params_is_valid() instead. 
+	/// - deprecated: 20/05/2024. Use ``ConferenceParams/isValid()`` instead. 
 	@available(*, deprecated)
 	public var isValid: Bool
 	{
@@ -27602,6 +27602,23 @@ public class Core : LinphoneObject
 			throw LinphoneError.exception(result: "create null Event value")
 		}
 		let result = Event.getSwiftObject(cObject: cPointer!)
+		belle_sip_object_unref(UnsafeMutableRawPointer(cPointer))
+		return result
+	}
+	
+	
+	
+	/// Creates a vCard from a text, if possible. 
+	/// - Parameter input: the vCard raw text to parse.    
+	/// - Returns: a new ``Vcard`` object if the parsing of the input succeeded, nil
+	/// otherwise.    
+	public func createVcardFromText(input:String) throws -> Vcard
+	{
+		let cPointer = linphone_core_create_vcard_from_text(cPtr, input)
+		if (cPointer == nil) {
+			throw LinphoneError.exception(result: "create null Vcard value")
+		}
+		let result = Vcard.getSwiftObject(cObject: cPointer!)
 		belle_sip_object_unref(UnsafeMutableRawPointer(cPointer))
 		return result
 	}
