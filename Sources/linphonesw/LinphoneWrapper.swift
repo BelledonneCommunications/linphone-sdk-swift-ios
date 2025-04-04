@@ -33220,9 +33220,15 @@ public class FriendList : LinphoneObject
 	public enum Kind:Int
 	{
 		
+		/// Default value, used when no other type applies. 
 		case Default = -1
+		/// Used when list is synchronized with a remote CardDAV server. 
 		case CardDAV = 0
+		/// Used for simple vCards list remotely provisionned by a server. 
 		case VCard4 = 1
+		/// Friend list used by app for cache purposes, friends added in this list will be
+		/// ignored by ``MagicSearch``. 
+		case ApplicationCache = 2
 	}
 	
 	
