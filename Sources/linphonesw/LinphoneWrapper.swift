@@ -20234,6 +20234,8 @@ public class Content : LinphoneObject
 		}
 	}
 		
+	/// Sets the file duration in seconds (useful for media files for example). 
+	/// - Parameter duration: the duration of the file, in milliseconds. 
 	
 	/// Gets the file duration in seconds, if information is available. 
 	/// - Returns: The duration of the file in milliseconds or -1 if information isn't
@@ -20241,8 +20243,14 @@ public class Content : LinphoneObject
 	public var fileDuration: Int
 	{
 	
+		get
+		{ 
 						return Int(linphone_content_get_file_duration(cPtr))
-
+		}
+		set
+		{
+			linphone_content_set_file_duration(cPtr, CInt(newValue))
+		}
 	}
 		
 	/// Set the file transfer filepath for this content (replace
