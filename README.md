@@ -21,7 +21,7 @@
 # Build information
 
 version : 5.5.0-alpha.49+7da0e912
-branch : pipelines/93709
+branch : pipelines/93695
 architecture : arm64 x86_64
 
 Enabled features:
