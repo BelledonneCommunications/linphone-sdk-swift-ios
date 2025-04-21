@@ -21,7 +21,7 @@
 # Build information
 
 version : 5.4.11-pre.2+3ae14f53
-branch : remotes/origin/release/5.4
+branch : pipelines/94026
 architecture : arm64 x86_64
 
 Enabled features:
