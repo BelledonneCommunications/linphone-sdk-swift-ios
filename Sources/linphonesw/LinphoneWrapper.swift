@@ -7875,6 +7875,32 @@ public class AccountManagerServices : LinphoneObject
 	
 	
 	
+	/// Requests a push notification to be sent to device, containing a valid account
+	/// recovery token. 
+	/// Provider, param & prid can be obtained from
+	/// ``Core/getPushNotificationConfig()``, but on iOS may need some modifications
+	/// (depending on debug mode for example). Once the token is obtained, you can use
+	/// it to open the recovery webpage on the flexisip account manager at
+	/// https://account_manager.domain.tld/recovery/phone/<recovery token>?phone=<phone
+	/// number> 
+	/// - Parameter pnProvider: The provider, for example "apns.dev".    
+	/// - Parameter pnParam: The parameters, for example
+	/// "ABCD1234.org.linphone.phone.remote".    
+	/// - Parameter pnPrid: The prid, also known as push token.    
+	/// - Returns: the ``AccountManagerServicesRequest`` request object.    
+	public func createSendAccountRecoveryTokenByPushRequest(pnProvider:String, pnParam:String, pnPrid:String) throws -> AccountManagerServicesRequest
+	{
+		let cPointer = linphone_account_manager_services_create_send_account_recovery_token_by_push_request(cPtr, pnProvider, pnParam, pnPrid)
+		if (cPointer == nil) {
+			throw LinphoneError.exception(result: "create null AccountManagerServicesRequest value")
+		}
+		let result = AccountManagerServicesRequest.getSwiftObject(cObject: cPointer!)
+		belle_sip_object_unref(UnsafeMutableRawPointer(cPointer))
+		return result
+	}
+	
+	
+	
 	/// Requests a code to be sent to a given email address, that can be used later to
 	/// associate said email to an account using
 	/// ``createLinkEmailToAccountUsingCodeRequest(sipIdentity:code:)``. 
@@ -7969,6 +7995,9 @@ public class AccountManagerServicesRequest : LinphoneObject
 		case GetDevicesList = 8
 		/// Removes an account device. 
 		case DeleteDevice = 9
+		/// Asks the account manager to send us an account recovery token by push
+		/// notification. 
+		case SendAccountRecoveryTokenByPush = 10
 		case GetCreationTokenAsAdmin = 100
 		case GetAccountInfoAsAdmin = 101
 		case DeleteAccountAsAdmin = 102
