@@ -21,7 +21,7 @@
 # Build information
 
 version : 5.5.0-alpha.63+d586398d
-branch : remotes/origin/master
+branch : pipelines/95019
 architecture : arm64 x86_64
 
 Enabled features:
