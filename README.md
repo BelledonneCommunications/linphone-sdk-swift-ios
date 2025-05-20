@@ -20,8 +20,8 @@
 
 # Build information
 
-version : 5.5.0-alpha.71+6ce85bde
-branch : pipelines/95463
+version : 5.5.0-alpha.74+b2647ba2
+branch : pipelines/95556
 architecture : arm64 x86_64
 
 Enabled features:
@@ -89,8 +89,8 @@ Ensure it contains:
 - from terminal navigate to <build folder>/linphone-sdk-swift-ios
 - git init
 - git add .
-- git commit -a -m "Swift package 5.5.0-alpha.71+6ce85bde"
-- git tag -a 5.5.0-alpha.71+6ce85bde -m "linphone-sdk 5.5.0-alpha.71+6ce85bde"
+- git commit -a -m "Swift package 5.5.0-alpha.74+b2647ba2"
+- git tag -a 5.5.0-alpha.74+b2647ba2 -m "linphone-sdk 5.5.0-alpha.74+b2647ba2"
 - Open your Xcode Project
 - Menu File -> Add Package Dependencies
 - On top right entry field enter file://<build folder>/linphone-sdk-swift-ios
