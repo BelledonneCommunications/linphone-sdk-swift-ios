@@ -21717,6 +21717,34 @@ public class Core : LinphoneObject
 		}
 	}
 		
+	/// Sets a wav file to be played when putting somebody on hold (see
+	/// ``setUseFiles(yesno:)``). 
+	/// The file must be a 16 bit linear wav file. 
+	/// - Parameter file: The path to the file to be played when putting somebody on
+	/// hold.    
+	
+	/// Get the wav file played when putting a call on hold with ``Call/pause()`` 
+	/// The file is a 16 bit linear file. 
+	/// - Returns: The path to the file that is played when putting a call on hold.    
+	public var callOnHoldMusicFile: String?
+	{
+	
+		get
+		{ 
+			
+			let cPointer = linphone_core_get_call_on_hold_music_file(cPtr)
+			if (cPointer == nil) {
+				return nil
+			}
+			let result = charArrayToString(charPointer: cPointer)
+			return result
+		}
+		set
+		{
+			linphone_core_set_call_on_hold_music_file(cPtr, newValue)
+		}
+	}
+		
 	/// Enables or disables call tone indications. 
 	/// This value is taken into account from next time call parameters are created.
 	/// This feature can also be enabled per-call using ``CallParams``. 
@@ -24155,17 +24183,17 @@ public class Core : LinphoneObject
 		}
 	}
 		
-	/// Sets a wav file to be played when putting somebody on hold, or when files are
-	/// used instead of soundcards (see ``setUseFiles(yesno:)``). 
+	/// Sets a wav file to be played when files are used instead of soundcards (see
+	/// ``setUseFiles(yesno:)``). 
 	/// The file must be a 16 bit linear wav file. 
-	/// - Parameter file: The path to the file to be played when putting somebody on
-	/// hold.    
+	/// - Parameter file: The path to the file to be played when files are used instead
+	/// of soundcards.    
 	
-	/// Get the wav file that is played when putting somebody on hold, or when files
-	/// are used instead of soundcards (see ``setUseFiles(yesno:)``). 
+	/// Get the wav file that is played when files are used instead of soundcards (see
+	/// ``setUseFiles(yesno:)``). 
 	/// The file is a 16 bit linear wav file. 
-	/// - Returns: The path to the file that is played when putting somebody on hold.  
-	///  
+	/// - Returns: The path to the file that is played when files are used instead of
+	/// soundcards.    
 	public var playFile: String?
 	{
 	
