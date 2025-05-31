@@ -21,7 +21,7 @@
 # Build information
 
 version : 5.5.0-alpha.81+cea4b906d4
-branch : remotes/origin/master
+branch : pipelines/95918
 architecture : arm64 x86_64
 
 Enabled features:
