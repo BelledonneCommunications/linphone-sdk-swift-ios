@@ -8367,9 +8367,9 @@ public class AccountParams : LinphoneObject
 	/// - Parameter enable: true to replace + by the international prefix, false
 	/// otherwise. 
 	
-	/// Return whether or not the + should be replaced by 00. 
-	/// - Returns: Whether liblinphone should replace "+" by "00" in dialed numbers
-	/// (passed to ``Core/invite(url:)``). 
+	/// Return whether or not the + should be replaced by the Internal Call Prefix. 
+	/// - Returns: Whether liblinphone should replace "+" by the Internal Call Prefix.
+	/// in dialed numbers (passed to ``Core/invite(url:)``). 
 	public var dialEscapePlusEnabled: Bool
 	{
 	
@@ -10296,8 +10296,9 @@ public class AuthInfo : LinphoneObject
 	}
 		
 	/// Set the OAUTH2 client_id. 
-	/// The client_id may be used to renew access token from refresh token. - See also:
-	/// ``setRefreshToken(token:)`` 
+	/// The client_id may be used to renew access token from refresh token. If a
+	/// client_secret is required, it has to be set through
+	/// ``setClientSecret(clientSecret:)``. - See also: ``setRefreshToken(token:)`` 
 	/// - Parameter clientId: the client_id.    
 	
 	/// Get the previously set OAUTH2 client_id. 
@@ -10318,6 +10319,32 @@ public class AuthInfo : LinphoneObject
 		set
 		{
 			linphone_auth_info_set_client_id(cPtr, newValue)
+		}
+	}
+		
+	/// Set the OAUTH2 client_secret. 
+	/// The client_secret may be used to renew access token from refresh token.
+	/// - See also: ``setRefreshToken(token:)`` 
+	/// - Parameter clientSecret: the client_secret.    
+	
+	/// Get the previously set OAUTH2 client_secret. 
+	/// - Returns: the client_secret.    
+	public var clientSecret: String?
+	{
+	
+		get
+		{ 
+			
+			let cPointer = linphone_auth_info_get_client_secret(cPtr)
+			if (cPointer == nil) {
+				return nil
+			}
+			let result = charArrayToString(charPointer: cPointer)
+			return result
+		}
+		set
+		{
+			linphone_auth_info_set_client_secret(cPtr, newValue)
 		}
 	}
 		
@@ -24403,6 +24430,8 @@ public class Core : LinphoneObject
 	/// - Returns: 0 if successful, -1 otherwise 
 	
 	/// Returns the default identity when no account is used. 
+	/// This SIP address usually contains a private ip address, and may not be routable
+	/// globally.
 	/// - Returns: the primary contact identity    
 	public var primaryContact: String
 	{
@@ -24419,6 +24448,23 @@ public class Core : LinphoneObject
 		guard exception_result == 0 else {
 			throw LinphoneError.exception(result: "username setter returned value \(exception_result)")
 		}
+	}
+		
+	
+	/// Same as ``getPrimaryContact()`` but the result is a ``Address`` object instead
+	/// of a string. 
+	/// - Returns: a ``Address`` object.       
+	public var primaryContactAddress: Address?
+	{
+	
+						let cPointer = linphone_core_get_primary_contact_address(cPtr)
+			if (cPointer == nil) {
+				return nil
+			}
+			let result = Address.getSwiftObject(cObject:cPointer!)
+			belle_sip_object_unref(UnsafeMutableRawPointer(cPointer))
+			return result
+
 	}
 		
 	
@@ -25975,9 +26021,11 @@ public class Core : LinphoneObject
 	}
 		
 	/// Sets the DSCP field for outgoing video streams. 
-	/// The DSCP defines the quality of service in IP packets. - Note: It is usually
-	/// useless or a bad idea to try to play with DSCP bits unless having full control
-	/// on the network. 
+	/// The DSCP defines the quality of service in IP packets. When RTP bundling is
+	/// negociated during the call (see ``enableRtpBundle(value:)``), the video packets
+	/// are sent through the audio RTP/UDP connection, which leaves the video dscp
+	/// setting wihtout effect. - Note: It is usually useless or a bad idea to try to
+	/// play with DSCP bits unless having full control on the network. 
 	/// - Warning: Setting the DSCP bits is more or less well supported by operating
 	/// systems and sometimes requires to disable IPv6. 
 	/// - Parameter dscp: The DSCP value to set 
@@ -26384,7 +26432,7 @@ public class Core : LinphoneObject
 	
 	
 	/// Adds authentication information to the ``Core``. 
-	/// That piece of information will be used during all SIP transactions that require
+	/// These nformation will be used during all SIP or HTTP transactions that require
 	/// authentication. 
 	/// - Parameter info: The ``AuthInfo`` to add.    
 	public func addAuthInfo(info:AuthInfo) 
@@ -27566,7 +27614,9 @@ public class Core : LinphoneObject
 	
 	/// Same as ``getPrimaryContact()`` but the result is a ``Address`` object instead
 	/// of const char *. 
-	/// - Returns: a ``Address`` object.    
+	/// - Returns: a ``Address`` object.   
+	/// - deprecated: prefer using ``getPrimaryContactAddress()`` 
+	@available(*, deprecated)
 	public func createPrimaryContactParsed() throws -> Address
 	{
 		let cPointer = linphone_core_create_primary_contact_parsed(cPtr)
@@ -32108,8 +32158,7 @@ public class Factory : LinphoneObject
 	/// - Parameter config: A ``Config`` object holding the configuration for the
 	/// ``Core`` to be instantiated.    
 	/// - Parameter systemContext: A pointer to a system object required by the core to
-	/// operate. Currently it is required to pass an android Context on android, pass
-	/// nil on other platforms.    
+	/// operate.
 	/// - Parameter appGroupId: Name of iOS App Group that lead to the file system that
 	/// is shared between an app and its app extensions.    
 	/// - Parameter mainCore: Indicate if we want to create a "Main Core" or an
