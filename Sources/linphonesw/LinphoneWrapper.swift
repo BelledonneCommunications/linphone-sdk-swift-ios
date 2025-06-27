@@ -16519,6 +16519,23 @@ public class ChatRoom : LinphoneObject
 	}
 		
 	
+	/// Returns the content-type (if set) of what the remote is currently composing. 
+	/// - Returns: the content-type of what the remote is currently composing if set
+	/// and if it's currently composing, nil otherwise.    
+	public var remoteComposingContentType: String?
+	{
+	
+			
+			let cPointer = linphone_chat_room_get_remote_composing_content_type(cPtr)
+			if (cPointer == nil) {
+				return nil
+			}
+			let result = charArrayToString(charPointer: cPointer)
+			return result
+
+	}
+		
+	
 	/// Gets the security level of a chat room. 
 	/// - Returns: The current ``SecurityLevel`` of the chat room 
 	public var securityLevel: ChatRoom.SecurityLevel
@@ -16685,9 +16702,29 @@ public class ChatRoom : LinphoneObject
 	
 	/// Notifies the destination of the chat message being composed that the user is
 	/// typing a new message. 
+	/// - deprecated: 24/06/2025 use ``composeTextMessage()`` instead. 
+	@available(*, deprecated)
 	public func compose() 
 	{
 		linphone_chat_room_compose(cPtr)
+	}
+	
+	
+	
+	/// Notifies the destination of the chat message being composed that the user is
+	/// typing a message. 
+	public func composeTextMessage() 
+	{
+		linphone_chat_room_compose_text_message(cPtr)
+	}
+	
+	
+	
+	/// Notifies the destination of the chat message being composed that the user is
+	/// recording a new voice message. 
+	public func composeVoiceMessage() 
+	{
+		linphone_chat_room_compose_voice_message(cPtr)
 	}
 	
 	
@@ -17254,6 +17291,15 @@ public class ChatRoom : LinphoneObject
 	public func setParticipantDevices(participantAddress:Address, deviceIdentities:[ParticipantDeviceIdentity]) 
 	{
 		linphone_chat_room_set_participant_devices(cPtr, participantAddress.cPtr, ObjectArrayToBctbxList(list: deviceIdentities))
+	}
+	
+	
+	
+	/// Notifies the destination of the chat message that the user is no longer
+	/// composing. 
+	public func stopComposing() 
+	{
+		linphone_chat_room_stop_composing(cPtr)
 	}
 }
 
