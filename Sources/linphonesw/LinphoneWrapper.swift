@@ -32720,6 +32720,18 @@ public class Friend : LinphoneObject
 
 	}
 		
+	
+	/// Gets whether this friend is read only or not. 
+	/// A friend is read-only if the ``FriendList`` to which it belongs is read-only. 
+	/// - Returns: true if the friend is attached to an existing ``FriendList`` which
+	/// is in read-only mode, false otherwise. 
+	public var isReadOnly: Bool
+	{
+	
+						return linphone_friend_get_is_read_only(cPtr) != 0
+
+	}
+		
 	/// Sets the contact's job title. 
 	/// It's a shortcut to ``getVcard()`` and ``Vcard/setJobTitle(jobTitle:)``. 
 	/// - Parameter jobTitle: the job title to store in Friend's vCard.    
@@ -33425,6 +33437,8 @@ public class FriendList : LinphoneObject
 		case NonExistentFriend = 1
 		/// ``Friend`` is already present in a ``FriendList`` 
 		case InvalidFriend = 2
+		/// ``FriendList`` is read only 
+		case ReadOnly = 3
 	}
 
 	
@@ -33554,6 +33568,30 @@ public class FriendList : LinphoneObject
 			}
 			return swiftList
 
+	}
+		
+	/// Sets whether this friend list is read only or not. 
+	/// If it is, you won't be able to add/remove friends in/from it, nor to edit
+	/// existing friends in it. 
+	/// - Parameter readOnly: true to make this friend list "read only", false
+	/// otherwise. 
+	
+	/// Gets whether this friend list is read only or not. 
+	/// If it is, you won't be able to add/remove friends in/from it, nor to edit
+	/// existing friends in it. 
+	/// - Returns: true if this friend list is in read-only mode and thus can't be
+	/// modified, false otherwise. 
+	public var isReadOnly: Bool
+	{
+	
+		get
+		{ 
+						return linphone_friend_list_get_is_read_only(cPtr) != 0
+		}
+		set
+		{
+			linphone_friend_list_set_is_read_only(cPtr, newValue==true ? 1:0)
+		}
 	}
 		
 	
