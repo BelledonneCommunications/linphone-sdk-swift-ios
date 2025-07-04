@@ -8578,7 +8578,7 @@ public class AccountParams : LinphoneObject
 		
 	/// Set the base(s) x3dh algorithm. 
 	/// accept an ordered comma separated list (without space) of lime base algorithms
-	/// accepted values are a combinaison of : c25519, c448 and c25519k512 nil is also
+	/// accepted values are a combination of: c25519, c448 and c25519mlk512 nil is also
 	/// valid, it will unset the value 
 	/// - Parameter algo: The x3dh base algorithm.    
 	
