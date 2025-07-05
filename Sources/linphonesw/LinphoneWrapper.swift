@@ -10071,6 +10071,8 @@ public class AudioDevice : LinphoneObject
 		case Headphones = 10
 		/// Hearing Aid. 
 		case HearingAid = 11
+		/// HDMI. 
+		case Hdmi = 12
 	}
 	
 	
