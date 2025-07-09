@@ -5545,7 +5545,16 @@ public protocol MagicSearchDelegate : AnyObject {
 	/// - Parameter magicSearch: ``MagicSearch`` object    
 	/// - Parameter source: The source flag indicating for which type of result there
 	/// is more results available. 
+	/// - deprecated: 07/07/2025 use LinphoneMagicSearchCbsResultsLimitReachedCb
+	/// instead. 
 	func onMoreResultsAvailable(magicSearch: MagicSearch, source: MagicSearch.Source)
+	
+	/// Callback used to notify when the configured search limit has been reached and
+	/// thus user should refine it's search parameters. 
+	/// - Parameter magicSearch: ``MagicSearch`` object    
+	/// - Parameter sourcesFlag: The source(s) flag indicating the request for which
+	/// the limit has been reached. 
+	func onResultsLimitReached(magicSearch: MagicSearch, sourcesFlag: Int)
 }
 
 public extension MagicSearchDelegate {
@@ -5555,6 +5564,8 @@ public extension MagicSearchDelegate {
 	func onLdapHaveMoreResults(magicSearch: MagicSearch, ldap: Ldap) {}
 	
 	func onMoreResultsAvailable(magicSearch: MagicSearch, source: MagicSearch.Source) {}
+	
+	func onResultsLimitReached(magicSearch: MagicSearch, sourcesFlag: Int) {}
 }
 
 public final class MagicSearchDelegateStub : MagicSearchDelegate
@@ -5562,6 +5573,7 @@ public final class MagicSearchDelegateStub : MagicSearchDelegate
 	var _onSearchResultsReceived: ((MagicSearch) -> Void)?
 	var _onLdapHaveMoreResults: ((MagicSearch, Ldap) -> Void)?
 	var _onMoreResultsAvailable: ((MagicSearch, MagicSearch.Source) -> Void)?
+	var _onResultsLimitReached: ((MagicSearch, Int) -> Void)?
 
 	
 	public func onSearchResultsReceived(magicSearch: MagicSearch){_onSearchResultsReceived.map{$0(magicSearch)}}
@@ -5569,15 +5581,19 @@ public final class MagicSearchDelegateStub : MagicSearchDelegate
 	public func onLdapHaveMoreResults(magicSearch: MagicSearch, ldap: Ldap){_onLdapHaveMoreResults.map{$0(magicSearch, ldap)}}
 	
 	public func onMoreResultsAvailable(magicSearch: MagicSearch, source: MagicSearch.Source){_onMoreResultsAvailable.map{$0(magicSearch, source)}}
+	
+	public func onResultsLimitReached(magicSearch: MagicSearch, sourcesFlag: Int){_onResultsLimitReached.map{$0(magicSearch, sourcesFlag)}}
 
 	public init (
 		onSearchResultsReceived: ((MagicSearch) -> Void)? = nil,
 		onLdapHaveMoreResults: ((MagicSearch, Ldap) -> Void)? = nil,
-		onMoreResultsAvailable: ((MagicSearch, MagicSearch.Source) -> Void)? = nil
+		onMoreResultsAvailable: ((MagicSearch, MagicSearch.Source) -> Void)? = nil,
+		onResultsLimitReached: ((MagicSearch, Int) -> Void)? = nil
 	) {
 		self._onSearchResultsReceived = onSearchResultsReceived
 		self._onLdapHaveMoreResults = onLdapHaveMoreResults
 		self._onMoreResultsAvailable = onMoreResultsAvailable
+		self._onResultsLimitReached = onResultsLimitReached
 	}
 }
 
@@ -5616,6 +5632,14 @@ class MagicSearchDelegateManager
 				let sObject = MagicSearch.getSwiftObject(cObject: magicSearch!)
 				let delegate = sObject.currentDelegate
 				delegate?.onMoreResultsAvailable(magicSearch: sObject, source: MagicSearch.Source(rawValue: Int(source.rawValue)))
+			}
+		})
+
+		linphone_magic_search_cbs_set_results_limit_reached(cPtr, { (magicSearch, sourcesFlag) -> Void in
+			if (magicSearch != nil) {
+				let sObject = MagicSearch.getSwiftObject(cObject: magicSearch!)
+				let delegate = sObject.currentDelegate
+				delegate?.onResultsLimitReached(magicSearch: sObject, sourcesFlag: Int(sourcesFlag))
 			}
 		})
 	}
