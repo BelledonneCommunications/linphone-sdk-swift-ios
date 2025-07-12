@@ -23265,6 +23265,28 @@ public class Core : LinphoneObject
 
 	}
 		
+	/// Set the IMDN resend period. 
+	/// It is the number of seconds after the first attempt to send, an IMDN message is
+	/// sent again on startup if failed earlier on 
+	/// - Parameter seconds: number of seconds after the first attempt to send an IMDN,
+	/// it is retried at startup. A negative value means all IMDNs are resent at
+	/// startup. 
+	
+	/// Gets the IMDN resend period. 
+	/// - Returns: the number of second to resend an failed IMDN message 
+	public var imdnResendPeriod: Int
+	{
+	
+		get
+		{ 
+						return Int(linphone_core_get_imdn_resend_period(cPtr))
+		}
+		set
+		{
+			linphone_core_set_imdn_resend_period(cPtr, (newValue))
+		}
+	}
+		
 	/// Sets the threshold for sending IMDN to all participants to a ``ChatRoom``. 
 	/// - Parameter threshold: the threshold for sending IMDN to all participants to a
 	/// ``ChatRoom`` 
