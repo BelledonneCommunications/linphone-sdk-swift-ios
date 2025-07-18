@@ -12273,7 +12273,21 @@ public class Call : LinphoneObject
 	
 	/// Create a native video window id where the video is to be displayed. 
 	/// - See also: ``Core/setNativeVideoWindowId(windowId:)`` for a general discussion
-	/// about window IDs. 
+	/// about window IDs.
+	/// A context can be used to prevent Linphone from allocating the container
+	/// (#MSOglContextInfo for MSOGL). nil if not used. 
+	/// - Parameter context: preallocated Window ID (Used only for MSOGL)    
+	/// - Returns: the native video window id (type may vary depending on platform).    
+	public func createNativeVideoWindowId(context:UnsafeMutableRawPointer?) throws -> UnsafeMutableRawPointer
+	{
+		return linphone_call_create_native_video_window_id_2(cPtr, context)
+	}
+	
+	
+	
+	/// Create a native video window id where the video is to be displayed. 
+	/// - See also: ``Core/setNativeVideoWindowId(windowId:)`` for a general discussion
+	/// about window IDs.
 	/// - Returns: the native video window id (type may vary depending on platform).    
 	public func createNativeVideoWindowId() throws -> UnsafeMutableRawPointer
 	{
@@ -16133,6 +16147,25 @@ public class ChatRoom : LinphoneObject
 
 	}
 		
+	
+	/// Gets the list of participants that are currently composing. 
+	/// - Returns: List of ``ComposingParticipant`` that are in the is_composing state.
+	///   
+	public var composingParticipants: [ComposingParticipant]
+	{
+	
+						var swiftList = [ComposingParticipant]()
+			let cList = linphone_chat_room_get_composing_participants(cPtr)
+			var listTemp = cList
+			while (listTemp != nil) {
+				let data = unsafeBitCast(listTemp?.pointee.data, to: OpaquePointer.self)
+				swiftList.append(ComposingParticipant.getSwiftObject(cObject: data))
+				listTemp = UnsafePointer<bctbx_list_t>(listTemp?.pointee.next)
+			}
+			return swiftList
+
+	}
+		
 	/// Sets the conference address of a group chat room. 
 	/// This function needs to be called from the
 	/// LinphoneChatRoomCbsConferenceAddressGenerationCb callback and only there. This
@@ -17561,6 +17594,72 @@ public class ChatRoomParams : LinphoneObject
 		}
 	}
 	}
+
+
+/// Object that represents a ``ChatRoom`` participant that is currently composing. 
+public class ComposingParticipant : LinphoneObject
+{
+
+	static public func getSwiftObject(cObject:OpaquePointer) -> ComposingParticipant {
+		let result = belle_sip_object_data_get(UnsafeMutablePointer(cObject), "swiftRef")
+		if (result != nil) {
+			return Unmanaged<ComposingParticipant>.fromOpaque(result!).takeUnretainedValue()
+		}
+		let sObject = ComposingParticipant(cPointer: cObject)
+		belle_sip_object_data_set(UnsafeMutablePointer(cObject), "swiftRef",  UnsafeMutableRawPointer(Unmanaged.passUnretained(sObject).toOpaque()), nil)
+		return sObject
+	}
+
+	public var getCobject: OpaquePointer? {
+		return cPtr
+	}
+	
+	
+	/// Gets the participant's address. 
+	/// - Returns: the ``Address`` of the participant.    
+	public var address: Address?
+	{
+	
+						let cPointer = linphone_composing_participant_get_address(cPtr)
+			if (cPointer == nil) {
+				return nil
+			}
+			let result = Address.getSwiftObject(cObject:cPointer!)
+			return result
+
+	}
+		
+	
+	/// Gets the content-type of what the participant is being composing. 
+	/// - Returns: the content-type set if any, nil otherwise.    
+	public var contentType: String?
+	{
+	
+			
+			let cPointer = linphone_composing_participant_get_content_type(cPtr)
+			if (cPointer == nil) {
+				return nil
+			}
+			let result = charArrayToString(charPointer: cPointer)
+			return result
+
+	}
+		
+	
+	
+	/// Clones a composing participant. 
+	/// - Returns: The newly created ``ComposingParticipant`` object.    
+	public func clone() -> ComposingParticipant?
+	{
+		let cPointer = linphone_composing_participant_clone(cPtr)
+		if (cPointer == nil) {
+			return nil
+		}
+		let result = ComposingParticipant.getSwiftObject(cObject: cPointer!)
+		belle_sip_object_unref(UnsafeMutableRawPointer(cPointer))
+		return result
+	}
+}
 
 
 /// A conference is the object that allow to make calls when there are 2 or more
@@ -24135,7 +24234,7 @@ public class Core : LinphoneObject
 		
 	/// Set the native window id where the preview video (local camera) is to be
 	/// displayed. 
-	/// This has to be used in conjonction with ``usePreviewWindow(yesno:)``. see
+	/// This has to be used in conjunction with ``usePreviewWindow(yesno:)``. see
 	/// ``setNativeVideoWindowId(windowId:)`` for general details about window_id
 	/// On Android : #org.linphone.mediastream.video.capture.CaptureTextureView is used
 	/// for ``setNativePreviewWindowId(windowId:)``. It is inherited from #TextureView
@@ -24194,9 +24293,9 @@ public class Core : LinphoneObject
 	/// must be selected by using ``setVideoDisplayFilter(filterName:)``. Setting
 	/// window id is only used to stop rendering by passing
 	/// LINPHONE_VIDEO_DISPLAY_NONE. ``getNativeVideoWindowId()`` returns a
-	/// #QQuickFramebufferObject::Renderer and ``createNativeVideoWindowId()`` creates
-	/// one. After a creation, ``setNativeVideoWindowId(windowId:)`` must be called
-	/// with the new object.
+	/// #QQuickFramebufferObject::Renderer and ``createNativeVideoWindowId(context:)``
+	/// creates one. After a creation, ``setNativeVideoWindowId(windowId:)`` must be
+	/// called with the new object.
 	/// On mobile operating systems, LINPHONE_VIDEO_DISPLAY_AUTO is not supported and
 	/// window_id depends of the platform : iOS : It is a UIView. Android : It is a
 	/// TextureView.
@@ -27513,14 +27612,28 @@ public class Core : LinphoneObject
 	
 	
 	
+	/// Create a Window ID for the video preview window. 
+	/// Available for MSQOGL and MSOGL. see ``setNativeVideoWindowId(windowId:)`` for
+	/// details about window_id
+	/// MSQOgl can be used for the creation. ``createNativePreviewWindowId(context:)``
+	/// returns a #QQuickFramebufferObject::Renderer. This object must be returned by
+	/// your QQuickFramebufferObject::createRenderer() overload for Qt.
+	/// linphone_core_set_native_preview_window_id_2() must be called with this object
+	/// after the creation. Note : Qt blocks GUI thread when calling createRenderer(),
+	/// so it is safe to call linphone functions there if needed.
+	/// A context can be used to prevent Linphone from allocating the container
+	/// (#MSOglContextInfo for MSOGL). nil if not used.
+	/// - Parameter context: preallocated Window ID (Used only for MSOGL)    
+	/// - Returns: The created Window ID.    
+	public func createNativePreviewWindowId(context:UnsafeMutableRawPointer?) throws -> UnsafeMutableRawPointer
+	{
+		return linphone_core_create_native_preview_window_id_2(cPtr, context)
+	}
+	
+	
+	
 	/// Create a native window handle for the video preview window. 
-	/// see ``setNativeVideoWindowId(windowId:)`` for details about window_id
-	/// MSQOgl can be used for the creation. ``createNativePreviewWindowId()`` returns
-	/// a #QQuickFramebufferObject::Renderer. This object must be returned by your
-	/// QQuickFramebufferObject::createRenderer() overload for Qt.
-	/// ``setNativePreviewWindowId(windowId:)`` must be called with this object after
-	/// the creation. Note : Qt blocks GUI thread when calling createRenderer(), so it
-	/// is safe to call linphone functions there if needed.
+	/// see ``createNativePreviewWindowId(context:)`` for details
 	/// - Returns: The native window handle of the video preview window.    
 	public func createNativePreviewWindowId() throws -> UnsafeMutableRawPointer
 	{
@@ -27529,14 +27642,29 @@ public class Core : LinphoneObject
 	
 	
 	
-	/// Create a native window handle for the video window. 
-	/// see ``setNativeVideoWindowId(windowId:)`` for details about window_id
-	/// When MSQOgl can be used for the creation: ``createNativeVideoWindowId()``
-	/// returns a #QQuickFramebufferObject::Renderer. This object must be returned by
-	/// your QQuickFramebufferObject::createRenderer() overload for Qt.
+	/// Create a Window ID from the current call. 
+	/// Available for MSQOGL and MSOGL. see ``setNativeVideoWindowId(windowId:)`` for
+	/// details about window_id
+	/// When MSQOgl can be used for the creation:
+	/// ``createNativeVideoWindowId(context:)`` returns a
+	/// #QQuickFramebufferObject::Renderer. This object must be returned by your
+	/// QQuickFramebufferObject::createRenderer() overload for Qt.
 	/// ``setNativeVideoWindowId(windowId:)`` must be called with this object after the
 	/// creation. Note : Qt blocks GUI thread when calling createRenderer(), so it is
 	/// safe to call linphone functions there if needed.
+	/// A context can be used to prevent Linphone from allocating the container
+	/// (#MSOglContextInfo for MSOGL). nil if not used.
+	/// - Parameter context: preallocated Window ID (Used only for MSOGL)    
+	/// - Returns: The created Window ID    
+	public func createNativeVideoWindowId(context:UnsafeMutableRawPointer?) throws -> UnsafeMutableRawPointer
+	{
+		return linphone_core_create_native_video_window_id_2(cPtr, context)
+	}
+	
+	
+	
+	/// Create a native window handle for the video window from the current call. 
+	/// see ``createNativeVideoWindowId(context:)`` for details
 	/// - Returns: The native window handle of the video window.    
 	public func createNativeVideoWindowId() throws -> UnsafeMutableRawPointer
 	{
@@ -34845,13 +34973,13 @@ public class LdapParams : LinphoneObject
 		}
 	}
 		
-	/// Check these attributes to build Name Friend, separated by a comma and the first
-	/// is the highest priority. 
-	/// Default value : "sn".
+	/// List of LDAP attributes to check for the contact name, separated by a comma and
+	/// the first being the highest priority. 
+	/// Default value : "sn". 
 	/// - Parameter nameAttribute: The comma separated attributes for the search.    
 	
-	/// Get the attributes to build Name Friend, separated by a comma and the first is
-	/// the highest priority. 
+	/// Get the list of LDAP attributes to check for the contact name, separated by a
+	/// comma and the first being the highest priority. 
 	/// - Returns: The comma separated attributes for the search.    
 	public var nameAttribute: String?
 	{
@@ -36788,7 +36916,23 @@ public class ParticipantDevice : LinphoneObject
 	
 	
 	/// Creates a window ID and return it. 
-	/// - Returns: the window ID of the device    
+	/// - See also: ``Core/setNativeVideoWindowId(windowId:)`` for a general discussion
+	/// about window IDs.
+	/// A context can be used to prevent Linphone from allocating the container
+	/// (#MSOglContextInfo for MSOGL). nil if not used.
+	/// - Parameter context: preallocated Window ID (Used only for MSOGL)    
+	/// - Returns: the native video window id (type may vary depending on platform).    
+	public func createNativeVideoWindowId(context:UnsafeMutableRawPointer?) throws -> UnsafeMutableRawPointer
+	{
+		return linphone_participant_device_create_native_video_window_id_2(cPtr, context)
+	}
+	
+	
+	
+	/// Creates a window ID and return it. 
+	/// - See also: ``Core/setNativeVideoWindowId(windowId:)`` for a general discussion
+	/// about window IDs.
+	/// - Returns: the native video window id (type may vary depending on platform).    
 	public func createNativeVideoWindowId() throws -> UnsafeMutableRawPointer
 	{
 		return linphone_participant_device_create_native_video_window_id(cPtr)
@@ -37580,6 +37724,18 @@ public class Player : LinphoneObject
 	public func close() 
 	{
 		linphone_player_close(cPtr)
+	}
+	
+	
+	
+	/// Create a window id to be used to display video if any. 
+	/// A context can be used to prevent Linphone from allocating the container
+	/// (#MSOglContextInfo for MSOGL). nil if not used.
+	/// - Parameter context: preallocated Window ID (Used only for MSOGL)    
+	/// - Returns: window_id The window id pointer to use.    
+	public func createWindowId(context:UnsafeMutableRawPointer?) throws -> UnsafeMutableRawPointer
+	{
+		return linphone_player_create_window_id_2(cPtr, context)
 	}
 	
 	
