@@ -21,7 +21,7 @@
 # Build information
 
 version : 5.4.28-pre.1+7de88db26d
-branch : pipelines/98764
+branch : pipelines/98694
 architecture : arm64 x86_64
 
 Enabled features:
