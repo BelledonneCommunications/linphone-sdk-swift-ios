@@ -18630,7 +18630,7 @@ public class ConferenceInfo : LinphoneObject
 		case Cancelled = 2
 	}
 	
-	/// Set the CCMP URI of the conference. 
+	/// Sets the CCMP URI of the conference. 
 	/// - Parameter uri: The URI of the conference in the CCMP server.    
 	
 	/// Retrieve the CCMP URI of the conference. 
@@ -18654,7 +18654,7 @@ public class ConferenceInfo : LinphoneObject
 		}
 	}
 		
-	/// Set the date and time of the conference. 
+	/// Sets the date and time of the conference. 
 	/// - Parameter datetime: The date and time of the conference. 
 	
 	/// Retrieve the date and time of the conference. 
@@ -18672,7 +18672,7 @@ public class ConferenceInfo : LinphoneObject
 		}
 	}
 		
-	/// Set the description of the conference. 
+	/// Sets the description of the conference. 
 	/// - Parameter description: The description of the conference.    
 	
 	/// Retrieve the description of the conference. 
@@ -18696,7 +18696,7 @@ public class ConferenceInfo : LinphoneObject
 		}
 	}
 		
-	/// Set the description of the conference. 
+	/// Sets the description of the conference. 
 	/// - Parameter description: The description of the conference.    
 	
 	/// Retrieve the description of the conference. 
@@ -18720,7 +18720,7 @@ public class ConferenceInfo : LinphoneObject
 		}
 	}
 		
-	/// Set the duration (in minutes) of the conference. 
+	/// Sets the duration (in minutes) of the conference. 
 	/// - Parameter duration: The duration of the conference. 
 	
 	/// Retrieve the duration (in minutes) of the conference. 
@@ -18783,7 +18783,7 @@ public class ConferenceInfo : LinphoneObject
 		}
 	}
 		
-	/// Set the organizer of the conference. 
+	/// Sets the organizer of the conference. 
 	/// - Parameter organizer: The ``Address`` of the conference's organizer.    
 	
 	/// Retrieve the organizer of the conference. 
@@ -18806,22 +18806,31 @@ public class ConferenceInfo : LinphoneObject
 		}
 	}
 		
+	/// Sets the organizer information of the conference. 
+	/// - Parameter organizer: The ``ParticipantInfo`` of the conference's organizer.  
+	///  
 	
 	/// Retrieve the organizer of the conference. 
 	/// - Returns: The ``ParticipantInfo`` of the conference's organizer.    
 	public var organizerInfo: ParticipantInfo?
 	{
 	
+		get
+		{ 
 						let cPointer = linphone_conference_info_get_organizer_info(cPtr)
 			if (cPointer == nil) {
 				return nil
 			}
 			let result = ParticipantInfo.getSwiftObject(cObject:cPointer!)
 			return result
-
+		}
+		set
+		{
+			linphone_conference_info_set_organizer_info(cPtr, newValue?.cPtr)
+		}
 	}
 		
-	/// Set the list of participants. 
+	/// Sets the list of participants. 
 	/// - Parameter participantInfos: The list of participant informations to set.      
 	
 	/// Retrieve the list of participants as list of participant infos. 
@@ -18853,7 +18862,7 @@ public class ConferenceInfo : LinphoneObject
 		}
 	}
 		
-	/// Set the list of participants. 
+	/// Sets the list of participants. 
 	/// - Parameter participants: The list of participants to set.      
 	/// - deprecated: 24/08/2023 use linphone_conference_info_set_participant_infos
 	/// instead 
@@ -18890,7 +18899,7 @@ public class ConferenceInfo : LinphoneObject
 		}
 	}
 		
-	/// Set the desired security level of the conference. 
+	/// Sets the desired security level of the conference. 
 	/// - Parameter securityLevel: The desired security level of the conference. 
 	
 	/// Retrieve the desired security level of the conference. 
@@ -18918,7 +18927,7 @@ public class ConferenceInfo : LinphoneObject
 
 	}
 		
-	/// Set the subject of the conference. 
+	/// Sets the subject of the conference. 
 	/// - Parameter subject: The subject of the conference.    
 	
 	/// Retrieve the subject of the conference. 
@@ -18942,7 +18951,7 @@ public class ConferenceInfo : LinphoneObject
 		}
 	}
 		
-	/// Set the subject of the conference. 
+	/// Sets the subject of the conference. 
 	/// - Parameter subject: The subject of the conference.    
 	
 	/// Retrieve the subject of the conference. 
@@ -19064,7 +19073,7 @@ public class ConferenceInfo : LinphoneObject
 	
 	
 	
-	/// Set the capability of the conference. 
+	/// Sets the capability of the conference. 
 	/// The capability information represents the capability for the conference linked
 	/// to the #ConferenceInfo to handle a given stream type (audio, video or text). 
 	/// - Parameter streamType: A ``StreamType`` 
@@ -19110,8 +19119,12 @@ public class ConferenceParams : LinphoneObject
 	
 	/// Sets the account for the conference. 
 	/// - Parameter account: a pointer to the account.    
-	/// - Warning: The account can only be changed upon creation of a conference when
-	/// calling linphone_core_create_conference_with_params 
+	/// - Warning: This account is used to configure some conference parameter field,
+	/// therefore it is recommended to set it after selecting the capabilities. For
+	/// instance capabilities will be used when defaulting the factory address. If
+	/// audio or video one is enabled, then the default factory address will be the one
+	/// associated to audio video conferencing, otherwise it will be the chat one.
+	/// linphone_core_create_conference_with_params 
 	
 	/// Returns the account for the conference. 
 	/// - Returns: a pointer to the account or nil if it is not set.    
