@@ -1460,9 +1460,7 @@ public protocol AccountManagerServicesRequestDelegate : AnyObject {
 	/// if any.    
 	func onRequestError(request: AccountManagerServicesRequest, statusCode: Int, errorMessage: String, parameterErrors: Dictionary?)
 	
-	/// Callback for notifying when the
-	/// #LinphoneAccountManagerServicesRequestGetDevicesList request has results
-	/// available. 
+	/// Callback for notifying when a request has results available. 
 	/// - Parameter request: ``AccountManagerServicesRequest`` object.    
 	/// - Parameter devicesList: the   of fetched devices.    
 	func onDevicesListFetched(request: AccountManagerServicesRequest, devicesList: [AccountDevice])
@@ -6092,9 +6090,9 @@ public class Account : LinphoneObject
 	/// Returns the list of conference information stored locally for a given account. 
 	/// This list must be freed after use. 
 	/// - Returns: The list of call logs  .    
-	/// - Warning: this method also start the synchronization with the CCMP server,
-	/// should it be defined in the #AccountParams. The application may want to wait
-	/// for the callback conference_information_updated to get a up-to-date list of
+	/// - Warning: This method also start the synchronization with the CCMP server,
+	/// should it be defined in the ``AccountParams``. The application may want to wait
+	/// for the callback conference_information_updated to get an up-to-date list of
 	/// conferences 
 	public var conferenceInformationList: [ConferenceInfo]
 	{
@@ -6534,8 +6532,8 @@ public class Account : LinphoneObject
 }
 
 
-/// The object used to configure an account on a server via XML-RPC, see
-/// https://wiki.linphone.org/xwiki/wiki/public/view/Lib/Features/Override%20account%20creator%20request/.
+/// The object used to configure an account on a server via XML-RPC See: Override
+/// account creator request 
 public class AccountCreator : LinphoneObject
 {
 	var delegateManagers : [AccountCreatorDelegateManager] = []
@@ -12109,10 +12107,10 @@ public class Call : LinphoneObject
 	
 	
 	/// Accepts an incoming call. 
-	/// Basically the application is notified of incoming calls within the
+	/// Basically, the application is notified of incoming calls within the
 	/// call_state_changed callback of the LinphoneCoreVTable structure, where it will
-	/// receive a #LinphoneCallStateIncoming event with the associated ``Call`` object.
-	/// The application can later accept the call using this method. 
+	/// receive a ``IncomingReceived`` event with the associated ``Call`` object. The
+	/// application can later accept the call using this method. 
 	/// - Returns: 0 on success, -1 on failure 
 	public func accept() throws 
 	{
@@ -12207,11 +12205,11 @@ public class Call : LinphoneObject
 	
 	
 	/// Accepts an incoming call, with parameters. 
-	/// Basically the application is notified of incoming calls within the
+	/// Basically, the application is notified of incoming calls within the
 	/// call_state_changed callback of the LinphoneCoreVTable structure, where it will
-	/// receive a #LinphoneCallStateIncoming event with the associated ``Call`` object.
-	/// The application can later accept the call using this method. 
-	/// - Parameter params: The specific parameters for this call, for example whether
+	/// receive a ``IncomingReceived`` event with the associated ``Call`` object. The
+	/// application can later accept the call using this method. 
+	/// - Parameter params: The specific parameters for this call, for example, whether
 	/// video is accepted or not. Use nil to use default parameters.    
 	/// - Returns: 0 on success, -1 on failure 
 	public func acceptWithParams(params:CallParams?) throws 
@@ -12275,7 +12273,7 @@ public class Call : LinphoneObject
 	/// - See also: ``Core/setNativeVideoWindowId(windowId:)`` for a general discussion
 	/// about window IDs.
 	/// A context can be used to prevent Linphone from allocating the container
-	/// (#MSOglContextInfo for MSOGL). nil if not used. 
+	/// (MSOglContextInfo for MSOGL). nil if not used.
 	/// - Parameter context: preallocated Window ID (Used only for MSOGL)    
 	/// - Returns: the native video window id (type may vary depending on platform).    
 	public func createNativeVideoWindowId(context:UnsafeMutableRawPointer?) throws -> UnsafeMutableRawPointer
@@ -12358,7 +12356,7 @@ public class Call : LinphoneObject
 	/// to notify the application of possible changes in the media session. However in
 	/// such case defering the update has no meaning since we just generated an offer.
 	/// - Returns: 0 if successful, -1 if the ``deferUpdate()`` was done outside a
-	/// valid LinphoneCallUpdatedByRemote notification 
+	/// valid ``UpdatedByRemote`` notification 
 	public func deferUpdate() throws 
 	{
 		let exception_result = linphone_call_defer_update(cPtr)
@@ -12660,8 +12658,7 @@ public class Call : LinphoneObject
 	/// transferee sends notification about it. In this case, the
 	/// transfer_state_changed callback of the LinphoneCoreVTable is invoked to notify
 	/// of the state of the new call at the other party. The notified states are
-	/// LinphoneCallOutgoingInit , LinphoneCallOutgoingProgress,
-	/// LinphoneCallOutgoingRinging and LinphoneCallConnected. 
+	/// ``OutgoingInit``, ``OutgoingProgress``, ``OutgoingRinging`` and ``Connected``. 
 	/// - Parameter referTo: The destination the call is to be referred to.    
 	/// - Returns: 0 on success, -1 on failure 
 	/// - deprecated: 27/10/2020. Use ``transferTo(referTo:)`` instead. 
@@ -14618,12 +14615,12 @@ public class CardDavParams : LinphoneObject
 	}
 	
 	/// Sets the list of vCard RFC fields to use to match the domain filter on. 
-	/// For example you can use "IMPP". 
+	/// For example, you can use "IMPP". 
 	/// - Parameter list: the list of vCard RFC fields to use to match the domain
 	/// filter on.      
 	
 	/// Gets the list of vCard RFC fields to use to match the domain filter on. 
-	/// For example you can use "IMPP". 
+	/// For example, you can use "IMPP". 
 	/// - Returns: The list of vCard fields to make the query on using domain filter.  
 	///       
 	public var domainFields: [String]
@@ -14675,12 +14672,12 @@ public class CardDavParams : LinphoneObject
 	}
 		
 	/// Sets the list of vCard RFC fields to use to match user input text on. 
-	/// For example you can use "FN", "N", "IMPP", "ORG", etc... 
+	/// For example, you can use "FN", "N", "IMPP", "ORG", etc... 
 	/// - Parameter list: the list of vCard RFC fields to use to match user input text
 	/// on.      
 	
 	/// Gets the list of vCard RFC fields to use to match user input text on. 
-	/// For example you can use "FN", "N", "IMPP", "ORG", etc... 
+	/// For example, you can use "FN", "N", "IMPP", "ORG", etc... 
 	/// - Returns: The list of vCard fields to make the query on using user input.     
 	///    
 	public var userInputFields: [String]
@@ -17102,6 +17099,8 @@ public class ChatRoom : LinphoneObject
 	/// - Parameter end: The last event of the range to be retrieved. History oldest
 	/// message has index of history size - 1 (use ``getHistorySize(filters:)`` to
 	/// retrieve history size) 
+	/// - Parameter filters: The LinphoneChatRoomHistoryFilterMask mask to filter the
+	/// results with ``HistoryFilter`` 
 	/// - Returns: A list of      
 	public func getHistoryRange(begin:Int, end:Int, filters:UInt) -> [EventLog]
 	{
@@ -19053,7 +19052,7 @@ public class ConferenceInfo : LinphoneObject
 	
 	/// Get the capability of the conference. 
 	/// The capability information represents the capability for the conference linked
-	/// to the #ConferenceInfo to handle a given stream type (audio, video or text). 
+	/// to the ``ConferenceInfo`` to handle a given stream type (audio, video or text). 
 	/// - Parameter streamType: A ``StreamType`` 
 	/// - Returns: the capability of the conference linked to conference information
 	/// ``ConferenceInfo`` 
@@ -19075,7 +19074,7 @@ public class ConferenceInfo : LinphoneObject
 	
 	/// Sets the capability of the conference. 
 	/// The capability information represents the capability for the conference linked
-	/// to the #ConferenceInfo to handle a given stream type (audio, video or text). 
+	/// to the ``ConferenceInfo`` to handle a given stream type (audio, video or text). 
 	/// - Parameter streamType: A ``StreamType`` 
 	/// - Parameter enable: the capability of the conference linked to conference
 	/// information ``ConferenceInfo`` 
@@ -23134,7 +23133,7 @@ public class Core : LinphoneObject
 		}
 	}
 		
-	/// Globaly sets an http file transfer server to be used for content type
+	/// Globally sets an http file transfer server to be used for content type
 	/// application/vnd.gsma.rcs-ft-http+xml. 
 	/// Url may be like: "https://file.linphone.org/upload.php". This value can also be
 	/// set for a dedicated account using
@@ -24291,10 +24290,10 @@ public class Core : LinphoneObject
 		
 	/// Set the native window id where the preview video (local camera) is to be
 	/// displayed. 
-	/// This has to be used in conjunction with ``usePreviewWindow(yesno:)``. see
+	/// This has to be used in conjunction with ``usePreviewWindow(yesno:)``. See
 	/// ``setNativeVideoWindowId(windowId:)`` for general details about window_id
-	/// On Android : #org.linphone.mediastream.video.capture.CaptureTextureView is used
-	/// for ``setNativePreviewWindowId(windowId:)``. It is inherited from #TextureView
+	/// On Android : org.linphone.mediastream.video.capture.CaptureTextureView is used
+	/// for ``setNativePreviewWindowId(windowId:)``. It is inherited from TextureView
 	/// and takes care of rotating the captured image from the camera and scale it to
 	/// keep it's ratio.
 	/// - Parameter windowId: The native window id where the preview video is to be
@@ -24303,7 +24302,7 @@ public class Core : LinphoneObject
 	/// Get the native window handle of the video preview window. 
 	/// see ``setNativeVideoWindowId(windowId:)`` for details about window_id
 	/// There is a special case for Qt : ``getNativePreviewWindowId()`` returns a
-	/// #QQuickFramebufferObject::Renderer. Note : Qt blocks GUI thread when calling
+	/// QQuickFramebufferObject::Renderer. Note : Qt blocks GUI thread when calling
 	/// createRenderer(), so it is safe to call linphone functions there if needed.
 	/// - Returns: The native window handle of the video preview window.    
 	public var nativePreviewWindowId: UnsafeMutableRawPointer?
@@ -24344,13 +24343,13 @@ public class Core : LinphoneObject
 	/// unless the special id LINPHONE_VIDEO_DISPLAY_AUTO is given. This is currently
 	/// only supported for Linux X11 (Window type), Windows UWP (SwapChainPanel type)
 	/// and Windows Win32 (HWND type).
-	/// The C# Wrapper on Windows for UWP takes directly a #SwapChainPanel without
-	/// Marshalling. On other platforms, window_id is a #MSOglContextInfo defined in
+	/// The C# Wrapper on Windows for UWP takes directly a SwapChainPane without
+	/// Marshalling. On other platforms, window_id is a MSOglContextInfo defined in
 	/// msogl.h of mediastreamer2 There is a special case for Qt : The "MSQOGL" filter
 	/// must be selected by using ``setVideoDisplayFilter(filterName:)``. Setting
 	/// window id is only used to stop rendering by passing
 	/// LINPHONE_VIDEO_DISPLAY_NONE. ``getNativeVideoWindowId()`` returns a
-	/// #QQuickFramebufferObject::Renderer and ``createNativeVideoWindowId(context:)``
+	/// QQuickFramebufferObject::Renderer and ``createNativeVideoWindowId(context:)``
 	/// creates one. After a creation, ``setNativeVideoWindowId(windowId:)`` must be
 	/// called with the new object.
 	/// On mobile operating systems, LINPHONE_VIDEO_DISPLAY_AUTO is not supported and
@@ -24362,7 +24361,7 @@ public class Core : LinphoneObject
 	/// Get the native window handle of the video window. 
 	/// see linphone_core_set_native_video_window_id for details about window_id
 	/// There is a special case for Qt : ``getNativeVideoWindowId()`` returns a
-	/// #QQuickFramebufferObject::Renderer. Note : Qt blocks GUI thread when calling
+	/// QQuickFramebufferObject::Renderer. Note : Qt blocks GUI thread when calling
 	/// createRenderer(), so it is safe to call linphone functions there if needed.
 	/// - Returns: The native window handle of the video window.    
 	public var nativeVideoWindowId: UnsafeMutableRawPointer?
@@ -24911,7 +24910,7 @@ public class Core : LinphoneObject
 		
 	/// Enables the record-aware feature that will warn other users when doing
 	/// recording during a call. 
-	/// See @LinphoneCallCbs for being notified when a call is being recorded. 
+	/// See ``CallDelegate`` for being notified when a call is being recorded. 
 	/// - Parameter enable: true to activate the record aware feature, false to disable
 	/// it. 
 	
@@ -25077,12 +25076,10 @@ public class Core : LinphoneObject
 	}
 		
 	/// Sets the path to a wav file used for ringing. 
-	/// The file must be a wav 16bit linear. If null, ringing is disable unless
-	/// #linphone_core_get_use_native_ringing() is enabled, in which case we use the
-	/// device ringtone. 
+	/// The file must be a wav 16bit linear. If null, ringing is disable unless [sound]
+	/// use_native_ringing is enabled, in which case we use the device ringtone. 
 	/// - Parameter path: The path to a wav file to be used for ringing, null to
-	/// disable or use device ringing depending on
-	/// #linphone_core_get_use_native_ringing().    
+	/// disable or use device ringing depending on [sound] use_native_ringing.    
 	
 	/// Returns the path to the wav file used for ringing. 
 	/// - Returns: The path to the wav file used for ringing.    
@@ -25812,10 +25809,10 @@ public class Core : LinphoneObject
 		
 	/// Sets the ports to be used for each of transport (UDP or TCP) A zero value port
 	/// for a given transport means the transport is not used. 
-	/// A value of LC_SIP_TRANSPORT_RANDOM (-1) means the port is to be choosen
-	/// randomly by the system. A value of LC_SIP_TRANSPORT_DONTBIND (-2) means that
-	/// the socket will not be bound explicitely, in other words liblinphone won't
-	/// listen for incoming connections at all. This mode is suitable for a pure client
+	/// A value of LC_SIP_TRANSPORT_RANDOM (-1) means the port is to be chosen randomly
+	/// by the system. A value of LC_SIP_TRANSPORT_DONTBIND (-2) means that the socket
+	/// will not be bound explicitly, in other words liblinphone won't listen for
+	/// incoming connections at all. This mode is suitable for a pure client
 	/// application (ex: a mobile application). 
 	/// - Parameter transports: A LinphoneSipTransports structure giving the ports to
 	/// use    
@@ -27581,8 +27578,8 @@ public class Core : LinphoneObject
 	
 	
 	/// Create a LDAP params using default values from Linphone core. 
-	/// Check #linphone_ldap_params to update values. In order to add a new LDAP
-	/// configuration to ``MagicSearch``, these parameters must be passed to
+	/// Check ``LdapParams`` to update values. In order to add a new LDAP configuration
+	/// to ``MagicSearch``, these parameters must be passed to
 	/// linphone_core_create_ldap_with_params. Or, use ``Ldap/setParams(params:)``.
 	/// - Returns: ``LdapParams`` with default values set.       
 	public func createLdapParams() throws -> LdapParams
@@ -27695,13 +27692,13 @@ public class Core : LinphoneObject
 	/// Available for MSQOGL and MSOGL. see ``setNativeVideoWindowId(windowId:)`` for
 	/// details about window_id
 	/// MSQOgl can be used for the creation. ``createNativePreviewWindowId(context:)``
-	/// returns a #QQuickFramebufferObject::Renderer. This object must be returned by
+	/// returns a QQuickFramebufferObject::Renderer. This object must be returned by
 	/// your QQuickFramebufferObject::createRenderer() overload for Qt.
 	/// linphone_core_set_native_preview_window_id_2() must be called with this object
 	/// after the creation. Note : Qt blocks GUI thread when calling createRenderer(),
 	/// so it is safe to call linphone functions there if needed.
 	/// A context can be used to prevent Linphone from allocating the container
-	/// (#MSOglContextInfo for MSOGL). nil if not used.
+	/// (MSOglContextInfo for MSOGL). nil if not used.
 	/// - Parameter context: preallocated Window ID (Used only for MSOGL)    
 	/// - Returns: The created Window ID.    
 	public func createNativePreviewWindowId(context:UnsafeMutableRawPointer?) throws -> UnsafeMutableRawPointer
@@ -27726,13 +27723,13 @@ public class Core : LinphoneObject
 	/// details about window_id
 	/// When MSQOgl can be used for the creation:
 	/// ``createNativeVideoWindowId(context:)`` returns a
-	/// #QQuickFramebufferObject::Renderer. This object must be returned by your
+	/// QQuickFramebufferObject::Renderer. This object must be returned by your
 	/// QQuickFramebufferObject::createRenderer() overload for Qt.
 	/// ``setNativeVideoWindowId(windowId:)`` must be called with this object after the
 	/// creation. Note : Qt blocks GUI thread when calling createRenderer(), so it is
 	/// safe to call linphone functions there if needed.
 	/// A context can be used to prevent Linphone from allocating the container
-	/// (#MSOglContextInfo for MSOGL). nil if not used.
+	/// (MSOglContextInfo for MSOGL). nil if not used.
 	/// - Parameter context: preallocated Window ID (Used only for MSOGL)    
 	/// - Returns: The created Window ID    
 	public func createNativeVideoWindowId(context:UnsafeMutableRawPointer?) throws -> UnsafeMutableRawPointer
@@ -28860,7 +28857,7 @@ public class Core : LinphoneObject
 	/// In case of just a username, characters will be unescaped. If a phone number is
 	/// detected, it will be flattened. sip: or sips: prefix will be added if not
 	/// present. Finally, @domain will be added if not present using the default
-	/// #Account. - See also: ``Account/normalizeSipUri(username:)`` for a similar
+	/// ``Account``. - See also: ``Account/normalizeSipUri(username:)`` for a similar
 	/// function. 
 	/// - Parameter url: the url to parse    
 	/// - Parameter applyInternationalPrefix: whether or not to try to format url as
@@ -29591,7 +29588,7 @@ public class Core : LinphoneObject
 	/// If you want to disable a tone, set a path to a non-existent file. To disable
 	/// all tones, use ``enableCallToneIndications(yesno:)`` or set the
 	/// tone_indications to 0 in the [misc] section of your linphonerc. 
-	/// - Parameter toneId: the #LinphoneToneId 
+	/// - Parameter toneId: the ``ToneID`` 
 	/// - Parameter audiofile: a wav file to be played or nil to use the default
 	/// (generated) one.    
 	public func setTone(toneId:ToneID, audiofile:String?) 
@@ -30606,7 +30603,7 @@ public class ErrorInfo : LinphoneObject
 	/// Set the sub_ei in ``ErrorInfo`` to another ``ErrorInfo``. 
 	/// Used when a reason header is to be added in a SIP response. The first level
 	/// ``ErrorInfo`` defines the SIP response code and phrase, the second (sub)
-	/// #LinphoneErroInfo defining the content of the Reason header. 
+	/// ``ErrorInfo`` defining the content of the Reason header. 
 	/// - Parameter appendedErrorInfo: ``ErrorInfo`` to append    
 	
 	/// Get pointer to chained ``ErrorInfo`` set in sub_ei. 
@@ -36998,7 +36995,7 @@ public class ParticipantDevice : LinphoneObject
 	/// - See also: ``Core/setNativeVideoWindowId(windowId:)`` for a general discussion
 	/// about window IDs.
 	/// A context can be used to prevent Linphone from allocating the container
-	/// (#MSOglContextInfo for MSOGL). nil if not used.
+	/// (MSOglContextInfo for MSOGL). nil if not used.
 	/// - Parameter context: preallocated Window ID (Used only for MSOGL)    
 	/// - Returns: the native video window id (type may vary depending on platform).    
 	public func createNativeVideoWindowId(context:UnsafeMutableRawPointer?) throws -> UnsafeMutableRawPointer
@@ -37044,8 +37041,8 @@ public class ParticipantDevice : LinphoneObject
 	
 	
 	/// Gets the stream capability of the device. 
-	/// The capability information represents the capability for the #ParticipantDevice
-	/// to handle a given stream type (audio, video or text). 
+	/// The capability information represents the capability for the
+	/// ``ParticipantDevice`` to handle a given stream type (audio, video or text). 
 	/// - Parameter streamType: A ``StreamType`` 
 	/// - Returns: the capability of stream of type stream_type of the device
 	/// ``MediaDirection`` 
@@ -37057,8 +37054,8 @@ public class ParticipantDevice : LinphoneObject
 	
 	
 	/// Gets the stream label of the device. 
-	/// The capability information represents the capability for the #ParticipantDevice
-	/// to handle a given stream type (audio, video or text). 
+	/// The capability information represents the capability for the
+	/// ``ParticipantDevice`` to handle a given stream type (audio, video or text). 
 	/// - Parameter streamType: A ``StreamType`` 
 	/// - Returns: the label of stream of type stream_type of the device    
 	public func getStreamLabel(streamType:StreamType) -> String
@@ -37809,7 +37806,7 @@ public class Player : LinphoneObject
 	
 	/// Create a window id to be used to display video if any. 
 	/// A context can be used to prevent Linphone from allocating the container
-	/// (#MSOglContextInfo for MSOGL). nil if not used.
+	/// (MSOglContextInfo for MSOGL). nil if not used.
 	/// - Parameter context: preallocated Window ID (Used only for MSOGL)    
 	/// - Returns: window_id The window id pointer to use.    
 	public func createWindowId(context:UnsafeMutableRawPointer?) throws -> UnsafeMutableRawPointer
@@ -41014,13 +41011,13 @@ public class RecorderParams : LinphoneObject
 		}
 	}
 		
-	/// Set the #LinphoneRecorderFileFormat. 
+	/// Set the ``MediaFileFormat``. 
 	/// - See also: ``Core/getSupportedFileFormatsList()`` for information about
 	/// supported file formats. 
-	/// - Parameter format: The #LinphoneRecorderFileFormat to set. 
+	/// - Parameter format: The ``MediaFileFormat`` to set. 
 	
-	/// Retrieves the #LinphoneRecorderFileFormat. 
-	/// - Returns: the #LinphoneRecorderFileFormat. 
+	/// Retrieves the ``MediaFileFormat``. 
+	/// - Returns: the ``MediaFileFormat``. 
 	public var fileFormat: MediaFileFormat
 	{
 	
@@ -41139,14 +41136,14 @@ public class RemoteContactDirectory : LinphoneObject
 	}
 
 	
-	///Enum describing the type of #RemoteContactDirectory (currently CardDAV or
+	///Enum describing the type of ``RemoteContactDirectory`` (currently CardDAV or
 	///LDAP). 
 	public enum Kind:Int
 	{
 		
-		/// Remote contact directory will use #CardDavParams. 
+		/// Remote contact directory will use ``CardDavParams``. 
 		case CardDav = 0
-		/// Remote contact directory will use #LdapParams. 
+		/// Remote contact directory will use ``LdapParams``. 
 		case Ldap = 1
 	}
 	
@@ -41648,7 +41645,7 @@ public class Tunnel : LinphoneObject
 		
 	/// Set the domain. 
 	/// Required for tunnel TLS client authentification. Certificate Altname or CName
-	/// should be sip:<tunnel_username><tunnel_domain> 
+	/// should be sip:<tunnel_username>\<tunnel_domain> 
 	/// - Parameter domain: The domain.    
 	
 	/// Get the domain. 
@@ -41755,7 +41752,7 @@ public class Tunnel : LinphoneObject
 		
 	/// Set the username. 
 	/// Required for tunnel TLS client authentification. Certificate Altname or CName
-	/// should be sip:<tunnel_username><tunnel_domain> 
+	/// should be sip:<tunnel_username>\<tunnel_domain> 
 	/// - Parameter username: The username.    
 	
 	/// Get the username. 
@@ -42914,7 +42911,7 @@ public class VideoSourceDescriptor : LinphoneObject
 	
 	
 	/// Sets the source of a ``VideoSourceDescriptor`` as screen sharing. 
-	/// native_data depends of the type and the current platform:
+	/// native_data depends on the type and the current platform:
 	/// - Parameter type: The ``VideoSourceScreenSharingType`` type of native_data.    
 	/// - Parameter nativeData: The screen handle that will be used as a video source. 
 	///   
