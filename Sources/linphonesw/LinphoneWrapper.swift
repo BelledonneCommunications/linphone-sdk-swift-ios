@@ -2090,6 +2090,16 @@ public protocol ChatMessageDelegate : AnyObject {
 	/// reaction    
 	func onReactionRemoved(message: ChatMessage, address: Address)
 	
+	/// Callback used to notify a message has been edited by it's sender after it was
+	/// sent. 
+	/// - Parameter message: ``ChatMessage`` object that has been edited    
+	func onContentEdited(message: ChatMessage)
+	
+	/// Callback used to notify a message has been retracted by it's sender after it
+	/// was sent. 
+	/// - Parameter message: ``ChatMessage`` object that has been edited    
+	func onRetracted(message: ChatMessage)
+	
 	/// File transfer terminated callback prototype. 
 	/// - Parameter message: ``ChatMessage`` message from which the body is received.  
 	///  
@@ -2168,6 +2178,10 @@ public extension ChatMessageDelegate {
 	
 	func onReactionRemoved(message: ChatMessage, address: Address) {}
 	
+	func onContentEdited(message: ChatMessage) {}
+	
+	func onRetracted(message: ChatMessage) {}
+	
 	func onFileTransferTerminated(message: ChatMessage, content: Content) {}
 	
 	func onFileTransferRecv(message: ChatMessage, content: Content, buffer: Buffer) {}
@@ -2190,6 +2204,8 @@ public final class ChatMessageDelegateStub : ChatMessageDelegate
 	var _onMsgStateChanged: ((ChatMessage, ChatMessage.State) -> Void)?
 	var _onNewMessageReaction: ((ChatMessage, ChatMessageReaction) -> Void)?
 	var _onReactionRemoved: ((ChatMessage, Address) -> Void)?
+	var _onContentEdited: ((ChatMessage) -> Void)?
+	var _onRetracted: ((ChatMessage) -> Void)?
 	var _onFileTransferTerminated: ((ChatMessage, Content) -> Void)?
 	var _onFileTransferRecv: ((ChatMessage, Content, Buffer) -> Void)?
 	var _onFileTransferSend: ((ChatMessage, Content, Int, Int) -> Void)?
@@ -2205,6 +2221,10 @@ public final class ChatMessageDelegateStub : ChatMessageDelegate
 	public func onNewMessageReaction(message: ChatMessage, reaction: ChatMessageReaction){_onNewMessageReaction.map{$0(message, reaction)}}
 	
 	public func onReactionRemoved(message: ChatMessage, address: Address){_onReactionRemoved.map{$0(message, address)}}
+	
+	public func onContentEdited(message: ChatMessage){_onContentEdited.map{$0(message)}}
+	
+	public func onRetracted(message: ChatMessage){_onRetracted.map{$0(message)}}
 	
 	public func onFileTransferTerminated(message: ChatMessage, content: Content){_onFileTransferTerminated.map{$0(message, content)}}
 	
@@ -2226,6 +2246,8 @@ public final class ChatMessageDelegateStub : ChatMessageDelegate
 		onMsgStateChanged: ((ChatMessage, ChatMessage.State) -> Void)? = nil,
 		onNewMessageReaction: ((ChatMessage, ChatMessageReaction) -> Void)? = nil,
 		onReactionRemoved: ((ChatMessage, Address) -> Void)? = nil,
+		onContentEdited: ((ChatMessage) -> Void)? = nil,
+		onRetracted: ((ChatMessage) -> Void)? = nil,
 		onFileTransferTerminated: ((ChatMessage, Content) -> Void)? = nil,
 		onFileTransferRecv: ((ChatMessage, Content, Buffer) -> Void)? = nil,
 		onFileTransferSend: ((ChatMessage, Content, Int, Int) -> Void)? = nil,
@@ -2238,6 +2260,8 @@ public final class ChatMessageDelegateStub : ChatMessageDelegate
 		self._onMsgStateChanged = onMsgStateChanged
 		self._onNewMessageReaction = onNewMessageReaction
 		self._onReactionRemoved = onReactionRemoved
+		self._onContentEdited = onContentEdited
+		self._onRetracted = onRetracted
 		self._onFileTransferTerminated = onFileTransferTerminated
 		self._onFileTransferRecv = onFileTransferRecv
 		self._onFileTransferSend = onFileTransferSend
@@ -2284,6 +2308,22 @@ class ChatMessageDelegateManager
 				let sObject = ChatMessage.getSwiftObject(cObject: message!)
 				let delegate = sObject.currentDelegate
 				delegate?.onReactionRemoved(message: sObject, address: Address.getSwiftObject(cObject: address!))
+			}
+		})
+
+		linphone_chat_message_cbs_set_content_edited(cPtr, { (message) -> Void in
+			if (message != nil) {
+				let sObject = ChatMessage.getSwiftObject(cObject: message!)
+				let delegate = sObject.currentDelegate
+				delegate?.onContentEdited(message: sObject)
+			}
+		})
+
+		linphone_chat_message_cbs_set_retracted(cPtr, { (message) -> Void in
+			if (message != nil) {
+				let sObject = ChatMessage.getSwiftObject(cObject: message!)
+				let delegate = sObject.currentDelegate
+				delegate?.onRetracted(message: sObject)
 			}
 		})
 
@@ -2548,6 +2588,17 @@ public protocol ChatRoomDelegate : AnyObject {
 	/// - Parameter reaction: the LinphoneChatMessageReaction reaction that was sent or
 	/// received    
 	func onNewMessageReaction(chatRoom: ChatRoom, message: ChatMessage, reaction: ChatMessageReaction)
+	
+	/// Callback used to notify a message has been edited after being sent or received. 
+	/// - Parameter chatRoom: LinphoneChatRoom object    
+	/// - Parameter message: LinphoneChatMessage object that has been edited    
+	func onMessageContentEdited(chatRoom: ChatRoom, message: ChatMessage)
+	
+	/// Callback used to notify a message has been retracted after being sent or
+	/// received. 
+	/// - Parameter chatRoom: LinphoneChatRoom object    
+	/// - Parameter message: LinphoneChatMessage object that has been retracted    
+	func onMessageRetracted(chatRoom: ChatRoom, message: ChatMessage)
 }
 
 public extension ChatRoomDelegate {
@@ -2615,6 +2666,10 @@ public extension ChatRoomDelegate {
 	func onChatRoomRead(chatRoom: ChatRoom) {}
 	
 	func onNewMessageReaction(chatRoom: ChatRoom, message: ChatMessage, reaction: ChatMessageReaction) {}
+	
+	func onMessageContentEdited(chatRoom: ChatRoom, message: ChatMessage) {}
+	
+	func onMessageRetracted(chatRoom: ChatRoom, message: ChatMessage) {}
 }
 
 public final class ChatRoomDelegateStub : ChatRoomDelegate
@@ -2651,6 +2706,8 @@ public final class ChatRoomDelegateStub : ChatRoomDelegate
 	var _onChatMessageParticipantImdnStateChanged: ((ChatRoom, ChatMessage, ParticipantImdnState) -> Void)?
 	var _onChatRoomRead: ((ChatRoom) -> Void)?
 	var _onNewMessageReaction: ((ChatRoom, ChatMessage, ChatMessageReaction) -> Void)?
+	var _onMessageContentEdited: ((ChatRoom, ChatMessage) -> Void)?
+	var _onMessageRetracted: ((ChatRoom, ChatMessage) -> Void)?
 
 	
 	public func onIsComposingReceived(chatRoom: ChatRoom, remoteAddress: Address, isComposing: Bool){_onIsComposingReceived.map{$0(chatRoom, remoteAddress, isComposing)}}
@@ -2716,6 +2773,10 @@ public final class ChatRoomDelegateStub : ChatRoomDelegate
 	public func onChatRoomRead(chatRoom: ChatRoom){_onChatRoomRead.map{$0(chatRoom)}}
 	
 	public func onNewMessageReaction(chatRoom: ChatRoom, message: ChatMessage, reaction: ChatMessageReaction){_onNewMessageReaction.map{$0(chatRoom, message, reaction)}}
+	
+	public func onMessageContentEdited(chatRoom: ChatRoom, message: ChatMessage){_onMessageContentEdited.map{$0(chatRoom, message)}}
+	
+	public func onMessageRetracted(chatRoom: ChatRoom, message: ChatMessage){_onMessageRetracted.map{$0(chatRoom, message)}}
 
 	public init (
 		onIsComposingReceived: ((ChatRoom, Address, Bool) -> Void)? = nil,
@@ -2749,7 +2810,9 @@ public final class ChatRoomDelegateStub : ChatRoomDelegate
 		onChatMessageShouldBeStored: ((ChatRoom, ChatMessage) -> Void)? = nil,
 		onChatMessageParticipantImdnStateChanged: ((ChatRoom, ChatMessage, ParticipantImdnState) -> Void)? = nil,
 		onChatRoomRead: ((ChatRoom) -> Void)? = nil,
-		onNewMessageReaction: ((ChatRoom, ChatMessage, ChatMessageReaction) -> Void)? = nil
+		onNewMessageReaction: ((ChatRoom, ChatMessage, ChatMessageReaction) -> Void)? = nil,
+		onMessageContentEdited: ((ChatRoom, ChatMessage) -> Void)? = nil,
+		onMessageRetracted: ((ChatRoom, ChatMessage) -> Void)? = nil
 	) {
 		self._onIsComposingReceived = onIsComposingReceived
 		self._onMessageReceived = onMessageReceived
@@ -2783,6 +2846,8 @@ public final class ChatRoomDelegateStub : ChatRoomDelegate
 		self._onChatMessageParticipantImdnStateChanged = onChatMessageParticipantImdnStateChanged
 		self._onChatRoomRead = onChatRoomRead
 		self._onNewMessageReaction = onNewMessageReaction
+		self._onMessageContentEdited = onMessageContentEdited
+		self._onMessageRetracted = onMessageRetracted
 	}
 }
 
@@ -3077,6 +3142,22 @@ class ChatRoomDelegateManager
 				let sObject = ChatRoom.getSwiftObject(cObject: chatRoom!)
 				let delegate = sObject.currentDelegate
 				delegate?.onNewMessageReaction(chatRoom: sObject, message: ChatMessage.getSwiftObject(cObject: message!), reaction: ChatMessageReaction.getSwiftObject(cObject: reaction!))
+			}
+		})
+
+		linphone_chat_room_cbs_set_message_content_edited(cPtr, { (chatRoom, message) -> Void in
+			if (chatRoom != nil) {
+				let sObject = ChatRoom.getSwiftObject(cObject: chatRoom!)
+				let delegate = sObject.currentDelegate
+				delegate?.onMessageContentEdited(chatRoom: sObject, message: ChatMessage.getSwiftObject(cObject: message!))
+			}
+		})
+
+		linphone_chat_room_cbs_set_message_retracted(cPtr, { (chatRoom, message) -> Void in
+			if (chatRoom != nil) {
+				let sObject = ChatRoom.getSwiftObject(cObject: chatRoom!)
+				let delegate = sObject.currentDelegate
+				delegate?.onMessageRetracted(chatRoom: sObject, message: ChatMessage.getSwiftObject(cObject: message!))
 			}
 		})
 	}
@@ -4067,6 +4148,18 @@ public protocol CoreDelegate : AnyObject {
 	/// - Parameter core: ``Core`` object.    
 	/// - Parameter filePath: the name of the saved file.    
 	func onSnapshotTaken(core: Core, filePath: String)
+	
+	/// Callback notifying a message has been edited. 
+	/// - Parameter core: ``Core`` object.    
+	/// - Parameter chatRoom: the ``ChatRoom`` that contains the edited message.    
+	/// - Parameter message: the ``ChatMessage`` that was edited.    
+	func onMessageContentEdited(core: Core, chatRoom: ChatRoom, message: ChatMessage)
+	
+	/// Callback notifying a message has been retracted. 
+	/// - Parameter core: ``Core`` object.    
+	/// - Parameter chatRoom: the ``ChatRoom`` that contains the retracted message.    
+	/// - Parameter message: the ``ChatMessage`` that was retracted.    
+	func onMessageRetracted(core: Core, chatRoom: ChatRoom, message: ChatMessage)
 }
 
 public extension CoreDelegate {
@@ -4200,6 +4293,10 @@ public extension CoreDelegate {
 	func onMessageWaitingIndicationChanged(core: Core, lev: Event, mwi: MessageWaitingIndication) {}
 	
 	func onSnapshotTaken(core: Core, filePath: String) {}
+	
+	func onMessageContentEdited(core: Core, chatRoom: ChatRoom, message: ChatMessage) {}
+	
+	func onMessageRetracted(core: Core, chatRoom: ChatRoom, message: ChatMessage) {}
 }
 
 public final class CoreDelegateStub : CoreDelegate
@@ -4269,6 +4366,8 @@ public final class CoreDelegateStub : CoreDelegate
 	var _onAccountRemoved: ((Core, Account) -> Void)?
 	var _onMessageWaitingIndicationChanged: ((Core, Event, MessageWaitingIndication) -> Void)?
 	var _onSnapshotTaken: ((Core, String) -> Void)?
+	var _onMessageContentEdited: ((Core, ChatRoom, ChatMessage) -> Void)?
+	var _onMessageRetracted: ((Core, ChatRoom, ChatMessage) -> Void)?
 
 	
 	public func onNewAlertTriggered(core: Core, alert: Alert){_onNewAlertTriggered.map{$0(core, alert)}}
@@ -4400,6 +4499,10 @@ public final class CoreDelegateStub : CoreDelegate
 	public func onMessageWaitingIndicationChanged(core: Core, lev: Event, mwi: MessageWaitingIndication){_onMessageWaitingIndicationChanged.map{$0(core, lev, mwi)}}
 	
 	public func onSnapshotTaken(core: Core, filePath: String){_onSnapshotTaken.map{$0(core, filePath)}}
+	
+	public func onMessageContentEdited(core: Core, chatRoom: ChatRoom, message: ChatMessage){_onMessageContentEdited.map{$0(core, chatRoom, message)}}
+	
+	public func onMessageRetracted(core: Core, chatRoom: ChatRoom, message: ChatMessage){_onMessageRetracted.map{$0(core, chatRoom, message)}}
 
 	public init (
 		onNewAlertTriggered: ((Core, Alert) -> Void)? = nil,
@@ -4466,7 +4569,9 @@ public final class CoreDelegateStub : CoreDelegate
 		onAccountAdded: ((Core, Account) -> Void)? = nil,
 		onAccountRemoved: ((Core, Account) -> Void)? = nil,
 		onMessageWaitingIndicationChanged: ((Core, Event, MessageWaitingIndication) -> Void)? = nil,
-		onSnapshotTaken: ((Core, String) -> Void)? = nil
+		onSnapshotTaken: ((Core, String) -> Void)? = nil,
+		onMessageContentEdited: ((Core, ChatRoom, ChatMessage) -> Void)? = nil,
+		onMessageRetracted: ((Core, ChatRoom, ChatMessage) -> Void)? = nil
 	) {
 		self._onNewAlertTriggered = onNewAlertTriggered
 		self._onGlobalStateChanged = onGlobalStateChanged
@@ -4533,6 +4638,8 @@ public final class CoreDelegateStub : CoreDelegate
 		self._onAccountRemoved = onAccountRemoved
 		self._onMessageWaitingIndicationChanged = onMessageWaitingIndicationChanged
 		self._onSnapshotTaken = onSnapshotTaken
+		self._onMessageContentEdited = onMessageContentEdited
+		self._onMessageRetracted = onMessageRetracted
 	}
 }
 
@@ -5075,6 +5182,22 @@ class CoreDelegateManager
 				let sObject = Core.getSwiftObject(cObject: core!)
 				let delegate = sObject.currentDelegate
 				delegate?.onSnapshotTaken(core: sObject, filePath: charArrayToString(charPointer: filePath))
+			}
+		})
+
+		linphone_core_cbs_set_message_content_edited(cPtr, { (core, chatRoom, message) -> Void in
+			if (core != nil) {
+				let sObject = Core.getSwiftObject(cObject: core!)
+				let delegate = sObject.currentDelegate
+				delegate?.onMessageContentEdited(core: sObject, chatRoom: ChatRoom.getSwiftObject(cObject: chatRoom!), message: ChatMessage.getSwiftObject(cObject: message!))
+			}
+		})
+
+		linphone_core_cbs_set_message_retracted(cPtr, { (core, chatRoom, message) -> Void in
+			if (core != nil) {
+				let sObject = Core.getSwiftObject(cObject: core!)
+				let delegate = sObject.currentDelegate
+				delegate?.onMessageRetracted(core: sObject, chatRoom: ChatRoom.getSwiftObject(cObject: chatRoom!), message: ChatMessage.getSwiftObject(cObject: message!))
 			}
 		})
 	}
@@ -15063,6 +15186,28 @@ public class ChatMessage : LinphoneObject
 	}
 		
 	
+	/// Returns wether this message can be edited (maximum allowed time to edit it was
+	/// reached or not). 
+	/// - Returns: true if the message can be edited, false otherwise. 
+	public var isEditable: Bool
+	{
+	
+						return linphone_chat_message_is_editable(cPtr) != 0
+
+	}
+		
+	
+	/// Returns wether this message has been edited by it's sender after it was sent. 
+	/// - Returns: true if the message has been edited after it was sent, false
+	/// otherwise. 
+	public var isEdited: Bool
+	{
+	
+						return linphone_chat_message_is_edited(cPtr) != 0
+
+	}
+		
+	
 	/// Returns wether the chat message is an ephemeral message or not. 
 	/// An ephemeral message will automatically disappear from the recipient's screen
 	/// after the message has been viewed. 
@@ -15134,6 +15279,29 @@ public class ChatMessage : LinphoneObject
 	{
 	
 						return linphone_chat_message_is_reply(cPtr) != 0
+
+	}
+		
+	
+	/// Returns wether this message can be retracted (maximum allowed time to retract
+	/// it was reached or not). 
+	/// - Returns: true if the message can be retracted, false otherwise. 
+	public var isRetractable: Bool
+	{
+	
+						return linphone_chat_message_is_retractable(cPtr) != 0
+
+	}
+		
+	
+	/// Returns wether this message has been retracted by it's sender after it was
+	/// sent. 
+	/// - Returns: true if the message has been retracted after it was sent, false
+	/// otherwise. 
+	public var isRetracted: Bool
+	{
+	
+						return linphone_chat_message_is_retracted(cPtr) != 0
 
 	}
 		
@@ -16893,6 +17061,22 @@ public class ChatRoom : LinphoneObject
 	
 	
 	
+	/// Creates a replaces message that will edit the original message. 
+	/// - Parameter message: ``ChatMessage`` message to edit.    
+	/// - Returns: a new ``ChatMessage``    
+	public func createReplacesMessage(message:ChatMessage) throws -> ChatMessage
+	{
+		let cPointer = linphone_chat_room_create_replaces_message(cPtr, message.cPtr)
+		if (cPointer == nil) {
+			throw LinphoneError.exception(result: "create null ChatMessage value")
+		}
+		let result = ChatMessage.getSwiftObject(cObject: cPointer!)
+		belle_sip_object_unref(UnsafeMutableRawPointer(cPointer))
+		return result
+	}
+	
+	
+	
 	/// Creates a reply message attached to the given chat room with a particular
 	/// message. 
 	/// - Parameter message: ``ChatMessage`` message to reply to.    
@@ -17324,6 +17508,17 @@ public class ChatRoom : LinphoneObject
 	public func removeParticipants(participants:[Participant]) 
 	{
 		linphone_chat_room_remove_participants(cPtr, ObjectArrayToBctbxList(list: participants))
+	}
+	
+	
+	
+	/// Deletes the content of a previously sent message for both sender and receivers. 
+	/// Message will still appear in the conversation history but will be empty. You
+	/// can still delete it from history using ``deleteMessage(message:)``. 
+	/// - Parameter message: The ``ChatMessage`` object to delete.    
+	public func retractMessage(message:ChatMessage) 
+	{
+		linphone_chat_room_retract_message(cPtr, message.cPtr)
 	}
 	
 	
@@ -29714,6 +29909,8 @@ public class Core : LinphoneObject
 	/// ``GlobalState`` is either On. State will changed to Shutdown and then Off. This
 	/// function may block to perform SIP server unregistration. Using ``stopAsync()``
 	/// is preferred.
+	/// - Warning: This function must never be called from within an event notification
+	/// triggered by Liblinphone. 
 	public func stop() 
 	{
 		linphone_core_stop(cPtr)
@@ -29727,6 +29924,8 @@ public class Core : LinphoneObject
 	/// to end asynchronous tasks (terminate call, etc.). When all tasks are finished,
 	/// State will change to Off. Must be called only if ``GlobalState`` is On. When
 	/// ``GlobalState`` is Off ``Core`` can be started again using ``start()``.
+	/// - Warning: This function must never be called from within an event notification
+	/// triggered by Liblinphone. 
 	public func stopAsync() 
 	{
 		linphone_core_stop_async(cPtr)
