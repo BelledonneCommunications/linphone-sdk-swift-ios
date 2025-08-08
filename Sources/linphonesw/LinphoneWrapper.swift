@@ -14918,6 +14918,8 @@ public class ChatMessage : LinphoneObject
 		case PendingDelivery = 9
 		/// The user cancelled the file transfer. 
 		case FileTransferCancelling = 10
+		/// Message cannot be sent right now and it is queued. 
+		case Queued = 11
 	}
 	
 	
@@ -24335,6 +24337,29 @@ public class Core : LinphoneObject
 		}
 	}
 		
+	/// Returns the duration of the timer that delays the sending of chat messages It
+	/// sets the duration of the timer to resend a message when the channel is broken
+	/// (i.e. 
+	/// the core gets an NoResponse or IOError response)
+	/// - Parameter duration: the duration of the timer in seconds. A 0 or negative
+	/// number means that the feature is deactivated. 
+	
+	/// Returns the duration of the timer that delays the automatic resending of chat
+	/// messages. 
+	/// - Returns: the duration of the timer in seconds 
+	public var messageAutomaticResendingDelay: Int
+	{
+	
+		get
+		{ 
+						return Int(linphone_core_get_message_automatic_resending_delay(cPtr))
+		}
+		set
+		{
+			linphone_core_set_message_automatic_resending_delay(cPtr, CInt(newValue))
+		}
+	}
+		
 	/// It sets the duration of the timer that starts just after the SUBSCRIBE is sent
 	/// to delay the sending of chat messages in group chats. 
 	/// - Parameter duration: the duration of the timer in seconds. A 0 or negative
@@ -25071,6 +25096,26 @@ public class Core : LinphoneObject
 		set
 		{
 			linphone_core_enable_qrcode_video_preview(cPtr, newValue==true ? 1:0)
+		}
+	}
+		
+	/// Set the queued message resend period. 
+	/// It is the number of seconds after the first attempt to send the message. 
+	/// - Parameter seconds: number of seconds after the first attempt to send a
+	/// message. A negative value means all queued messages are resent at startup. 
+	
+	/// Gets the queued message resend period. 
+	/// - Returns: the number of second to resend a queued message 
+	public var queuedMessageResendPeriod: Int
+	{
+	
+		get
+		{ 
+						return Int(linphone_core_get_queued_message_resend_period(cPtr))
+		}
+		set
+		{
+			linphone_core_set_queued_message_resend_period(cPtr, (newValue))
 		}
 	}
 		
