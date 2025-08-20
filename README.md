@@ -20,8 +20,8 @@
 
 # Build information
 
-version : 5.4.38-pre.6+460d59a09f
-branch : pipelines/100159
+version : 5.4.38-pre.3+d0928c5328
+branch : pipelines/100195
 architecture : arm64 x86_64
 
 Enabled features:
@@ -38,12 +38,6 @@ Enabled features:
  * Speex, Speex audio encoding/decoding and DSP support.
  * WebRTC AEC, WebRTC echo canceller support.
  * WebRTC VAD, WebRTC voice activation detector support.
- * Video, Ability to capture and display video.
- * AV1, Build mediastreamer2 with AV1 support through libaom and dav1d (needs ENABLE_VIDEO=ON).
- * jpeg, JPEG support with libjpeg-turbo (needs ENABLE_VIDEO=ON).
- * LibYUV, Build mediastreamer2 with LibYUV support (needs ENABLE_VIDEO=ON).
- * qrcode, QRCode support with zxing (needs ENABLE_VIDEO=ON).
- * VPX, Build mediastreamer2 with VPX codec.
  * Advanced IM, Enable advanced instant messaging such as group chat.
  * DB Storage, Enable the database storage.
  * DNS_SERVICE, Enable Apple DNS Service. Available on Mac and iOS. Incompatible with ENABLE_MDNS=ON.
@@ -57,7 +51,6 @@ Enabled features:
  * SRTP, SRTP media encryption support.
  * ZRTP, Build with ZRTP support (needs ENABLE_SRTP=ON).
  * GoClear, Build with ZRTP GoClear message support (RFC 6189 - section 5.11) (needs ENABLE_ZRTP=ON).
- * CSharp wrapper, Build the C# wrapper from Liblinphone.
  * Swift wrapper, Build the Swift wrapper sources from Liblinphone.
 
 
@@ -95,8 +88,8 @@ Ensure it contains:
 - from terminal navigate to <build folder>/linphone-sdk-swift-ios
 - git init
 - git add .
-- git commit -a -m "Swift package 5.4.38-pre.6+460d59a09f"
-- git tag -a 5.4.38-pre.6+460d59a09f -m "linphone-sdk 5.4.38-pre.6+460d59a09f"
+- git commit -a -m "Swift package 5.4.38-pre.3+d0928c5328"
+- git tag -a 5.4.38-pre.3+d0928c5328 -m "linphone-sdk 5.4.38-pre.3+d0928c5328"
 - Open your Xcode Project
 - Menu File -> Add Package Dependencies
 - On top right entry field enter file://<build folder>/linphone-sdk-swift-ios
