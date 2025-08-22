@@ -2486,6 +2486,12 @@ public protocol ChatRoomDelegate : AnyObject {
 	/// - Parameter eventLog: ``EventLog`` The event to be notified    
 	func onSubjectChanged(chatRoom: ChatRoom, eventLog: EventLog)
 	
+	/// Callback used to notify a chat room that a message has been not sent because of
+	/// a chat room error. 
+	/// - Parameter chatRoom: ``ChatRoom`` involved in this conversation    
+	/// - Parameter eventLog: ``EventLog`` The event to be notified    
+	func onMessageEarlyFailure(chatRoom: ChatRoom, eventLog: EventLog)
+	
 	/// Callback used to notify a chat room that a message has been received but we
 	/// were unable to decrypt it. 
 	/// - Parameter chatRoom: ``ChatRoom`` involved in this conversation    
@@ -2633,6 +2639,8 @@ public extension ChatRoomDelegate {
 	
 	func onSubjectChanged(chatRoom: ChatRoom, eventLog: EventLog) {}
 	
+	func onMessageEarlyFailure(chatRoom: ChatRoom, eventLog: EventLog) {}
+	
 	func onUndecryptableMessageReceived(chatRoom: ChatRoom, message: ChatMessage) {}
 	
 	func onParticipantDeviceAdded(chatRoom: ChatRoom, eventLog: EventLog) {}
@@ -2689,6 +2697,7 @@ public final class ChatRoomDelegateStub : ChatRoomDelegate
 	var _onStateChanged: ((ChatRoom, ChatRoom.State) -> Void)?
 	var _onSecurityEvent: ((ChatRoom, EventLog) -> Void)?
 	var _onSubjectChanged: ((ChatRoom, EventLog) -> Void)?
+	var _onMessageEarlyFailure: ((ChatRoom, EventLog) -> Void)?
 	var _onUndecryptableMessageReceived: ((ChatRoom, ChatMessage) -> Void)?
 	var _onParticipantDeviceAdded: ((ChatRoom, EventLog) -> Void)?
 	var _onParticipantDeviceRemoved: ((ChatRoom, EventLog) -> Void)?
@@ -2739,6 +2748,8 @@ public final class ChatRoomDelegateStub : ChatRoomDelegate
 	public func onSecurityEvent(chatRoom: ChatRoom, eventLog: EventLog){_onSecurityEvent.map{$0(chatRoom, eventLog)}}
 	
 	public func onSubjectChanged(chatRoom: ChatRoom, eventLog: EventLog){_onSubjectChanged.map{$0(chatRoom, eventLog)}}
+	
+	public func onMessageEarlyFailure(chatRoom: ChatRoom, eventLog: EventLog){_onMessageEarlyFailure.map{$0(chatRoom, eventLog)}}
 	
 	public func onUndecryptableMessageReceived(chatRoom: ChatRoom, message: ChatMessage){_onUndecryptableMessageReceived.map{$0(chatRoom, message)}}
 	
@@ -2794,6 +2805,7 @@ public final class ChatRoomDelegateStub : ChatRoomDelegate
 		onStateChanged: ((ChatRoom, ChatRoom.State) -> Void)? = nil,
 		onSecurityEvent: ((ChatRoom, EventLog) -> Void)? = nil,
 		onSubjectChanged: ((ChatRoom, EventLog) -> Void)? = nil,
+		onMessageEarlyFailure: ((ChatRoom, EventLog) -> Void)? = nil,
 		onUndecryptableMessageReceived: ((ChatRoom, ChatMessage) -> Void)? = nil,
 		onParticipantDeviceAdded: ((ChatRoom, EventLog) -> Void)? = nil,
 		onParticipantDeviceRemoved: ((ChatRoom, EventLog) -> Void)? = nil,
@@ -2829,6 +2841,7 @@ public final class ChatRoomDelegateStub : ChatRoomDelegate
 		self._onStateChanged = onStateChanged
 		self._onSecurityEvent = onSecurityEvent
 		self._onSubjectChanged = onSubjectChanged
+		self._onMessageEarlyFailure = onMessageEarlyFailure
 		self._onUndecryptableMessageReceived = onUndecryptableMessageReceived
 		self._onParticipantDeviceAdded = onParticipantDeviceAdded
 		self._onParticipantDeviceRemoved = onParticipantDeviceRemoved
@@ -3006,6 +3019,14 @@ class ChatRoomDelegateManager
 				let sObject = ChatRoom.getSwiftObject(cObject: chatRoom!)
 				let delegate = sObject.currentDelegate
 				delegate?.onSubjectChanged(chatRoom: sObject, eventLog: EventLog.getSwiftObject(cObject: eventLog!))
+			}
+		})
+
+		linphone_chat_room_cbs_set_message_early_failure(cPtr, { (chatRoom, eventLog) -> Void in
+			if (chatRoom != nil) {
+				let sObject = ChatRoom.getSwiftObject(cObject: chatRoom!)
+				let delegate = sObject.currentDelegate
+				delegate?.onMessageEarlyFailure(chatRoom: sObject, eventLog: EventLog.getSwiftObject(cObject: eventLog!))
 			}
 		})
 
