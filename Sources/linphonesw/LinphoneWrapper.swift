@@ -302,10 +302,10 @@ public enum MediaResourceMode:Int
 {
 	
 	/// Media resources are not shared. 
-	case ExclusiveMediaResources = 0
+	case Exclusive = 0
 	
 	/// Media resources are shared. 
-	case SharedMediaResources = 1
+	case Shared = 1
 }
 
 ///Basic status as defined in section 4.1.4 of RFC 3863. 
@@ -30325,6 +30325,24 @@ public class DialPlan : LinphoneObject
 	{
 	
 						return Int(linphone_dial_plan_get_national_number_length(cPtr))
+
+	}
+		
+	
+	/// Returns the trunk prefix for this country. 
+	/// Trunk prefix will be removed from the start of flattened phone number before
+	/// adding international prefix. 
+	/// - Returns: the trunk prefix if any, nil otherwise    
+	public var trunkPrefix: String?
+	{
+	
+			
+			let cPointer = linphone_dial_plan_get_trunk_prefix(cPtr)
+			if (cPointer == nil) {
+				return nil
+			}
+			let result = charArrayToString(charPointer: cPointer)
+			return result
 
 	}
 		
