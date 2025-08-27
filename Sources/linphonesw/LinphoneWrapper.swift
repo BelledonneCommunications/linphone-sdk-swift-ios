@@ -34140,8 +34140,8 @@ public class FriendList : LinphoneObject
 	}
 		
 	
-	/// Get wheter the subscription of the friend list is bodyless or not. 
-	/// - Returns: Wheter the subscription of the friend list is bodyless or not. 
+	/// Get wether the subscription of the friend list is bodyless or not. 
+	/// - Returns: Wether the subscription of the friend list is bodyless or not. 
 	public var isSubscriptionBodyless: Bool
 	{
 	
@@ -34203,7 +34203,7 @@ public class FriendList : LinphoneObject
 		}
 	}
 		
-	/// Set wheter the subscription of the friend list is bodyless or not. 
+	/// Set wether the subscription of the friend list is bodyless or not. 
 	/// - Parameter bodyless: boolean telling if the subscription of the friend list is
 	/// bodyless or not. 
 	
@@ -34484,6 +34484,21 @@ public class FriendList : LinphoneObject
 	public func synchronizeFriendsFromServer() 
 	{
 		linphone_friend_list_synchronize_friends_from_server(cPtr)
+	}
+	
+	
+	
+	/// Synchronize a local friendlist with another list of friends. 
+	/// All friends in common will be updated using the data from the source friends.
+	/// Missing friends from the source friends will be added. Extra friends from the
+	/// local friendlist will be removed. 
+	/// - Parameter sourceFriends: the list of ``Friend`` whose data will be copied.
+	/// (not a ``FriendList`` !)      
+	/// - Returns: true if the friendlist has been modified, false if no change
+	/// happened 
+	public func synchronizeFriendsWith(sourceFriends:[Friend]) -> Bool
+	{
+		return linphone_friend_list_synchronize_friends_with(cPtr, ObjectArrayToBctbxList(list: sourceFriends)) != 0
 	}
 	
 	
