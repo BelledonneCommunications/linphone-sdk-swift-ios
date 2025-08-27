@@ -16524,7 +16524,7 @@ public class ChatRoom : LinphoneObject
 	/// Gets lifetime (in seconds) for all new ephemeral messages in the chat room. 
 	/// After the message is read, it will be deleted after "time" seconds. - See also:
 	/// ``ephemeralEnabled()`` 
-	/// - Returns: the ephemeral lifetime (in secoonds) 
+	/// - Returns: the ephemeral lifetime (in seconds) 
 	public var ephemeralLifetime: Int
 	{
 	
@@ -16558,6 +16558,32 @@ public class ChatRoom : LinphoneObject
 		set
 		{
 			linphone_chat_room_set_ephemeral_mode(cPtr, LinphoneChatRoomEphemeralMode(rawValue: CUnsignedInt(newValue.rawValue)))
+		}
+	}
+		
+	/// Sets not-read lifetime (in seconds) for all new ephemeral messages in the chat
+	/// room. 
+	/// If the message is not read, it will be deleted after "time" seconds. - See
+	/// also: ``ephemeralEnabled()`` 
+	/// - Parameter time: The ephemeral not-read lifetime, default is 0 (disabled) 
+	/// - Warning: A value of "time" equal to 0 disables the ephemeral not-read
+	/// countdowns 
+	
+	/// Gets not-read lifetime (in seconds) for all new ephemeral messages in the chat
+	/// room. 
+	/// If the message is not read, it will be deleted after "time" seconds. - See
+	/// also: ``ephemeralEnabled()`` 
+	/// - Returns: the ephemeral not-read lifetime (in seconds) 
+	public var ephemeralNotReadLifetime: Int
+	{
+	
+		get
+		{ 
+						return Int(linphone_chat_room_get_ephemeral_not_read_lifetime(cPtr))
+		}
+		set
+		{
+			linphone_chat_room_set_ephemeral_not_read_lifetime(cPtr, (newValue))
 		}
 	}
 		
@@ -22813,11 +22839,11 @@ public class Core : LinphoneObject
 		}
 	}
 		
-	/// Set the default ephemeral lifetime in seconds. 
-	/// - Parameter value: lifetime of ephemeral messages in seconds 
+	/// Set the default ephemeral lifetime in seconds once read. 
+	/// - Parameter value: lifetime of ephemeral messages in seconds once read 
 	
-	/// Gets the default lifetime of ephemeral messages in seconds. 
-	/// - Returns: lifetime of ephemeral messages in seconds 
+	/// Gets the default lifetime of ephemeral messages in seconds once they are read. 
+	/// - Returns: lifetime of ephemeral messages in seconds once read 
 	public var defaultEphemeralLifetime: Int
 	{
 	
@@ -22828,6 +22854,25 @@ public class Core : LinphoneObject
 		set
 		{
 			linphone_core_set_default_ephemeral_lifetime(cPtr, (newValue))
+		}
+	}
+		
+	/// Set the default ephemeral lifetime in seconds when not read. 
+	/// - Parameter value: lifetime of ephemeral messages in seconds when not read 
+	
+	/// Gets the default lifetime of ephemeral messages in seconds when they are not
+	/// read. 
+	/// - Returns: lifetime of ephemeral messages in seconds when not read 
+	public var defaultEphemeralNotReadLifetime: Int
+	{
+	
+		get
+		{ 
+						return Int(linphone_core_get_default_ephemeral_not_read_lifetime(cPtr))
+		}
+		set
+		{
+			linphone_core_set_default_ephemeral_not_read_lifetime(cPtr, (newValue))
 		}
 	}
 		
