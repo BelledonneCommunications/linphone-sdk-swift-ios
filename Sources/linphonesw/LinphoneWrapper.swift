@@ -20150,6 +20150,17 @@ public class Config : LinphoneObject
 	
 	
 	
+	/// Removes a suite of sections whose name is derived from section argument,
+	/// suffixed with _0, _1, _2 etc. 
+	/// This is a common representation for configuration objects that can have
+	/// multiple instances. 
+	public func cleanSectionSuite(section:String) 
+	{
+		linphone_config_clean_section_suite(cPtr, section)
+	}
+	
+	
+	
 	/// Dumps the ``Config`` as INI into a buffer. 
 	/// - Returns: The buffer that contains the config dump       
 	public func dump() -> String
@@ -35292,16 +35303,21 @@ public class LdapParams : LinphoneObject
 		
 	/// Delay between each search in milliseconds Default value : 500. 
 	/// - Parameter delay: The timeout in milliseconds. 
+	/// - deprecated: 22/08/2025 use linphone_remote_contact_directory_set_delay()
+	/// instead. 
 	
 	/// Get the delay between each search in milliseconds. 
+	/// - deprecated: 22/08/2025 use linphone_remote_contact_directory_get_delay()
+	/// instead. 
 	/// - Returns: The delay in milliseconds. 
 	public var delay: Int
 	{
-	
+	@available(*, deprecated)
 		get
 		{ 
 						return Int(linphone_ldap_params_get_delay(cPtr))
 		}
+	@available(*, deprecated)
 		set
 		{
 			linphone_ldap_params_set_delay(cPtr, CInt(newValue))
@@ -35311,16 +35327,19 @@ public class LdapParams : LinphoneObject
 	/// If this config is enabled. 
 	/// Default value : false.
 	/// - Parameter enable: Enable or not the LDAP configuration. 
+	/// - deprecated: 22/08/2025 Use ``RemoteContactDirectory/enable(value:)`` instead. 
 	
 	/// Return if the configuration is enabled. 
 	/// - Returns: Enable or not the LDAP configuration. 
+	/// - deprecated: 22/08/2025 Use ``RemoteContactDirectory/enabled()`` instead. 
 	public var enabled: Bool
 	{
-	
+	@available(*, deprecated)
 		get
 		{ 
 						return linphone_ldap_params_get_enabled(cPtr) != 0
 		}
+	@available(*, deprecated)
 		set
 		{
 			linphone_ldap_params_set_enabled(cPtr, newValue==true ? 1:0)
@@ -41622,7 +41641,27 @@ public class RemoteContactDirectory : LinphoneObject
 						return RemoteContactDirectory.Kind(rawValue: Int(linphone_remote_contact_directory_get_type(cPtr).rawValue))!
 
 	}
+		
+	
+	
+	/// Enable this remote contact directory, ie make it usable for searches with the
+	/// ``MagicSearch`` object. 
+	/// - Parameter value: A boolean. 
+	public func enable(value:Bool) 
+	{
+		linphone_remote_contact_directory_enable(cPtr, value==true ? 1:0)
 	}
+	
+	
+	
+	/// Returns whether this remote contact directory is enabled, i.e. 
+	/// usable for searches with the ``MagicSearch`` . 
+	/// - Returns: a boolean. 
+	public func enabled() -> Bool
+	{
+		return linphone_remote_contact_directory_enabled(cPtr) != 0
+	}
+}
 
 
 /// The ``SearchResult`` object represents a result of a search initiated from a
