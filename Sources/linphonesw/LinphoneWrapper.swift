@@ -24051,7 +24051,7 @@ public class Core : LinphoneObject
 	/// This label is used by the logger to give context. When running an application
 	/// with several ``Core`` objects, (such as a test), it is useful to enhance the
 	/// log's readability'. 
-	/// - Parameter label: a developper-friendly label. 
+	/// - Parameter label: a developer-friendly label. 
 	
 	/// Get the label assigned to the ``Core``. 
 	/// The default value is nil (no label). 
