@@ -25629,16 +25629,9 @@ public class Core : LinphoneObject
 	}
 		
 	/// Enable sending of chat message on group chats only after receiving the NOTIFY
-	/// full state. 
-	/// If it is disabled, as it is the default value, message will be sent after the
-	/// delay set by linphone_core_get_message_sending_delay
+	/// full state If it is disabled, as it is the default value, message will be sent
+	/// after the delay set by linphone_core_get_message_sending_delay 
 	/// - Parameter enabled: true if enabled, false otherwise. 
-	/// - Warning: Encryption engines may need the full list of devices active in a
-	/// chatroom in order to encrypt a chat message to each of them. However, some
-	/// releases of conference servers may not send NOTIFYs with empty bodies and in
-	/// such a scenario, messages may benver be sent when the user sets this setting to
-	/// true. It is strongly advised to set it to true if the target server can send
-	/// NOTIFY messages with empty bodies. 
 	
 	/// Returns enablement of sending chat messages on group chats after receiving the
 	/// NOTIFY full state. 
