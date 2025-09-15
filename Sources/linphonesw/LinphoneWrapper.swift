@@ -10329,6 +10329,25 @@ public class AudioDevice : LinphoneObject
 
 	}
 		
+	/// Tells the audio device to be used to play the ringtone or not. 
+	/// - Parameter useForRinging: Whether the audio device must be used to play the
+	/// ringtone or not. 
+	
+	/// Returns whether the audio device is used to play the ringtone or not. 
+	/// - Returns: Whether the audio device is used to play the ringtone or not. 
+	public var useForRinging: Bool
+	{
+	
+		get
+		{ 
+						return linphone_audio_device_get_use_for_ringing(cPtr) != 0
+		}
+		set
+		{
+			linphone_audio_device_set_use_for_ringing(cPtr, newValue==true ? 1:0)
+		}
+	}
+		
 	
 	
 	/// Returns whether or not the audio device has the given capability. 
@@ -21875,7 +21894,16 @@ public class Core : LinphoneObject
 		}
 	}
 		
-	/// Redefines the list of the available payload types (codecs). 
+	/// Redefines the list of the available payload types (codecs), in their order of
+	/// preference. 
+	/// The payload type are listed from higher priority to lowest priority. It is
+	/// worth to note that the set of ``PayloadType`` objects assigned here need to be
+	/// the same as the one returned by ``getAudioPayloadTypes()``. The purpose of the
+	/// setter is to let application modify their order of preference. In particular,
+	/// including in the provided list a payload type not supported has no effect.
+	/// Removing specific payload types from the original list has no effect too:
+	/// missing payload types will be automatically added. In order to disable a
+	/// specific codec, applications shall use ``PayloadType/enable(enabled:)`` instead.
 	/// - Parameter payloadTypes: The new list of payload types.      
 	
 	/// Returns the list of the available audio payload types. 
@@ -25500,10 +25528,15 @@ public class Core : LinphoneObject
 	/// Sets the sound device used for ringing. 
 	/// - Parameter devid: The device name as returned by
 	/// linphone_core_get_sound_devices    
-	/// - Returns: 0 
+	/// - Returns: 0
+	/// - deprecated: 29/08/2025 Use a combination of ``getExtendedAudioDevices()`` and
+	/// ``AudioDevice/setUseForRinging(useForRinging:)`` instead. 
 	
 	/// Gets the name of the currently assigned sound device for ringing. 
-	/// - Returns: The name of the currently assigned sound device for ringing.    
+	/// - Returns: The name of the currently assigned sound device for ringing.   
+	/// - deprecated: 29/08/2025 Use a combination of ``getExtendedAudioDevices()`` and
+	/// ``AudioDevice/getUseForRinging()`` instead. 
+	@available(*, deprecated)
 	public var ringerDevice: String?
 	{
 	
@@ -25516,6 +25549,7 @@ public class Core : LinphoneObject
 			return result
 
 	}
+	@available(*, deprecated)
 	public func setRingerdevice(newValue: String?) throws
 	{
 		let exception_result = linphone_core_set_ringer_device(cPtr, newValue)
@@ -25988,10 +26022,10 @@ public class Core : LinphoneObject
 
 	}
 		
-	/// Redefines the list of the available payload types. 
+	/// Redefines the list of the available payload types for real-time text. 
 	/// - Parameter payloadTypes: The new list of payload types.      
 	
-	/// Returns the list of the available text payload types. 
+	/// Returns the list of the available real-time text payload types. 
 	/// - Returns: A freshly allocated list of the available payload types.         
 	public var textPayloadTypes: [PayloadType]
 	{
@@ -26774,15 +26808,24 @@ public class Core : LinphoneObject
 	}
 		
 	/// Redefines the list of the available video payload types (codecs). 
+	/// The payload type are listed from higher priority to lowest priority. It is
+	/// worth to note that the set of ``PayloadType`` objects assigned here need to be
+	/// the same as the one returned by ``getVideoPayloadTypes()``. The purpose of the
+	/// setter is to let application modify their order of preference. In particular,
+	/// including in the provided list a payload type not supported has no effect.
+	/// Removing specific payload types from the original list has no effect too:
+	/// missing payload types will be automatically added. In order to disable a
+	/// specific codec, applications shall use ``PayloadType/enable(enabled:)`` instead.
 	/// Calling this function if the video codec priority policy is
 	/// LinphoneCodecPriorityPolicyAuto turns video codec priority policy to basic
 	/// scheme, since application is not supposed to control the order of video codecs
-	/// when LinphoneCodecPriorityPolicyAuto is selected, by definition. - See also:
-	/// ``setVideoCodecPriorityPolicy(policy:)`` 
+	/// when LinphoneCodecPriorityPolicyAuto is selected, by definition.
+	/// - See also: ``setVideoCodecPriorityPolicy(policy:)`` 
 	/// - Parameter payloadTypes: The new list of codecs. The core does not take
 	/// ownership on it.      
 	
-	/// Returns the list of the available video payload types (codecs). 
+	/// Returns the list of the available video payload types (codecs), in their order
+	/// of preference. 
 	/// - Returns: A freshly allocated list of the available payload types.         
 	public var videoPayloadTypes: [PayloadType]
 	{
@@ -36664,11 +36707,13 @@ public class NatPolicy : LinphoneObject
 	}
 		
 	/// Enable TCP TURN transport. 
-	/// Used when TURN is enabled. 
+	/// Used when TURN is enabled. - Warning: Enabling more than one transport (UDP,
+	/// TCP, TLS) at a time is currently not supported. 
 	/// - Parameter enable: Boolean value telling whether to enable TCP TURN transport. 
 	
 	/// Tells whether TCP TURN transport is enabled. 
-	/// Used when TURN is enabled. 
+	/// Used when TURN is enabled. - Warning: Enabling more than one transport (UDP,
+	/// TCP, TLS) at a time is currently not supported. 
 	/// - Returns: Boolean value telling whether TCP TURN transport is enabled. 
 	public var tcpTurnTransportEnabled: Bool
 	{
@@ -36684,11 +36729,13 @@ public class NatPolicy : LinphoneObject
 	}
 		
 	/// Enable TLS TURN transport. 
-	/// Used when TURN is enabled. 
+	/// Used when TURN is enabled. - Warning: Enabling more than one transport (UDP,
+	/// TCP, TLS) at a time is currently not supported. 
 	/// - Parameter enable: Boolean value telling whether to enable TLS TURN transport. 
 	
 	/// Tells whether TLS TURN transport is enabled. 
-	/// Used when TURN is enabled. 
+	/// Used when TURN is enabled. - Warning: Enabling more than one transport (UDP,
+	/// TCP, TLS) at a time is currently not supported. 
 	/// - Returns: Boolean value telling whether TLS TURN transport is enabled. 
 	public var tlsTurnTransportEnabled: Bool
 	{
@@ -36748,11 +36795,13 @@ public class NatPolicy : LinphoneObject
 	}
 		
 	/// Enable UDP TURN transport. 
-	/// Used when TURN is enabled. 
+	/// Used when TURN is enabled. - Warning: Enabling more than one transport (UDP,
+	/// TCP, TLS) at a time is currently not supported. 
 	/// - Parameter enable: Boolean value telling whether to enable UDP TURN transport. 
 	
 	/// Tells whether UDP TURN transport is enabled. 
-	/// Used when TURN is enabled. 
+	/// Used when TURN is enabled. - Warning: Enabling more than one transport (UDP,
+	/// TCP, TLS) at a time is currently not supported. 
 	/// - Returns: Boolean value telling whether UDP TURN transport is enabled. 
 	public var udpTurnTransportEnabled: Bool
 	{
