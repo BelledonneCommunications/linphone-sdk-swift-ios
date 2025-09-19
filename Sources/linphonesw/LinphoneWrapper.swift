@@ -16510,6 +16510,16 @@ public class ChatRoom : LinphoneObject
 
 	}
 		
+	
+	/// Gets the number of document contents (see ``getDocumentContents()``). 
+	/// - Returns: the number of document contents for that ``ChatRoom``. 
+	public var documentContentsSize: Int
+	{
+	
+						return Int(linphone_chat_room_get_document_contents_size(cPtr))
+
+	}
+		
 	/// Enable or disable the ephemeral message feature in the chat room. 
 	/// Works only for flexisip-based chat room. An ephemeral message will
 	/// automatically disappear from the sender and recipient's chatrooms after a
@@ -16754,6 +16764,16 @@ public class ChatRoom : LinphoneObject
 			}
 				bctbx_list_free_with_data(cList, belle_sip_object_unref)
 			return swiftList
+
+	}
+		
+	
+	/// Gets the number of media contents (see ``getMediaContents()``). 
+	/// - Returns: the number of media contents for that ``ChatRoom``. 
+	public var mediaContentsSize: Int
+	{
+	
+						return Int(linphone_chat_room_get_media_contents_size(cPtr))
 
 	}
 		
@@ -17270,6 +17290,29 @@ public class ChatRoom : LinphoneObject
 	
 	
 	
+	/// Gets the partial list of contents for which content-type starts with either
+	/// text/ or application/. 
+	/// - Parameter begin: The first content of the range to be retrieved. Most recent
+	/// content has index 0. 
+	/// - Parameter end: The last content of the range to be retrieved. Oldest content
+	/// has index of size (use ``getDocumentContentsSize()`` to retrieve size) 
+	/// - Returns: A list of contents considered as "document".      
+	public func getDocumentContentsRange(begin:Int, end:Int) -> [Content]
+	{
+		var swiftList = [Content]()
+		let cList = linphone_chat_room_get_document_contents_range(cPtr, CInt(begin), CInt(end))
+		var listTemp = cList
+		while (listTemp != nil) {
+			let data = unsafeBitCast(listTemp?.pointee.data, to: OpaquePointer.self)
+			swiftList.append(Content.getSwiftObject(cObject: data))
+			listTemp = UnsafeMutablePointer<bctbx_list_t>(listTemp?.pointee.next)
+		}
+			bctbx_list_free_with_data(cList, belle_sip_object_unref)
+		return swiftList
+	}
+	
+	
+	
 	/// Gets nb_message most recent events from chat_room chat room, sorted from oldest
 	/// to most recent. 
 	/// - Parameter nbMessage: Number of events to retrieve. 0 means everything. 
@@ -17359,8 +17402,8 @@ public class ChatRoom : LinphoneObject
 	/// - Parameter begin: The first event of the range to be retrieved. History most
 	/// recent message has index 0. 
 	/// - Parameter end: The last event of the range to be retrieved. History oldest
-	/// message has index of history size - 1 (use ``getHistorySize(filters:)`` to
-	/// retrieve history size) 
+	/// message has index of history size (use ``getHistorySize(filters:)`` to retrieve
+	/// history size) 
 	/// - Parameter filters: The LinphoneChatRoomHistoryFilterMask mask to filter the
 	/// results with ``HistoryFilter`` 
 	/// - Returns: A list of      
@@ -17385,8 +17428,8 @@ public class ChatRoom : LinphoneObject
 	/// - Parameter begin: The first message of the range to be retrieved. History most
 	/// recent message has index 0. 
 	/// - Parameter end: The last message of the range to be retrieved. History oldest
-	/// message has index of history size - 1 (use ``getHistorySize()`` to retrieve
-	/// history size) 
+	/// message has index of history size (use ``getHistorySize()`` to retrieve history
+	/// size) 
 	/// - Returns: A list of chat messages.      
 	/// - deprecated: 30/07/2024. Use ``getHistoryRange(begin:end:filters:)`` instead. 
 	@available(*, deprecated)
@@ -17435,7 +17478,7 @@ public class ChatRoom : LinphoneObject
 	/// - Parameter begin: The first event of the range to be retrieved. History most
 	/// recent event has index 0. 
 	/// - Parameter end: The last event of the range to be retrieved. History oldest
-	/// event has index of history size - 1 
+	/// event has index of history size 
 	/// - Returns: The list of the found events.      
 	public func getHistoryRangeEvents(begin:Int, end:Int) -> [EventLog]
 	{
@@ -17458,7 +17501,7 @@ public class ChatRoom : LinphoneObject
 	/// - Parameter begin: The first event of the range to be retrieved. History most
 	/// recent event has index 0. 
 	/// - Parameter end: The last event of the range to be retrieved. History oldest
-	/// event has index of history size - 1 
+	/// event has index of history size 
 	/// - Returns: The list of chat message events.      
 	public func getHistoryRangeMessageEvents(begin:Int, end:Int) -> [EventLog]
 	{
@@ -17509,6 +17552,29 @@ public class ChatRoom : LinphoneObject
 	public func getHistorySize(filters:UInt) -> Int
 	{
 		return Int(linphone_chat_room_get_history_size_2(cPtr, CUnsignedInt(filters)))
+	}
+	
+	
+	
+	/// Gets the partial list of contents for which content-type starts with either
+	/// video/, audio/ or image/. 
+	/// - Parameter begin: The first content of the range to be retrieved. Most recent
+	/// content has index 0. 
+	/// - Parameter end: The last content of the range to be retrieved. Oldest content
+	/// has index of size (use ``getMediaContentsSize()`` to retrieve size) 
+	/// - Returns: A list of contents considered as "media".      
+	public func getMediaContentsRange(begin:Int, end:Int) -> [Content]
+	{
+		var swiftList = [Content]()
+		let cList = linphone_chat_room_get_media_contents_range(cPtr, CInt(begin), CInt(end))
+		var listTemp = cList
+		while (listTemp != nil) {
+			let data = unsafeBitCast(listTemp?.pointee.data, to: OpaquePointer.self)
+			swiftList.append(Content.getSwiftObject(cObject: data))
+			listTemp = UnsafeMutablePointer<bctbx_list_t>(listTemp?.pointee.next)
+		}
+			bctbx_list_free_with_data(cList, belle_sip_object_unref)
+		return swiftList
 	}
 	
 	
