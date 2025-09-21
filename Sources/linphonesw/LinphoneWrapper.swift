@@ -27344,7 +27344,7 @@ public class Core : LinphoneObject
 	/// - Returns: a new ``InfoMessage``.   
 	/// The info message can later be filled with information using
 	/// ``InfoMessage/addHeader(name:value:)`` or ``InfoMessage/setContent(content:)``,
-	/// and finally sent with linphone_core_send_info_message(). 
+	/// and finally sent with ``Call/sendInfoMessage(info:)``. 
 	public func createInfoMessage() throws -> InfoMessage
 	{
 		let cPointer = linphone_core_create_info_message(cPtr)
