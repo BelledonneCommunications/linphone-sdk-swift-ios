@@ -24743,10 +24743,20 @@ public class Core : LinphoneObject
 		}
 	}
 		
-	/// Sets whether to use the native ringing (Android only). 
+	/// Sets whether to use the platform-dependent ringing. 
+	/// This property is meaningful for Android platform only. When set to true, the
+	/// incoming call's ring tone is played by a Android MediaPlayer object playing the
+	/// phone's default ringtone, and manages vibrator as well. When set to false, the
+	/// incoming call's ring tone is played using liblinphone's internal ring tone
+	/// player, that is generic for all platforms.
 	/// - Parameter enable: True to enable native ringing, false otherwise 
 	
 	/// Returns whether the native ringing is enabled or not. 
+	/// This property is meaningful for Android platform only. When set to true, the
+	/// incoming call's ring tone is played by a Android MediaPlayer object playing the
+	/// phone's default ringtone, and manages vibrator as well. When set to false, the
+	/// incoming call's ring tone is played using liblinphone's internal ring tone
+	/// player, that is generic for all platforms. 
 	/// - Returns: True if we use the native ringing, false otherwise 
 	public var nativeRingingEnabled: Bool
 	{
