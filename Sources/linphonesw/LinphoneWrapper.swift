@@ -37064,6 +37064,18 @@ public class Participant : LinphoneObject
 	}
 		
 	
+	/// Tells whether a participant is Me. 
+	/// If the default account is not defined then it will be true if the participant
+	/// is local. 
+	/// - Returns: true if the participant is me, false otherwise. 
+	public var isMe: Bool
+	{
+	
+						return linphone_participant_is_me(cPtr) != 0
+
+	}
+		
+	
 	/// Get the role of the participant within the conference. 
 	/// - Returns: role within the conference ``Role`` 
 	public var role: Participant.Role
@@ -37303,6 +37315,16 @@ public class ParticipantDevice : LinphoneObject
 	{
 	
 						return linphone_participant_device_is_in_conference(cPtr) != 0
+
+	}
+		
+	
+	/// Tells whether the participant device is Me. 
+	/// - Returns: true if the participant is me, false otherwise. 
+	public var isMe: Bool
+	{
+	
+						return linphone_participant_device_is_me(cPtr) != 0
 
 	}
 		
