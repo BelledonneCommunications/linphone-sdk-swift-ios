@@ -877,6 +877,60 @@ func charArrayToString(charPointer: UnsafePointer<CChar>?) -> String {
 	return charPointer != nil ? String(cString: charPointer!) : ""
 }
 
+// This is a specific work around: these functions can return "defaultString" in some cases,
+// However the Swift will automatically create a invisible cDefaultString of type char* to pass as argument
+// to the C function. The cDefaultString will then be "returned" by linphone_config_get_string, and
+// instantly destroyed by the Swift garbage collector, causing an empty string as a result.
+
+public extension Config {
+	/// Retrieves a configuration item as a string, given its section, key, and default
+	/// value.
+	/// The default value string is returned if the config item isn't found.
+	/// - Parameter section: The section from which to retrieve a configuration item
+	/// - Parameter key: The name of the configuration item to retrieve
+	/// - Parameter defaultString: The default value to return if not found.
+	/// - Returns: the found value or the default one if not found.
+	public func getString(section:String, key:String, defaultString:String?) -> String
+	{
+		var result = ""
+		(defaultString ?? "").withCString { cStr in
+			result = charArrayToString(charPointer: linphone_config_get_string(cPtr, section, key, cStr))
+		}
+		return result
+	}
+
+	/// Retrieves a default configuration item as a string, given its section, key, and
+	/// default value.
+	/// The default value string is returned if the config item isn't found.
+	/// - Parameter section: The section from which to retrieve the default value
+	/// - Parameter key: The name of the configuration item to retrieve
+	/// - Parameter defaultValue: The default value to return if not found
+	/// - Returns: the found default value or default_value if not found.
+	public func getDefaultString(section:String, key:String, defaultValue:String) -> String
+	{
+		var result = ""
+		defaultValue.withCString { cStr in
+			result = charArrayToString(charPointer: linphone_config_get_section_param_string(cPtr, section, key, cStr))
+		}
+		return result
+	}
+
+	/// Retrieves a section parameter item as a string, given its section and key.
+	/// The default value string is returned if the config item isn't found.
+	/// - Parameter section: The section from which to retrieve the default value
+	/// - Parameter key: The name of the configuration item to retrieve
+	/// - Parameter defaultValue: The default value to return if not found.
+	/// - Returns: the found default value or default_value if not found.
+	public func getSectionParamString(section:String, key:String, defaultValue:String?) -> String
+	{
+		var result = ""
+		(defaultValue ?? "").withCString { cStr in
+			result = charArrayToString(charPointer: linphone_config_get_section_param_string(cPtr, section, key, cStr))
+		}
+		return result
+	}
+}
+
 /// Class basic linphone class
 public class LinphoneObject {
 	var cPtr:OpaquePointer?
@@ -14791,14 +14845,20 @@ public class CardDavParams : LinphoneObject
 	/// For example, you can use "IMPP". 
 	/// - Parameter list: the list of vCard RFC fields to use to match the domain
 	/// filter on.      
+	/// - Warning: DO NOT USE ANYMORE, it won't have any effect. 
+	/// - deprecated: 06/10/2025 domain filter will be applied locally instead of using
+	/// a CardDAV prop filter XML tag. 
 	
 	/// Gets the list of vCard RFC fields to use to match the domain filter on. 
 	/// For example, you can use "IMPP". 
 	/// - Returns: The list of vCard fields to make the query on using domain filter.  
 	///       
+	/// - Warning: DO NOT USE ANYMORE, it won't have any effect. 
+	/// - deprecated: 06/10/2025 domain filter will be applied locally instead of using
+	/// a CardDAV prop filter XML tag. 
 	public var domainFields: [String]
 	{
-	
+	@available(*, deprecated)
 		get
 		{ 
 						var swiftList = [String]()
@@ -14811,6 +14871,7 @@ public class CardDavParams : LinphoneObject
 				bctbx_list_free_with_data(cList, bctbx_free)
 			return swiftList
 		}
+	@available(*, deprecated)
 		set
 		{
 			var cList: UnsafeMutablePointer<bctbx_list_t>? = nil
@@ -20330,22 +20391,6 @@ public class Config : LinphoneObject
 	
 	
 	
-	/// Retrieves a default configuration item as a string, given its section, key, and
-	/// default value. 
-	/// The default value string is returned if the config item isn't found. 
-	/// - Parameter section: The section from which to retrieve the default value    
-	/// - Parameter key: The name of the configuration item to retrieve    
-	/// - Parameter defaultValue: The default value to return if not found 
-	/// - Returns: the found default value or default_value if not found. 
-	public func getDefaultString(section:String, key:String, defaultValue:String) -> String
-	{
-		let cstr = linphone_config_get_default_string(cPtr, section, key, defaultValue)
-		let result = charArrayToString(charPointer: cstr)
-		return result
-	}
-	
-	
-	
 	/// Retrieves a configuration item as a float, given its section, key, and default
 	/// value. 
 	/// The default float value is returned if the config item isn't found. 
@@ -20446,21 +20491,6 @@ public class Config : LinphoneObject
 	
 	
 	
-	/// Retrieves a section parameter item as a string, given its section and key. 
-	/// The default value string is returned if the config item isn't found. 
-	/// - Parameter section: The section from which to retrieve the default value    
-	/// - Parameter key: The name of the configuration item to retrieve    
-	/// - Parameter defaultValue: The default value to return if not found.    
-	/// - Returns: the found default value or default_value if not found.    
-	public func getSectionParamString(section:String, key:String, defaultValue:String?) -> String
-	{
-		let cstr = linphone_config_get_section_param_string(cPtr, section, key, defaultValue)
-		let result = charArrayToString(charPointer: cstr)
-		return result
-	}
-	
-	
-	
 	/// Retrieves the skip flag for a config item. 
 	/// - Parameter section: The section from which to retrieve the skip flag    
 	/// - Parameter key: The name of the configuration item to retrieve the skip flag
@@ -20479,22 +20509,6 @@ public class Config : LinphoneObject
 	public func getSkipFlagForSection(section:String) -> Bool
 	{
 		return linphone_config_get_skip_flag_for_section(cPtr, section) != 0
-	}
-	
-	
-	
-	/// Retrieves a configuration item as a string, given its section, key, and default
-	/// value. 
-	/// The default value string is returned if the config item isn't found. 
-	/// - Parameter section: The section from which to retrieve a configuration item    
-	/// - Parameter key: The name of the configuration item to retrieve    
-	/// - Parameter defaultString: The default value to return if not found.    
-	/// - Returns: the found value or the default one if not found.    
-	public func getString(section:String, key:String, defaultString:String?) -> String
-	{
-		let cstr = linphone_config_get_string(cPtr, section, key, defaultString)
-		let result = charArrayToString(charPointer: cstr)
-		return result
 	}
 	
 	
