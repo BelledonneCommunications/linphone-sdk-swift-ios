@@ -24185,9 +24185,8 @@ public class Core : LinphoneObject
 		}
 	}
 		
-	/// Returns the duration of the timer that delays the sending of chat messages It
-	/// sets the duration of the timer to resend a message when the channel is broken
-	/// (i.e. 
+	/// It sets the duration of the timer to resend a message when the channel is
+	/// broken (i.e. 
 	/// the core gets an NoResponse or IOError response)
 	/// - Parameter duration: the duration of the timer in seconds. A 0 or negative
 	/// number means that the feature is deactivated. 
