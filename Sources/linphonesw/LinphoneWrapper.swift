@@ -17552,12 +17552,12 @@ public class ChatRoomParams : LinphoneObject
 	/// Enables or disables group chat for the chat room associated with the given
 	/// parameters. 
 	/// - Parameter group: true to enable group chat, false to disable (resulting in
-	/// one-to-one chat room) 
+	/// one-on-one chat room) 
 	/// - Deprecated: 20/05/2024. Use ``ConferenceParams/enableGroup(group:)`` instead. 
 	
 	/// Get the group chat status of the chat room associated with the given
 	/// parameters. 
-	/// - Returns: true if group chat is enabled, false if one-to-one 
+	/// - Returns: true if group chat is enabled, false if one-on-one 
 	/// - Deprecated: 20/05/2024. Use ``ConferenceParams/groupEnabled()`` instead. 
 	public var groupEnabled: Bool
 	{
@@ -19272,11 +19272,11 @@ public class ConferenceParams : LinphoneObject
 	/// Enables or disables group chat for the text capabilities of the conference
 	/// associated with the given parameters. 
 	/// - Parameter group: true to enable group chat, false to disable (resulting in
-	/// one-to-one text capabilities of the conference) 
+	/// one-on-one text capabilities of the conference) 
 	
 	/// Get the group chat status of the text capabilities of the conference associated
 	/// with the given parameters. 
-	/// - Returns: true if group chat is enabled, false if one-to-one 
+	/// - Returns: true if group chat is enabled, false if one-on-one 
 	public var groupEnabled: Bool
 	{
 	
@@ -28717,7 +28717,7 @@ public class Core : LinphoneObject
 	
 	
 	
-	/// Find a one to one chat room. 
+	/// Find a one-on-one chat room. 
 	/// No reference is transferred to the application. The ``Core`` keeps a reference
 	/// on the chat room. 
 	/// - Parameter localAddr: a linphone address.    
