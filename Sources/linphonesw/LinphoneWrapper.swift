@@ -26555,7 +26555,7 @@ public class Core : LinphoneObject
 	
 	
 	/// Add or update a LDAP server and save it to the configuration. 
-	/// - Parameter ldap: The LDAP to add/update.    
+	/// - Parameter ldap: The ``Ldap`` object to add/update.    
 	/// - deprecated: 18/11/2024 use
 	/// ``addRemoteContactDirectory(remoteContactDirectory:)`` instead. 
 	@available(*, deprecated)
@@ -27432,10 +27432,10 @@ public class Core : LinphoneObject
 	
 	
 	
-	/// Creates a LDAP search using given parameters and store them in the
-	/// configuration file. 
+	/// Creates a LDAP search using given parameters, adds it to the core list and
+	/// stores them in the configuration file. 
 	/// - Parameter params: ``LdapParams`` object    
-	/// - Returns: ``Ldap`` with default values set       
+	/// - Returns: ``Ldap`` object       
 	/// - deprecated: 18/11/2024 use ``createLdapRemoteContactDirectory(params:)``
 	/// instead. 
 	@available(*, deprecated)
@@ -29153,7 +29153,7 @@ public class Core : LinphoneObject
 	
 	
 	/// Remove a LDAP from the configuration. 
-	/// - Parameter ldap: The LDAP to remove.    
+	/// - Parameter ldap: The ``Ldap`` object to remove.    
 	/// - deprecated: 18/11/2024 use
 	/// ``removeRemoteContactDirectory(remoteContactDirectory:)`` instead. 
 	@available(*, deprecated)
@@ -40915,7 +40915,7 @@ public class RemoteContactDirectory : LinphoneObject
 	}
 	
 	
-	/// Gets the CardDAV params if ``getType()`` returns CardDAV. 
+	/// Gets the CardDAV remote_contact_directory if ``getType()`` returns CardDAV. 
 	/// - Returns: the ``CardDavParams`` or nil if not of CardDAV type.    
 	public var cardDavParams: CardDavParams?
 	{
@@ -40930,7 +40930,7 @@ public class RemoteContactDirectory : LinphoneObject
 	}
 		
 	
-	/// Gets the LDAP params if ``getType()`` returns LDAP. 
+	/// Gets the LDAP remote_contact_directory if ``getType()`` returns LDAP. 
 	/// - Returns: the ``LdapParams`` or nil if not of LDAP type.    
 	public var ldapParams: LdapParams?
 	{
