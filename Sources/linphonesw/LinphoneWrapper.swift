@@ -26967,7 +26967,7 @@ public class Core : LinphoneObject
 	
 	
 	/// Add or update a LDAP server and save it to the configuration. 
-	/// - Parameter ldap: The LDAP to add/update.    
+	/// - Parameter ldap: The ``Ldap`` object to add/update.    
 	/// - Deprecated: 18/11/2024 use
 	/// ``addRemoteContactDirectory(remoteContactDirectory:)`` instead. 
 	@available(*, deprecated)
@@ -27849,10 +27849,10 @@ public class Core : LinphoneObject
 	
 	
 	
-	/// Creates a LDAP search using given parameters and store them in the
-	/// configuration file. 
+	/// Creates a LDAP search using given parameters, adds it to the core list and
+	/// stores them in the configuration file. 
 	/// - Parameter params: ``LdapParams`` object    
-	/// - Returns: ``Ldap`` with default values set       
+	/// - Returns: ``Ldap`` object       
 	/// - Deprecated: 18/11/2024 use ``createLdapRemoteContactDirectory(params:)``
 	/// instead. 
 	@available(*, deprecated)
@@ -29619,7 +29619,7 @@ public class Core : LinphoneObject
 	
 	
 	/// Remove a LDAP from the configuration. 
-	/// - Parameter ldap: The LDAP to remove.    
+	/// - Parameter ldap: The ``Ldap`` object to remove.    
 	/// - Deprecated: 18/11/2024 use
 	/// ``removeRemoteContactDirectory(remoteContactDirectory:)`` instead. 
 	@available(*, deprecated)
@@ -41530,12 +41530,12 @@ public class RemoteContactDirectory : LinphoneObject
 	}
 	
 	
-	/// Gets the CardDAV params if ``getType()`` returns CardDAV. 
+	/// Gets the CardDAV remote_contact_directory if ``getType()`` returns CardDAV. 
 	/// - Returns: the ``CardDavParams`` or nil if not of CardDAV type.    
-	public var cardDavParams: CardDavParams?
+	public var cardDavRemoteContactDirectory: CardDavParams?
 	{
 	
-						let cPointer = linphone_remote_contact_directory_get_card_dav_params(cPtr)
+						let cPointer = linphone_remote_contact_directory_get_card_dav_remote_contact_directory(cPtr)
 			if (cPointer == nil) {
 				return nil
 			}
@@ -41545,12 +41545,12 @@ public class RemoteContactDirectory : LinphoneObject
 	}
 		
 	
-	/// Gets the LDAP params if ``getType()`` returns LDAP. 
+	/// Gets the LDAP remote_contact_directory if ``getType()`` returns LDAP. 
 	/// - Returns: the ``LdapParams`` or nil if not of LDAP type.    
-	public var ldapParams: LdapParams?
+	public var ldapRemoteContactDirectory: LdapParams?
 	{
 	
-						let cPointer = linphone_remote_contact_directory_get_ldap_params(cPtr)
+						let cPointer = linphone_remote_contact_directory_get_ldap_remote_contact_directory(cPtr)
 			if (cPointer == nil) {
 				return nil
 			}
