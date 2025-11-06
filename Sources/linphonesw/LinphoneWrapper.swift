@@ -142,6 +142,21 @@ public enum EcCalibratorStatus:Int
 	case DoneNoEcho = 3
 }
 
+///Ephemeral chat message policies. 
+public enum EphemeralChatMessagePolicy:Int
+{
+	
+	/// In this mode, an ephemeral chat message expires at the same time for all
+	/// participants, when every participant has read the message and its lifetime
+	/// expires. 
+	case Default = 0
+	
+	/// In this mode, an ephemeral chat message expires independently for each
+	/// participant, after the duration of the lifetime once this participant has read
+	/// the message. 
+	case Individual = 1
+}
+
 ///Describes the global state of the ``Core`` object. 
 public enum GlobalState:Int
 {
@@ -2399,6 +2414,10 @@ public protocol ChatRoomDelegate : AnyObject {
 	/// - Returns: The current participant admin status changed callback. 
 	func onParticipantAdminStatusChanged(chatRoom: ChatRoom, eventLog: EventLog)
 	
+	/// Get the leave failed callback. 
+	/// - Returns: The current leave failed callback. 
+	func onOperationFailed(chatRoom: ChatRoom)
+	
 	/// Get the state changed callback. 
 	/// - Returns: The current state changed callback. 
 	func onStateChanged(chatRoom: ChatRoom, newState: ChatRoom.State)
@@ -2522,6 +2541,8 @@ public extension ChatRoomDelegate {
 	
 	func onParticipantAdminStatusChanged(chatRoom: ChatRoom, eventLog: EventLog) {}
 	
+	func onOperationFailed(chatRoom: ChatRoom) {}
+	
 	func onStateChanged(chatRoom: ChatRoom, newState: ChatRoom.State) {}
 	
 	func onSecurityEvent(chatRoom: ChatRoom, eventLog: EventLog) {}
@@ -2583,6 +2604,7 @@ public final class ChatRoomDelegateStub : ChatRoomDelegate
 	var _onParticipantAdded: ((ChatRoom, EventLog) -> Void)?
 	var _onParticipantRemoved: ((ChatRoom, EventLog) -> Void)?
 	var _onParticipantAdminStatusChanged: ((ChatRoom, EventLog) -> Void)?
+	var _onOperationFailed: ((ChatRoom) -> Void)?
 	var _onStateChanged: ((ChatRoom, ChatRoom.State) -> Void)?
 	var _onSecurityEvent: ((ChatRoom, EventLog) -> Void)?
 	var _onSubjectChanged: ((ChatRoom, EventLog) -> Void)?
@@ -2631,6 +2653,8 @@ public final class ChatRoomDelegateStub : ChatRoomDelegate
 	public func onParticipantRemoved(chatRoom: ChatRoom, eventLog: EventLog){_onParticipantRemoved.map{$0(chatRoom, eventLog)}}
 	
 	public func onParticipantAdminStatusChanged(chatRoom: ChatRoom, eventLog: EventLog){_onParticipantAdminStatusChanged.map{$0(chatRoom, eventLog)}}
+	
+	public func onOperationFailed(chatRoom: ChatRoom){_onOperationFailed.map{$0(chatRoom)}}
 	
 	public func onStateChanged(chatRoom: ChatRoom, newState: ChatRoom.State){_onStateChanged.map{$0(chatRoom, newState)}}
 	
@@ -2691,6 +2715,7 @@ public final class ChatRoomDelegateStub : ChatRoomDelegate
 		onParticipantAdded: ((ChatRoom, EventLog) -> Void)? = nil,
 		onParticipantRemoved: ((ChatRoom, EventLog) -> Void)? = nil,
 		onParticipantAdminStatusChanged: ((ChatRoom, EventLog) -> Void)? = nil,
+		onOperationFailed: ((ChatRoom) -> Void)? = nil,
 		onStateChanged: ((ChatRoom, ChatRoom.State) -> Void)? = nil,
 		onSecurityEvent: ((ChatRoom, EventLog) -> Void)? = nil,
 		onSubjectChanged: ((ChatRoom, EventLog) -> Void)? = nil,
@@ -2727,6 +2752,7 @@ public final class ChatRoomDelegateStub : ChatRoomDelegate
 		self._onParticipantAdded = onParticipantAdded
 		self._onParticipantRemoved = onParticipantRemoved
 		self._onParticipantAdminStatusChanged = onParticipantAdminStatusChanged
+		self._onOperationFailed = onOperationFailed
 		self._onStateChanged = onStateChanged
 		self._onSecurityEvent = onSecurityEvent
 		self._onSubjectChanged = onSubjectChanged
@@ -2884,6 +2910,14 @@ class ChatRoomDelegateManager
 				let sObject = ChatRoom.getSwiftObject(cObject: chatRoom!)
 				let delegate = sObject.currentDelegate
 				delegate?.onParticipantAdminStatusChanged(chatRoom: sObject, eventLog: EventLog.getSwiftObject(cObject: eventLog!))
+			}
+		})
+
+		linphone_chat_room_cbs_set_operation_failed(cPtr, { (chatRoom) -> Void in
+			if (chatRoom != nil) {
+				let sObject = ChatRoom.getSwiftObject(cObject: chatRoom!)
+				let delegate = sObject.currentDelegate
+				delegate?.onOperationFailed(chatRoom: sObject)
 			}
 		})
 
@@ -3126,6 +3160,10 @@ public protocol ConferenceDelegate : AnyObject {
 	/// - Returns: The current participant device media capabilities changed callback. 
 	func onParticipantDeviceMediaCapabilityChanged(conference: Conference, device: ParticipantDevice)
 	
+	/// Get the leave failed callback. 
+	/// - Returns: The current leave failed callback. 
+	func onOperationFailed(conference: Conference)
+	
 	/// Get the state changed callback. 
 	/// - Returns: The current state changed callback. 
 	func onStateChanged(conference: Conference, newState: Conference.State)
@@ -3185,6 +3223,8 @@ public extension ConferenceDelegate {
 	
 	func onParticipantDeviceMediaCapabilityChanged(conference: Conference, device: ParticipantDevice) {}
 	
+	func onOperationFailed(conference: Conference) {}
+	
 	func onStateChanged(conference: Conference, newState: Conference.State) {}
 	
 	func onAvailableMediaChanged(conference: Conference) {}
@@ -3216,6 +3256,7 @@ public final class ConferenceDelegateStub : ConferenceDelegate
 	var _onParticipantDeviceScreenSharingChanged: ((Conference, ParticipantDevice, Bool) -> Void)?
 	var _onParticipantDeviceMediaAvailabilityChanged: ((Conference, ParticipantDevice) -> Void)?
 	var _onParticipantDeviceMediaCapabilityChanged: ((Conference, ParticipantDevice) -> Void)?
+	var _onOperationFailed: ((Conference) -> Void)?
 	var _onStateChanged: ((Conference, Conference.State) -> Void)?
 	var _onAvailableMediaChanged: ((Conference) -> Void)?
 	var _onSubjectChanged: ((Conference, String) -> Void)?
@@ -3250,6 +3291,8 @@ public final class ConferenceDelegateStub : ConferenceDelegate
 	
 	public func onParticipantDeviceMediaCapabilityChanged(conference: Conference, device: ParticipantDevice){_onParticipantDeviceMediaCapabilityChanged.map{$0(conference, device)}}
 	
+	public func onOperationFailed(conference: Conference){_onOperationFailed.map{$0(conference)}}
+	
 	public func onStateChanged(conference: Conference, newState: Conference.State){_onStateChanged.map{$0(conference, newState)}}
 	
 	public func onAvailableMediaChanged(conference: Conference){_onAvailableMediaChanged.map{$0(conference)}}
@@ -3279,6 +3322,7 @@ public final class ConferenceDelegateStub : ConferenceDelegate
 		onParticipantDeviceScreenSharingChanged: ((Conference, ParticipantDevice, Bool) -> Void)? = nil,
 		onParticipantDeviceMediaAvailabilityChanged: ((Conference, ParticipantDevice) -> Void)? = nil,
 		onParticipantDeviceMediaCapabilityChanged: ((Conference, ParticipantDevice) -> Void)? = nil,
+		onOperationFailed: ((Conference) -> Void)? = nil,
 		onStateChanged: ((Conference, Conference.State) -> Void)? = nil,
 		onAvailableMediaChanged: ((Conference) -> Void)? = nil,
 		onSubjectChanged: ((Conference, String) -> Void)? = nil,
@@ -3300,6 +3344,7 @@ public final class ConferenceDelegateStub : ConferenceDelegate
 		self._onParticipantDeviceScreenSharingChanged = onParticipantDeviceScreenSharingChanged
 		self._onParticipantDeviceMediaAvailabilityChanged = onParticipantDeviceMediaAvailabilityChanged
 		self._onParticipantDeviceMediaCapabilityChanged = onParticipantDeviceMediaCapabilityChanged
+		self._onOperationFailed = onOperationFailed
 		self._onStateChanged = onStateChanged
 		self._onAvailableMediaChanged = onAvailableMediaChanged
 		self._onSubjectChanged = onSubjectChanged
@@ -3418,6 +3463,14 @@ class ConferenceDelegateManager
 				let sObject = Conference.getSwiftObject(cObject: conference!)
 				let delegate = sObject.currentDelegate
 				delegate?.onParticipantDeviceMediaCapabilityChanged(conference: sObject, device: ParticipantDevice.getSwiftObject(cObject: device!))
+			}
+		})
+
+		linphone_conference_cbs_set_operation_failed(cPtr, { (conference) -> Void in
+			if (conference != nil) {
+				let sObject = Conference.getSwiftObject(cObject: conference!)
+				let delegate = sObject.currentDelegate
+				delegate?.onOperationFailed(conference: sObject)
 			}
 		})
 
@@ -16726,6 +16779,15 @@ public class ChatRoom : LinphoneObject
 	
 	
 	
+	/// Terminates a chat room and instruct the server to remove all participants. 
+	/// - Returns: 0 if the termination is successful, -1 otherwise. 
+	public func close() -> Int
+	{
+		return Int(linphone_chat_room_close(cPtr))
+	}
+	
+	
+	
 	/// Notifies the destination of the chat message being composed that the user is
 	/// typing a new message. 
 	/// - Deprecated: 24/06/2025 use ``composeTextMessage()`` instead. 
@@ -17294,6 +17356,17 @@ public class ChatRoom : LinphoneObject
 	public func markAsRead() 
 	{
 		linphone_chat_room_mark_as_read(cPtr)
+	}
+	
+	
+	
+	/// Nominates a new admin and then leaves a chat room. 
+	/// - Parameter newAdmin: The ``Address`` of the new admin    
+	/// - Note: The local participant will not leave the chat room if the new admin
+	/// cannot be nominated 
+	public func nominateAdminAndLeave(newAdmin:Address) 
+	{
+		linphone_chat_room_nominate_admin_and_leave(cPtr, newAdmin.cPtr)
 	}
 	
 	
@@ -18432,6 +18505,17 @@ public class Conference : LinphoneObject
 	
 	
 	
+	/// Terminates a conference. 
+	/// If no media is supported, it instructs the conference server to remove all
+	/// participants 
+	/// - Returns: 0 if the termination is successful, -1 otherwise. 
+	public func close() -> Int
+	{
+		return Int(linphone_conference_close(cPtr))
+	}
+	
+	
+	
 	/// For a local conference, the local participant joins the conference For a client
 	/// conference, the participant rejoins the conference after leaving it earlier on. 
 	/// - Returns: 0 if succeeded. Negative number if failed 
@@ -18509,6 +18593,19 @@ public class Conference : LinphoneObject
 	public func leave() -> Int
 	{
 		return Int(linphone_conference_leave(cPtr))
+	}
+	
+	
+	
+	/// Nominates a new admin and then leaves a conference. 
+	/// - Parameter newAdmin: The ``Address`` of the new admin    
+	/// - Returns: 0 if succeeded. Negative number if failed 
+	/// - Note: The local participant will not leave the chat room if the new admin
+	/// cannot be nominated 
+	/// - Warning: It is not applicable to conference servers. 
+	public func nominateAdminAndLeave(newAdmin:Address) -> Int
+	{
+		return Int(linphone_conference_nominate_admin_and_leave(cPtr, newAdmin.cPtr))
 	}
 	
 	
@@ -18602,7 +18699,7 @@ public class Conference : LinphoneObject
 	
 	
 	
-	/// Terminates conference. 
+	/// Terminates a conference. 
 	/// - Returns: 0 if the termination is successful, -1 otherwise. 
 	public func terminate() -> Int
 	{
@@ -23096,6 +23193,26 @@ public class Core : LinphoneObject
 		willSet
 		{
 			linphone_core_set_enable_sip_update(cPtr, CInt(newValue))
+		}
+	}
+		
+	/// Sets the policy for ephemeral chat messages. 
+	/// See ``EphemeralChatMessagePolicy`` for more details. 
+	/// - Parameter policy: the ``EphemeralChatMessagePolicy`` to use. 
+	
+	/// Gets the current policy for ephemeral chat messages. 
+	/// See ``EphemeralChatMessagePolicy`` for more details. 
+	/// - Returns: the current ``EphemeralChatMessagePolicy``. 
+	public var ephemeralChatMessagePolicy: EphemeralChatMessagePolicy
+	{
+	
+		get
+		{ 
+						return EphemeralChatMessagePolicy(rawValue: Int(linphone_core_get_ephemeral_chat_message_policy(cPtr).rawValue))!
+		}
+		set
+		{
+			linphone_core_set_ephemeral_chat_message_policy(cPtr, LinphoneEphemeralChatMessagePolicy(rawValue: CUnsignedInt(newValue.rawValue)))
 		}
 	}
 		
@@ -41530,7 +41647,7 @@ public class RemoteContactDirectory : LinphoneObject
 	}
 	
 	
-	/// Gets the CardDAV remote_contact_directory if ``getType()`` returns CardDAV. 
+	/// Gets the CardDAV remote contact directory if ``getType()`` returns CardDAV. 
 	/// - Returns: the ``CardDavParams`` or nil if not of CardDAV type.    
 	public var cardDavRemoteContactDirectory: CardDavParams?
 	{
