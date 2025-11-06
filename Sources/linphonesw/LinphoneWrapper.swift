@@ -27129,10 +27129,9 @@ public class Core : LinphoneObject
 	/// Create a conference scheduler that can be used to schedule conferences on a
 	/// client conference service and then send conference information invitation as an
 	/// ICS object through chat. 
+	/// The default account (see ``getDefaultAccount()`` ) is used to determine which
+	/// kind of conference scheduler is created. 
 	/// - Returns: A pointer on the freshly created ``ConferenceScheduler``.    
-	/// - deprecated: 23/07/2024 Use ``createConferenceScheduler(account:)`` or
-	/// ``createConferenceSchedulerWithType(account:schedulingType:)`` instead. 
-	@available(*, deprecated)
 	public func createConferenceScheduler() throws -> ConferenceScheduler
 	{
 		let cPointer = linphone_core_create_conference_scheduler(cPtr)
@@ -27148,8 +27147,9 @@ public class Core : LinphoneObject
 	
 	/// Create a conference scheduler that can be used to create client conferences for
 	/// now or later and then send conference info as an ICS through chat. 
-	/// A SipConferenceScheduler is created if the ``Account`` has not defined the URL
-	/// of the CCMP server, other it will create a CCMPConferenceServer 
+	/// A SIP-based implementation is created if the ``Account`` has not defined the
+	/// URL of a CCMP server, other it will create a implementation relying on CCMP
+	/// protocol. 
 	/// - Parameter account: The ``Account`` to use in the ``ConferenceScheduler``.    
 	/// - Returns: A pointer on the freshly created ``ConferenceScheduler``.    
 	public func createConferenceScheduler(account:Account?) throws -> ConferenceScheduler
