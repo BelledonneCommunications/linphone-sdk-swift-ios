@@ -40915,7 +40915,7 @@ public class RemoteContactDirectory : LinphoneObject
 	}
 	
 	
-	/// Gets the CardDAV remote_contact_directory if ``getType()`` returns CardDAV. 
+	/// Gets the CardDAV remote contact directory if ``getType()`` returns CardDAV. 
 	/// - Returns: the ``CardDavParams`` or nil if not of CardDAV type.    
 	public var cardDavParams: CardDavParams?
 	{
