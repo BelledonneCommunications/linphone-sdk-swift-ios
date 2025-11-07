@@ -41662,7 +41662,7 @@ public class RemoteContactDirectory : LinphoneObject
 	}
 		
 	
-	/// Gets the LDAP remote_contact_directory if ``getType()`` returns LDAP. 
+	/// Gets the LDAP remote contact directory if ``getType()`` returns LDAP. 
 	/// - Returns: the ``LdapParams`` or nil if not of LDAP type.    
 	public var ldapRemoteContactDirectory: LdapParams?
 	{
