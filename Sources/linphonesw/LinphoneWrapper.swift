@@ -35366,12 +35366,11 @@ public class LdapParams : LinphoneObject
 		
 	/// Delay between each search in milliseconds Default value : 500. 
 	/// - Parameter delay: The timeout in milliseconds. 
-	/// - Deprecated: 22/08/2025 use linphone_remote_contact_directory_set_delay()
+	/// - Deprecated: 22/08/2025 use ``RemoteContactDirectory/setDelay(milliseconds:)``
 	/// instead. 
 	
 	/// Get the delay between each search in milliseconds. 
-	/// - Deprecated: 22/08/2025 use linphone_remote_contact_directory_get_delay()
-	/// instead. 
+	/// - Deprecated: 22/08/2025 use ``RemoteContactDirectory/getDelay()`` instead. 
 	/// - Returns: The delay in milliseconds. 
 	public var delay: Int
 	{
@@ -41659,6 +41658,26 @@ public class RemoteContactDirectory : LinphoneObject
 			let result = CardDavParams.getSwiftObject(cObject:cPointer!)
 			return result
 
+	}
+		
+	/// Set the delay between each search in milliseconds. 
+	/// Only available for ``Ldap`` Default value : 500.
+	/// - Parameter milliseconds: The timeout in milliseconds. 
+	
+	/// Get the delay between each search in milliseconds. 
+	/// Only available for ``Ldap`` 
+	/// - Returns: The delay in milliseconds. 
+	public var delay: Int
+	{
+	
+		get
+		{ 
+						return Int(linphone_remote_contact_directory_get_delay(cPtr))
+		}
+		set
+		{
+			linphone_remote_contact_directory_set_delay(cPtr, CInt(newValue))
+		}
 	}
 		
 	
