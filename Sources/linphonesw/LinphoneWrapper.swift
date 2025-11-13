@@ -29671,6 +29671,17 @@ public class Core : LinphoneObject
 	
 	
 	
+	/// Removes an account and any associated data. 
+	/// ``Core`` will then automatically unregister and place the account on a deleted
+	/// list. For that reason, a removed account does NOT need to be freed. 
+	/// - Parameter account: the ``Account`` to remove    
+	public func removeAccountWithData(account:Account) 
+	{
+		linphone_core_remove_account_with_data(cPtr, account.cPtr)
+	}
+	
+	
+	
 	/// Removes an authentication information object. 
 	/// - Parameter info: The ``AuthInfo`` to remove.    
 	public func removeAuthInfo(info:AuthInfo) 
