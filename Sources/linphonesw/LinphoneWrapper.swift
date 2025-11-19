@@ -24654,6 +24654,32 @@ public class Core : LinphoneObject
 		}
 	}
 		
+	/// Enables or disables the noise suppression, if a noise suppression filter can be
+	/// used. 
+	/// This actually controls software noise suppression only. When 'enable' is set to
+	/// false, software noise suppression is disabled, but hardware one, if available,
+	/// remains activated. When set to true, software noise suppression is enabled and
+	/// hardware one, if available, remains activated. The software noise suppression
+	/// cannot be enabled on iOS nor Android devices. 
+	/// - Parameter enable: true to enable the noise suppression, false to disable it. 
+	
+	/// Indicates whether software noise suppression is enabled. 
+	/// This does not provide information about hardware noise suppression. 
+	/// - Returns: true if the software noise suppression is enabled, false if
+	/// disabled. 
+	public var noiseSuppressionEnabled: Bool
+	{
+	
+		get
+		{ 
+						return linphone_core_noise_suppression_enabled(cPtr) != 0
+		}
+		set
+		{
+			linphone_core_enable_noise_suppression(cPtr, newValue==true ? 1:0)
+		}
+	}
+		
 	/// Sets the no-rtp timeout value in seconds when the call is on hold. 
 	/// - Parameter seconds: The no-rtp timeout value to use in seconds when the call
 	/// is on hold
