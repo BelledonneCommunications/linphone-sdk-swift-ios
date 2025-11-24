@@ -16204,7 +16204,7 @@ public class ChatRoom : LinphoneObject
 	
 	/// Returns current parameters associated with the chat room. 
 	/// This is typically the parameters passed during the ``ChatRoom`` creation
-	/// process to linphone_core_chat_room_create_chat_room() or some default
+	/// process to ``Core/createChatRoom(params:participants:)`` or some default
 	/// parameters if no ``ChatRoomParams`` was explicitely passed during ``ChatRoom``
 	/// creation. 
 	/// - Returns: the current ``ChatRoomParams`` parameters.    
@@ -16545,7 +16545,7 @@ public class ChatRoom : LinphoneObject
 	
 	/// Returns current parameters associated with the chat room. 
 	/// This is typically the parameters passed during the ``ChatRoom`` creation
-	/// process to linphone_core_chat_room_create_chat_room() or some default
+	/// process to ``Core/createChatRoom(params:participants:)`` or some default
 	/// parameters if no ``ChatRoomParams`` was explicitely passed during ``ChatRoom``
 	/// creation. 
 	/// - Returns: the current ``ChatRoomParams`` parameters.    
@@ -22699,6 +22699,24 @@ public class Core : LinphoneObject
 		}
 	}
 		
+	/// Sets the default ephemeral message mode. 
+	/// - Parameter mode: default ephemeral message mode ``ChatRoom.EphemeralMode`` 
+	
+	/// Gets the default ephemeral message mode. 
+	/// - Returns: the default ephemeral message mode ``ChatRoom.EphemeralMode`` 
+	public var defaultEphemeralMode: ChatRoom.EphemeralMode
+	{
+	
+		get
+		{ 
+						return ChatRoom.EphemeralMode(rawValue: Int(linphone_core_get_default_ephemeral_mode(cPtr).rawValue))!
+		}
+		set
+		{
+			linphone_core_set_default_ephemeral_mode(cPtr, LinphoneChatRoomEphemeralMode(rawValue: CUnsignedInt(newValue.rawValue)))
+		}
+	}
+		
 	/// Set the default ephemeral lifetime in seconds when not read. 
 	/// - Parameter value: lifetime of ephemeral messages in seconds when not read 
 	
@@ -27222,7 +27240,9 @@ public class Core : LinphoneObject
 	
 	
 	/// Gets the default ephemeral message mode. 
-	/// - Returns: the default ephemeral message mode ``ChatRoom.EphemeralMode`` 
+	/// - Returns: the default ephemeral message mode ``ChatRoom.EphemeralMode``
+	/// - Deprecated: 21/11/2025 use ``getDefaultEphemeralMode()``. 
+	@available(*, deprecated)
 	public func chatRoomGetDefaultEphemeralMode() -> ChatRoom.EphemeralMode
 	{
 		return ChatRoom.EphemeralMode(rawValue: Int(linphone_core_chat_room_get_default_ephemeral_mode(cPtr).rawValue))!
@@ -27231,7 +27251,9 @@ public class Core : LinphoneObject
 	
 	
 	/// Sets the default ephemeral message mode. 
-	/// - Parameter mode: default ephemeral message mode ``ChatRoom.EphemeralMode`` 
+	/// - Parameter mode: default ephemeral message mode ``ChatRoom.EphemeralMode``
+	/// - Deprecated: 21/11/2025 use ``setDefaultEphemeralMode(mode:)``. 
+	@available(*, deprecated)
 	public func chatRoomSetDefaultEphemeralMode(mode:ChatRoom.EphemeralMode) 
 	{
 		linphone_core_chat_room_set_default_ephemeral_mode(cPtr, LinphoneChatRoomEphemeralMode(rawValue: CUnsignedInt(mode.rawValue)))
@@ -28489,14 +28511,13 @@ public class Core : LinphoneObject
 	
 	
 	
-	/// Gets an XML body. 
+	/// Gets an XML body using a specific account. 
 	/// - Parameter ektInfo: the ``EktInfo``    
+	/// - Parameter account: the ``Account`` associated with the conference    
 	/// - Returns: The XML body       
-	/// - Deprecated: 06/02/2025 use ``createXmlFromEktInfo(ektInfo:account:)``.
-	@available(*, deprecated)
-	public func createXmlFromEktInfo(ektInfo:EktInfo) throws -> String
+	public func createXmlFromEktInfo(ektInfo:EktInfo, account:Account?) throws -> String
 	{
-		let cstr = linphone_core_create_xml_from_ekt_info(cPtr, ektInfo.cPtr)
+		let cstr = linphone_core_create_xml_from_ekt_info_2(cPtr, ektInfo.cPtr, account?.cPtr)
 		let result = charArrayToString(charPointer: cstr)
 		if (cstr != nil) {
 			bctbx_free(cstr)
@@ -28506,13 +28527,14 @@ public class Core : LinphoneObject
 	
 	
 	
-	/// Gets an XML body using a specific account. 
+	/// Gets an XML body. 
 	/// - Parameter ektInfo: the ``EktInfo``    
-	/// - Parameter account: the ``Account`` associated with the conference    
 	/// - Returns: The XML body       
-	public func createXmlFromEktInfo(ektInfo:EktInfo, account:Account?) throws -> String
+	/// - Deprecated: 06/02/2025 use ``createXmlFromEktInfo(ektInfo:account:)``.
+	@available(*, deprecated)
+	public func createXmlFromEktInfo(ektInfo:EktInfo) throws -> String
 	{
-		let cstr = linphone_core_create_xml_from_ekt_info_2(cPtr, ektInfo.cPtr, account?.cPtr)
+		let cstr = linphone_core_create_xml_from_ekt_info(cPtr, ektInfo.cPtr)
 		let result = charArrayToString(charPointer: cstr)
 		if (cstr != nil) {
 			bctbx_free(cstr)
