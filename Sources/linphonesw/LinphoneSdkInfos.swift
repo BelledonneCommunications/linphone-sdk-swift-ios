@@ -1,4 +1,4 @@
 public struct linphonesw {
-	public static let sdkVersion = "5.4.66-pre.1+3928f92dc1"
-	public static let sdkBranch = "pipelines/104915"
+	public static let sdkVersion = "5.4.67-pre.1+f838795679"
+	public static let sdkBranch = "remotes/origin/release/5.4"
 }
