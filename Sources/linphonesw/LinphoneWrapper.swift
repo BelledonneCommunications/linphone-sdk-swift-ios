@@ -30282,6 +30282,14 @@ public class Core : LinphoneObject
 	
 	
 	
+	/// Upgrade the database manually to the latest schema. 
+	public func upgradeDatabase() 
+	{
+		linphone_core_upgrade_database(cPtr)
+	}
+	
+	
+	
 	/// Uploads the log collection to the configured server url. 
 	public func uploadLogCollection() 
 	{
