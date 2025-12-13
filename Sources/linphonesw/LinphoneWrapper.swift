@@ -14098,10 +14098,10 @@ public class CallStats : LinphoneObject
 	/// If the FEC is enabled, gets the cumulative number of lost source packets of the
 	/// RTP session that have not been repaired by the current FEC stream. 
 	/// - Returns: The cumulative number of lost packets 
-	public var fecCumulativeLostPacketsNumber: Int
+	public var fecCumulativeLostPacketsNumber: UInt64
 	{
 	
-						return Int(linphone_call_stats_get_fec_cumulative_lost_packets_number(cPtr))
+						return linphone_call_stats_get_fec_cumulative_lost_packets_number(cPtr)
 
 	}
 		
@@ -14120,10 +14120,10 @@ public class CallStats : LinphoneObject
 	/// If the FEC is enabled, gets the cumulative number of source packets of the RTP
 	/// session that have been repaired by the current FEC stream. 
 	/// - Returns: The cumulative number of repaired packets 
-	public var fecRepairedPacketsNumber: Int
+	public var fecRepairedPacketsNumber: UInt64
 	{
 	
-						return Int(linphone_call_stats_get_fec_repaired_packets_number(cPtr))
+						return linphone_call_stats_get_fec_repaired_packets_number(cPtr)
 
 	}
 		
@@ -14182,10 +14182,10 @@ public class CallStats : LinphoneObject
 	
 	/// Gets the cumulative number of late packets. 
 	/// - Returns: The cumulative number of late packets 
-	public var latePacketsCumulativeNumber: Int
+	public var latePacketsCumulativeNumber: UInt64
 	{
 	
-						return Int(linphone_call_stats_get_late_packets_cumulative_number(cPtr))
+						return linphone_call_stats_get_late_packets_cumulative_number(cPtr)
 
 	}
 		
@@ -14276,10 +14276,10 @@ public class CallStats : LinphoneObject
 	/// Get the RTP incoming packets discarded because the queue exceeds its max size. 
 	/// - Returns: The RTP incoming packets discarded because the queue exceeds its max
 	/// size 
-	public var rtpDiscarded: Int
+	public var rtpDiscarded: UInt64
 	{
 	
-						return Int(linphone_call_stats_get_rtp_discarded(cPtr))
+						return linphone_call_stats_get_rtp_discarded(cPtr)
 
 	}
 		
@@ -14288,30 +14288,30 @@ public class CallStats : LinphoneObject
 	/// late and duplicate packets. 
 	/// - Returns: the number of received bytes excluding IPv4/IPv6/UDP headers and
 	/// including late and duplicate packets 
-	public var rtpHwRecv: Int
+	public var rtpHwRecv: UInt64
 	{
 	
-						return Int(linphone_call_stats_get_rtp_hw_recv(cPtr))
+						return linphone_call_stats_get_rtp_hw_recv(cPtr)
 
 	}
 		
 	
 	/// Get the number of RTP received packets. 
 	/// - Returns: The number of RTP received packets 
-	public var rtpPacketRecv: Int
+	public var rtpPacketRecv: UInt64
 	{
 	
-						return Int(linphone_call_stats_get_rtp_packet_recv(cPtr))
+						return linphone_call_stats_get_rtp_packet_recv(cPtr)
 
 	}
 		
 	
 	/// Get the number of RTP outgoing packets. 
 	/// - Returns: The number of RTP outgoing packets 
-	public var rtpPacketSent: Int
+	public var rtpPacketSent: UInt64
 	{
 	
-						return Int(linphone_call_stats_get_rtp_packet_sent(cPtr))
+						return linphone_call_stats_get_rtp_packet_sent(cPtr)
 
 	}
 		
@@ -14320,20 +14320,20 @@ public class CallStats : LinphoneObject
 	/// application. 
 	/// - Returns: The number of recv_bytes of payload and delivered in time to the
 	/// application 
-	public var rtpRecv: Int
+	public var rtpRecv: UInt64
 	{
 	
-						return Int(linphone_call_stats_get_rtp_recv(cPtr))
+						return linphone_call_stats_get_rtp_recv(cPtr)
 
 	}
 		
 	
 	/// Get the RTP outgoing sent_bytes (excluding IP header) 
 	/// - Returns: The number of outgoing sent_bytes (excluding IP header) 
-	public var rtpSent: Int
+	public var rtpSent: UInt64
 	{
 	
-						return Int(linphone_call_stats_get_rtp_sent(cPtr))
+						return linphone_call_stats_get_rtp_sent(cPtr)
 
 	}
 		
