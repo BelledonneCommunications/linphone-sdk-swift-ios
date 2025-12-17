@@ -20,7 +20,7 @@
 
 # Build information
 
-version : 5.5.0-alpha.31497+9c34c6fe63
+version : 5.5.0-alpha.31499+6cfc913af9
 branch : remotes/origin/master
 architecture : arm64 x86_64
 
@@ -43,6 +43,7 @@ Enabled features:
  * qrcode, QRCode support with zxing (needs ENABLE_VIDEO=ON).
  * VPX, Build mediastreamer2 with VPX codec.
  * Advanced IM, Enable advanced instant messaging such as group chat.
+ * Xercesc, Enable XERCESC support.
  * DB Storage, Enable the database storage.
  * DNS_SERVICE, Enable Apple DNS Service. Available on Mac and iOS. Incompatible with ENABLE_MDNS=ON.
  * FlexiAPI, Enable the FlexiAPI support in Liblinphone.
@@ -93,8 +94,8 @@ Ensure it contains:
 - from terminal navigate to <build folder>/linphone-sdk-swift-ios
 - git init
 - git add .
-- git commit -a -m "Swift package 5.5.0-alpha.31497+9c34c6fe63"
-- git tag -a 5.5.0-alpha.31497+9c34c6fe63 -m "linphone-sdk 5.5.0-alpha.31497+9c34c6fe63"
+- git commit -a -m "Swift package 5.5.0-alpha.31499+6cfc913af9"
+- git tag -a 5.5.0-alpha.31499+6cfc913af9 -m "linphone-sdk 5.5.0-alpha.31499+6cfc913af9"
 - Open your Xcode Project
 - Menu File -> Add Package Dependencies
 - On top right entry field enter file://<build folder>/linphone-sdk-swift-ios

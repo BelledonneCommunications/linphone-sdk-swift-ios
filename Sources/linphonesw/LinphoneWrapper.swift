@@ -6046,6 +6046,21 @@ public class Account : LinphoneObject
 	}
 		
 	
+	/// Returns the latest Message Waiting Indication (MWI) received payload, if any. 
+	/// - Returns: The latest ``MessageWaitingIndication`` or nil.    
+	public var latestReceivedMessageWaitingIndication: MessageWaitingIndication?
+	{
+	
+						let cPointer = linphone_account_get_latest_received_message_waiting_indication(cPtr)
+			if (cPointer == nil) {
+				return nil
+			}
+			let result = MessageWaitingIndication.getSwiftObject(cObject:cPointer!)
+			return result
+
+	}
+		
+	
 	/// Returns the missed calls count for a given account. 
 	/// - Returns: The missed calls count. 
 	public var missedCallsCount: Int
