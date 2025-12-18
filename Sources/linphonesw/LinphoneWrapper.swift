@@ -14911,6 +14911,21 @@ public class ChatMessage : LinphoneObject
 
 	}
 		
+	
+	/// Returns the event log associated to the chat message. 
+	/// - Returns: The event log, if exists, nil otherwise    
+	public var eventLog: EventLog?
+	{
+	
+						let cPointer = linphone_chat_message_get_event_log(cPtr)
+			if (cPointer == nil) {
+				return nil
+			}
+			let result = EventLog.getSwiftObject(cObject:cPointer!)
+			return result
+
+	}
+		
 	/// Messages can carry external body as defined by rfc2017. 
 	/// - Parameter externalBodyUrl: ex: access-type=URL; URL="http://www.foo.com/file"
 	///    
@@ -14985,7 +15000,7 @@ public class ChatMessage : LinphoneObject
 	}
 		
 	
-	/// Returns wether this message can be edited (maximum allowed time to edit it was
+	/// Returns whether this message can be edited (maximum allowed time to edit it was
 	/// reached or not). 
 	/// - Returns: true if the message can be edited, false otherwise. 
 	public var isEditable: Bool
@@ -14996,7 +15011,7 @@ public class ChatMessage : LinphoneObject
 	}
 		
 	
-	/// Returns wether this message has been edited by it's sender after it was sent. 
+	/// Returns whether this message has been edited by it's sender after it was sent. 
 	/// - Returns: true if the message has been edited after it was sent, false
 	/// otherwise. 
 	public var isEdited: Bool
@@ -15007,7 +15022,7 @@ public class ChatMessage : LinphoneObject
 	}
 		
 	
-	/// Returns wether the chat message is an ephemeral message or not. 
+	/// Returns whether the chat message is an ephemeral message or not. 
 	/// An ephemeral message will automatically disappear from the recipient's screen
 	/// after the message has been viewed. 
 	/// - Returns: true if it is an ephemeral message, false otherwise 
@@ -15042,7 +15057,7 @@ public class ChatMessage : LinphoneObject
 	}
 		
 	
-	/// Returns wether the chat message is a forward message or not. 
+	/// Returns whether the chat message is a forward message or not. 
 	/// - Returns: true if it is a forward message, false otherwise 
 	public var isForward: Bool
 	{
@@ -15062,7 +15077,7 @@ public class ChatMessage : LinphoneObject
 	}
 		
 	
-	/// Returns wether the message has been read or not. 
+	/// Returns whether the message has been read or not. 
 	/// - Returns: true if message has been marked as read, false otherwise. 
 	public var isRead: Bool
 	{
@@ -15072,7 +15087,7 @@ public class ChatMessage : LinphoneObject
 	}
 		
 	
-	/// Returns wether the chat message is a reply message or not. 
+	/// Returns whether the chat message is a reply message or not. 
 	/// - Returns: true if it is a reply message, false otherwise 
 	public var isReply: Bool
 	{
@@ -15082,7 +15097,7 @@ public class ChatMessage : LinphoneObject
 	}
 		
 	
-	/// Returns wether this message can be retracted (maximum allowed time to retract
+	/// Returns whether this message can be retracted (maximum allowed time to retract
 	/// it was reached or not). 
 	/// - Returns: true if the message can be retracted, false otherwise. 
 	public var isRetractable: Bool
@@ -15093,7 +15108,7 @@ public class ChatMessage : LinphoneObject
 	}
 		
 	
-	/// Returns wether this message has been retracted by it's sender after it was
+	/// Returns whether this message has been retracted by it's sender after it was
 	/// sent. 
 	/// - Returns: true if the message has been retracted after it was sent, false
 	/// otherwise. 
@@ -15507,7 +15522,7 @@ public class ChatMessage : LinphoneObject
 	
 	
 	
-	/// Returns wether the chat message has a conference invitation content or not. 
+	/// Returns whether the chat message has a conference invitation content or not. 
 	/// - Returns: true if it has one, false otherwise. 
 	public func hasConferenceInvitationContent() -> Bool
 	{
@@ -15516,7 +15531,7 @@ public class ChatMessage : LinphoneObject
 	
 	
 	
-	/// Returns wether the chat message has a text content or not. 
+	/// Returns whether the chat message has a text content or not. 
 	/// - Returns: true if it has one, false otherwise. 
 	/// - Deprecated: 27/10/2020. Check if ``getContents()`` contains a ``Content`` for
 	/// which it's content type is PlainText. 
