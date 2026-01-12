@@ -20,8 +20,8 @@
 
 # Build information
 
-version : 5.5.0-alpha.31518+341be32b09
-branch : remotes/origin/fix/use-of-timer-after-main-loop-master
+version : 5.5.0-alpha.31519+1cc3411d94
+branch : remotes/origin/master
 architecture : arm64 x86_64
 
 Enabled features:
@@ -94,8 +94,8 @@ Ensure it contains:
 - from terminal navigate to <build folder>/linphone-sdk-swift-ios
 - git init
 - git add .
-- git commit -a -m "Swift package 5.5.0-alpha.31518+341be32b09"
-- git tag -a 5.5.0-alpha.31518+341be32b09 -m "linphone-sdk 5.5.0-alpha.31518+341be32b09"
+- git commit -a -m "Swift package 5.5.0-alpha.31519+1cc3411d94"
+- git tag -a 5.5.0-alpha.31519+1cc3411d94 -m "linphone-sdk 5.5.0-alpha.31519+1cc3411d94"
 - Open your Xcode Project
 - Menu File -> Add Package Dependencies
 - On top right entry field enter file://<build folder>/linphone-sdk-swift-ios
