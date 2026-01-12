@@ -1,4 +1,4 @@
 public struct linphonesw {
-	public static let sdkVersion = "5.5.0-alpha.31518+341be32b09"
-	public static let sdkBranch = "remotes/origin/fix/use-of-timer-after-main-loop-master"
+	public static let sdkVersion = "5.5.0-alpha.31519+1cc3411d94"
+	public static let sdkBranch = "pipelines/106623"
 }
