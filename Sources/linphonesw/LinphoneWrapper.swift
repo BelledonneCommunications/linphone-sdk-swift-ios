@@ -1716,6 +1716,30 @@ public protocol CallDelegate : AnyObject {
 	/// Get the Baudot detected callback. 
 	/// - Returns: The Baudot detected callback. 
 	func onBaudotDetected(call: Call, standard: BaudotStandard)
+	
+	/// Get the headset answer call requested callback. 
+	/// - Returns: The headset answer call requested callback. 
+	func onHeadsetAnswerCallRequested(call: Call)
+	
+	/// Get the headset end call requested callback. 
+	/// - Returns: The headset end call requested callback. 
+	func onHeadsetEndCallRequested(call: Call)
+	
+	/// Get the headset hold call requested callback. 
+	/// - Returns: The headset hold call requested callback. 
+	func onHeadsetHoldCallRequested(call: Call)
+	
+	/// Get the headset microphone mute toggled callback. 
+	/// - Returns: The headset microphone mute toggled callback. 
+	func onHeadsetMicrophoneMuteToggled(call: Call, mute: Bool)
+	
+	/// Get the headset reject call requested callback. 
+	/// - Returns: The headset reject call requested callback. 
+	func onHeadsetRejectCallRequested(call: Call)
+	
+	/// Get the headset resume call requested callback. 
+	/// - Returns: The headset resume call requested callback. 
+	func onHeadsetResumeCallRequested(call: Call)
 }
 
 public extension CallDelegate {
@@ -1761,6 +1785,18 @@ public extension CallDelegate {
 	func onRemoteRecording(call: Call, recording: Bool) {}
 	
 	func onBaudotDetected(call: Call, standard: BaudotStandard) {}
+	
+	func onHeadsetAnswerCallRequested(call: Call) {}
+	
+	func onHeadsetEndCallRequested(call: Call) {}
+	
+	func onHeadsetHoldCallRequested(call: Call) {}
+	
+	func onHeadsetMicrophoneMuteToggled(call: Call, mute: Bool) {}
+	
+	func onHeadsetRejectCallRequested(call: Call) {}
+	
+	func onHeadsetResumeCallRequested(call: Call) {}
 }
 
 public final class CallDelegateStub : CallDelegate
@@ -1786,6 +1822,12 @@ public final class CallDelegateStub : CallDelegate
 	var _onAudioDeviceChanged: ((Call, AudioDevice) -> Void)?
 	var _onRemoteRecording: ((Call, Bool) -> Void)?
 	var _onBaudotDetected: ((Call, BaudotStandard) -> Void)?
+	var _onHeadsetAnswerCallRequested: ((Call) -> Void)?
+	var _onHeadsetEndCallRequested: ((Call) -> Void)?
+	var _onHeadsetHoldCallRequested: ((Call) -> Void)?
+	var _onHeadsetMicrophoneMuteToggled: ((Call, Bool) -> Void)?
+	var _onHeadsetRejectCallRequested: ((Call) -> Void)?
+	var _onHeadsetResumeCallRequested: ((Call) -> Void)?
 
 	
 	public func onDtmfReceived(call: Call, dtmf: Int){_onDtmfReceived.map{$0(call, dtmf)}}
@@ -1829,6 +1871,18 @@ public final class CallDelegateStub : CallDelegate
 	public func onRemoteRecording(call: Call, recording: Bool){_onRemoteRecording.map{$0(call, recording)}}
 	
 	public func onBaudotDetected(call: Call, standard: BaudotStandard){_onBaudotDetected.map{$0(call, standard)}}
+	
+	public func onHeadsetAnswerCallRequested(call: Call){_onHeadsetAnswerCallRequested.map{$0(call)}}
+	
+	public func onHeadsetEndCallRequested(call: Call){_onHeadsetEndCallRequested.map{$0(call)}}
+	
+	public func onHeadsetHoldCallRequested(call: Call){_onHeadsetHoldCallRequested.map{$0(call)}}
+	
+	public func onHeadsetMicrophoneMuteToggled(call: Call, mute: Bool){_onHeadsetMicrophoneMuteToggled.map{$0(call, mute)}}
+	
+	public func onHeadsetRejectCallRequested(call: Call){_onHeadsetRejectCallRequested.map{$0(call)}}
+	
+	public func onHeadsetResumeCallRequested(call: Call){_onHeadsetResumeCallRequested.map{$0(call)}}
 
 	public init (
 		onDtmfReceived: ((Call, Int) -> Void)? = nil,
@@ -1851,7 +1905,13 @@ public final class CallDelegateStub : CallDelegate
 		onVideoDisplayErrorOccurred: ((Call, Int) -> Void)? = nil,
 		onAudioDeviceChanged: ((Call, AudioDevice) -> Void)? = nil,
 		onRemoteRecording: ((Call, Bool) -> Void)? = nil,
-		onBaudotDetected: ((Call, BaudotStandard) -> Void)? = nil
+		onBaudotDetected: ((Call, BaudotStandard) -> Void)? = nil,
+		onHeadsetAnswerCallRequested: ((Call) -> Void)? = nil,
+		onHeadsetEndCallRequested: ((Call) -> Void)? = nil,
+		onHeadsetHoldCallRequested: ((Call) -> Void)? = nil,
+		onHeadsetMicrophoneMuteToggled: ((Call, Bool) -> Void)? = nil,
+		onHeadsetRejectCallRequested: ((Call) -> Void)? = nil,
+		onHeadsetResumeCallRequested: ((Call) -> Void)? = nil
 	) {
 		self._onDtmfReceived = onDtmfReceived
 		self._onGoclearAckSent = onGoclearAckSent
@@ -1874,6 +1934,12 @@ public final class CallDelegateStub : CallDelegate
 		self._onAudioDeviceChanged = onAudioDeviceChanged
 		self._onRemoteRecording = onRemoteRecording
 		self._onBaudotDetected = onBaudotDetected
+		self._onHeadsetAnswerCallRequested = onHeadsetAnswerCallRequested
+		self._onHeadsetEndCallRequested = onHeadsetEndCallRequested
+		self._onHeadsetHoldCallRequested = onHeadsetHoldCallRequested
+		self._onHeadsetMicrophoneMuteToggled = onHeadsetMicrophoneMuteToggled
+		self._onHeadsetRejectCallRequested = onHeadsetRejectCallRequested
+		self._onHeadsetResumeCallRequested = onHeadsetResumeCallRequested
 	}
 }
 
@@ -2056,6 +2122,54 @@ class CallDelegateManager
 				let sObject = Call.getSwiftObject(cObject: call!)
 				let delegate = sObject.currentDelegate
 				delegate?.onBaudotDetected(call: sObject, standard: BaudotStandard(rawValue: Int(standard.rawValue))!)
+			}
+		})
+
+		linphone_call_cbs_set_headset_answer_call_requested(cPtr, { (call) -> Void in
+			if (call != nil) {
+				let sObject = Call.getSwiftObject(cObject: call!)
+				let delegate = sObject.currentDelegate
+				delegate?.onHeadsetAnswerCallRequested(call: sObject)
+			}
+		})
+
+		linphone_call_cbs_set_headset_end_call_requested(cPtr, { (call) -> Void in
+			if (call != nil) {
+				let sObject = Call.getSwiftObject(cObject: call!)
+				let delegate = sObject.currentDelegate
+				delegate?.onHeadsetEndCallRequested(call: sObject)
+			}
+		})
+
+		linphone_call_cbs_set_headset_hold_call_requested(cPtr, { (call) -> Void in
+			if (call != nil) {
+				let sObject = Call.getSwiftObject(cObject: call!)
+				let delegate = sObject.currentDelegate
+				delegate?.onHeadsetHoldCallRequested(call: sObject)
+			}
+		})
+
+		linphone_call_cbs_set_headset_microphone_mute_toggled(cPtr, { (call, mute) -> Void in
+			if (call != nil) {
+				let sObject = Call.getSwiftObject(cObject: call!)
+				let delegate = sObject.currentDelegate
+				delegate?.onHeadsetMicrophoneMuteToggled(call: sObject, mute: mute != 0)
+			}
+		})
+
+		linphone_call_cbs_set_headset_reject_call_requested(cPtr, { (call) -> Void in
+			if (call != nil) {
+				let sObject = Call.getSwiftObject(cObject: call!)
+				let delegate = sObject.currentDelegate
+				delegate?.onHeadsetRejectCallRequested(call: sObject)
+			}
+		})
+
+		linphone_call_cbs_set_headset_resume_call_requested(cPtr, { (call) -> Void in
+			if (call != nil) {
+				let sObject = Call.getSwiftObject(cObject: call!)
+				let delegate = sObject.currentDelegate
+				delegate?.onHeadsetResumeCallRequested(call: sObject)
 			}
 		})
 	}
