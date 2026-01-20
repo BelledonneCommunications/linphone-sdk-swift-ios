@@ -24106,7 +24106,10 @@ public class Core : LinphoneObject
 	/// displayed.    
 	
 	/// Get the native window handle of the video preview window. 
-	/// see ``setNativeVideoWindowId(windowId:)`` for details about window_id
+	/// see ``setNativeVideoWindowId(windowId:)`` for details about window_id. If the
+	/// window ID has been set to LINPHONE_VIDEO_DISPLAY_AUTO, it will return the
+	/// window in use. In automatic mode, when no call is in progress, a preview will
+	/// be activated before the identifier is sent back.
 	/// There is a special case for Qt : ``getNativePreviewWindowId()`` returns a
 	/// #QQuickFramebufferObject::Renderer. Note : Qt blocks GUI thread when calling
 	/// createRenderer(), so it is safe to call linphone functions there if needed.
@@ -24153,21 +24156,15 @@ public class Core : LinphoneObject
 	}
 		
 	/// Set the native video window id where the video is to be displayed. 
-	/// On Desktop platforms(MacOS, Linux, Windows), the display filter is "MSOGL" by
-	/// default. That means : If window_id is not set or set to
-	/// LINPHONE_VIDEO_DISPLAY_NONE, then the core will not create its own window,
-	/// unless the special id LINPHONE_VIDEO_DISPLAY_AUTO is given. This is currently
-	/// only supported for Linux X11 (Window type), Windows UWP (SwapChainPanel type)
-	/// and Windows Win32 (HWND type).
+	/// On Desktop platforms(MacOS, Linux, Windows):
 	/// The C# Wrapper on Windows for UWP takes directly a #SwapChainPanel without
 	/// Marshalling. On other platforms, window_id is a #MSOglContextInfo defined in
 	/// msogl.h of mediastreamer2 There is a special case for Qt : The "MSQOGL" filter
-	/// must be selected by using ``setVideoDisplayFilter(filterName:)``. Setting
-	/// window id is only used to stop rendering by passing
-	/// LINPHONE_VIDEO_DISPLAY_NONE. ``getNativeVideoWindowId()`` returns a
-	/// #QQuickFramebufferObject::Renderer and ``createNativeVideoWindowId(context:)``
-	/// creates one. After a creation, ``setNativeVideoWindowId(windowId:)`` must be
-	/// called with the new object.
+	/// must be selected by using ``setVideoDisplayFilter(filterName:)``. Rendering is
+	/// stopped by passing LINPHONE_VIDEO_DISPLAY_NONE or LINPHONE_VIDEO_DISPLAY_AUTO.
+	/// ``getNativeVideoWindowId()`` returns a #QQuickFramebufferObject::Renderer and
+	/// ``createNativeVideoWindowId(context:)`` creates one. After a creation,
+	/// ``setNativeVideoWindowId(windowId:)`` must be called with the new object.
 	/// On mobile operating systems, LINPHONE_VIDEO_DISPLAY_AUTO is not supported and
 	/// window_id depends of the platform : iOS : It is a UIView. Android : It is a
 	/// TextureView.
@@ -24175,7 +24172,9 @@ public class Core : LinphoneObject
 	/// displayed.    
 	
 	/// Get the native window handle of the video window. 
-	/// see linphone_core_set_native_video_window_id for details about window_id
+	/// see linphone_core_set_native_video_window_id for details about window_id If the
+	/// window ID has been set to LINPHONE_VIDEO_DISPLAY_AUTO and a call is in
+	/// progress, it will return the window in use.
 	/// There is a special case for Qt : ``getNativeVideoWindowId()`` returns a
 	/// #QQuickFramebufferObject::Renderer. Note : Qt blocks GUI thread when calling
 	/// createRenderer(), so it is safe to call linphone functions there if needed.
