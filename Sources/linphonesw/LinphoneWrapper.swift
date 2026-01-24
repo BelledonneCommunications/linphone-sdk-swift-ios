@@ -6029,6 +6029,24 @@ public class Account : LinphoneObject
 
 	}
 		
+	/// Sets consolidated presence for a ``Account``. 
+	/// - Parameter presence: ``ConsolidatedPresence`` value 
+	
+	/// Gets consolidated presence for a ``Account``. 
+	/// - Returns: A ``ConsolidatedPresence`` presence 
+	public var consolidatedPresence: ConsolidatedPresence
+	{
+	
+		get
+		{ 
+						return ConsolidatedPresence(rawValue: Int(linphone_account_get_consolidated_presence(cPtr).rawValue))!
+		}
+		set
+		{
+			linphone_account_set_consolidated_presence(cPtr, LinphoneConsolidatedPresence(rawValue: CUnsignedInt(newValue.rawValue)))
+		}
+	}
+		
 	/// Set the contact address for the account. 
 	/// A client application should not use this function, as the Contact address is
 	/// provided by the registrar in the 200 Ok. This function is mainly intended for
@@ -6207,6 +6225,30 @@ public class Account : LinphoneObject
 		set
 		{
 			linphone_account_set_params(cPtr, newValue?.cPtr)
+		}
+	}
+		
+	/// Set the presence model linked to a given account and send a PUBLISH message to
+	/// the presence server. 
+	/// - Parameter presenceModel: The presence model to assign.    
+	
+	/// Get the presence model linked to a given account. 
+	/// - Returns: the presence model, if assigned, nil otherwise.    
+	public var presenceModel: PresenceModel?
+	{
+	
+		get
+		{ 
+						let cPointer = linphone_account_get_presence_model(cPtr)
+			if (cPointer == nil) {
+				return nil
+			}
+			let result = PresenceModel.getSwiftObject(cObject:cPointer!)
+			return result
+		}
+		set
+		{
+			linphone_account_set_presence_model(cPtr, newValue?.cPtr)
 		}
 	}
 		
@@ -38768,7 +38810,8 @@ public class PresenceModel : LinphoneObject
 	/// useful for the 'other' activity). Set it to nil to not add a description.    
 	/// - Returns: The created ``PresenceModel``, or nil if an error occured.    
 	/// - See also: linphone_presence_model_new,
-	/// ``newWithActivityAndNote(activity:description:note:lang:)``
+	/// ``newWithActivityAndNote(activity:description:note:lang:)``,
+	/// ``newWithConsolidatedPresence(presence:)``
 	/// The created presence model has the activity specified in the parameters. 
 	static public func newWithActivity(activity:PresenceActivity.Kind, description:String?) -> PresenceModel?
 	{
@@ -38793,13 +38836,37 @@ public class PresenceModel : LinphoneObject
 	/// - Parameter lang: The language the note is written in. It can be set to nil in
 	/// order to not specify the language of the note.    
 	/// - Returns: The created ``PresenceModel``, or nil if an error occured.    
-	/// - See also: ``newWithActivity(activity:description:)``,
-	/// ``newWithActivityAndNote(activity:description:note:lang:)``
+	/// - See also: linphone_presence_model_new,
+	/// ``newWithActivity(activity:description:)``,
+	/// ``newWithConsolidatedPresence(presence:)``
 	/// The created presence model has the activity and the note specified in the
 	/// parameters. 
 	static public func newWithActivityAndNote(activity:PresenceActivity.Kind, description:String?, note:String, lang:String?) -> PresenceModel?
 	{
 		let cPointer = linphone_presence_model_new_with_activity_and_note(LinphonePresenceActivityType(rawValue: CUnsignedInt(activity.rawValue)), description, note, lang)
+		if (cPointer == nil) {
+			return nil
+		}
+		let result = PresenceModel.getSwiftObject(cObject: cPointer!)
+		belle_sip_object_unref(UnsafeMutableRawPointer(cPointer))
+		return result
+	}
+	
+	
+	
+	/// Creates a presence model with a consolidated presence. 
+	/// - Parameter presence: The ``ConsolidatedPresence`` to set for the created
+	/// presence model. 
+	/// - Returns: The created ``PresenceModel``, or nil if an error occured.    
+	/// - Warning: This function will set the basic status of the model and it may
+	/// create an activity depending on the ``ConsolidatedPresence`` 
+	/// - See also: linphone_presence_model_new,
+	/// ``newWithActivity(activity:description:)``,
+	/// ``newWithActivityAndNote(activity:description:note:lang:)``
+	/// The created presence model has the activity specified in the parameters. 
+	static public func newWithConsolidatedPresence(presence:ConsolidatedPresence) -> PresenceModel?
+	{
+		let cPointer = linphone_presence_model_new_with_consolidated_presence(LinphoneConsolidatedPresence(rawValue: CUnsignedInt(presence.rawValue)))
 		if (cPointer == nil) {
 			return nil
 		}
@@ -39230,7 +39297,7 @@ public class PresenceModel : LinphoneObject
 	/// - Parameter description: An additional description of the activity to set for
 	/// the model. Can be nil if no additional description is to be added.    
 	/// - Returns: 0 if successful, a value < 0 in case of error.
-	/// WARNING: This function will modify the basic status of the model according to
+	/// - Warning: This function will modify the basic status of the model according to
 	/// the activity being set. If you don't want the basic status to be modified
 	/// automatically, you can use the combination of ``setBasicStatus(basicStatus:)``,
 	/// ``clearActivities()`` and ``addActivity(activity:)``. 
