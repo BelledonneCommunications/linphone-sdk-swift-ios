@@ -20,8 +20,8 @@
 
 # Build information
 
-version : 5.4.0-beta.86+4700c128
-branch : pipelines/91774
+version : 5.5.0-beta.4+1c564bd7f0
+branch : pipelines/107487
 architecture : arm64 x86_64
 
 Enabled features:
@@ -31,8 +31,6 @@ Enabled features:
  * Baudot, Baudot text transmission support.
  * BV16, BroadVoice 16 audio encoding/decoding support.
  * GSM, GSM audio encoding/decoding support.
- * iLBC, iLBC audio encoding/decoding support.
- * ISAC, ISAC audio encoding/decoding support.
  * MKV, MKV playing and recording support.
  * OPUS, OPUS audio encoding/decoding support.
  * Speex, Speex audio encoding/decoding and DSP support.
@@ -45,6 +43,7 @@ Enabled features:
  * qrcode, QRCode support with zxing (needs ENABLE_VIDEO=ON).
  * VPX, Build mediastreamer2 with VPX codec.
  * Advanced IM, Enable advanced instant messaging such as group chat.
+ * Xercesc, Enable XERCESC support.
  * DB Storage, Enable the database storage.
  * DNS_SERVICE, Enable Apple DNS Service. Available on Mac and iOS. Incompatible with ENABLE_MDNS=ON.
  * FlexiAPI, Enable the FlexiAPI support in Liblinphone.
@@ -95,8 +94,8 @@ Ensure it contains:
 - from terminal navigate to <build folder>/linphone-sdk-swift-ios
 - git init
 - git add .
-- git commit -a -m "Swift package 5.4.0-beta.86+4700c128"
-- git tag -a 5.4.0-beta.86+4700c128 -m "linphone-sdk 5.4.0-beta.86+4700c128"
+- git commit -a -m "Swift package 5.5.0-beta.4+1c564bd7f0"
+- git tag -a 5.5.0-beta.4+1c564bd7f0 -m "linphone-sdk 5.5.0-beta.4+1c564bd7f0"
 - Open your Xcode Project
 - Menu File -> Add Package Dependencies
 - On top right entry field enter file://<build folder>/linphone-sdk-swift-ios
