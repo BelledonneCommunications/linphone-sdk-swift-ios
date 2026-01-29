@@ -2,7 +2,7 @@
 LinphoneWrapper.swift
 Copyright (c) 2010-2022 Belledonne Communications SARL.
 
-This file is part of Liblinphone 
+This file is part of Liblinphone
 (see https://gitlab.linphone.org/BC/public/liblinphone).
 
 This program is free software: you can redistribute it and/or modify
@@ -140,6 +140,21 @@ public enum EcCalibratorStatus:Int
 	/// The echo canceller calibration has been performed and no echo has been
 	/// detected. 
 	case DoneNoEcho = 3
+}
+
+///Ephemeral chat message policies. 
+public enum EphemeralChatMessagePolicy:Int
+{
+	
+	/// In this mode, an ephemeral chat message expires at the same time for all
+	/// participants, when every participant has read the message and its lifetime
+	/// expires. 
+	case Default = 0
+	
+	/// In this mode, an ephemeral chat message expires independently for each
+	/// participant, after the duration of the lifetime once this participant has read
+	/// the message. 
+	case Individual = 1
 }
 
 ///Describes the global state of the ``Core`` object. 
@@ -302,10 +317,10 @@ public enum MediaResourceMode:Int
 {
 	
 	/// Media resources are not shared. 
-	case ExclusiveMediaResources = 0
+	case Exclusive = 0
 	
 	/// Media resources are shared. 
-	case SharedMediaResources = 1
+	case Shared = 1
 }
 
 ///Basic status as defined in section 4.1.4 of RFC 3863. 
@@ -689,7 +704,7 @@ public enum ToneID:Int
 	case SasCheckRequired = 7
 }
 
-///Enum describing transport type for LinphoneAddress. 
+///Enum describing transport type for ``Address``. 
 public enum TransportType:Int
 {
 	
@@ -775,7 +790,7 @@ public enum VideoSourceType:Int
 	case ScreenSharing = 4
 }
 
-///Enum describing the types of argument for LinphoneXmlRpcRequest. 
+///Enum describing the types of argument for ``XmlRpcRequest``. 
 public enum XmlRpcArgType:Int
 {
 	
@@ -788,7 +803,7 @@ public enum XmlRpcArgType:Int
 	case StringStruct = 3
 }
 
-///Enum describing the status of a LinphoneXmlRpcRequest. 
+///Enum describing the status of a ``XmlRpcRequest``. 
 public enum XmlRpcStatus:Int
 {
 	
@@ -875,6 +890,60 @@ public enum ZrtpPeerStatus:Int
 
 func charArrayToString(charPointer: UnsafePointer<CChar>?) -> String {
 	return charPointer != nil ? String(cString: charPointer!) : ""
+}
+
+// This is a specific work around: these functions can return "defaultString" in some cases,
+// However the Swift will automatically create a invisible cDefaultString of type char* to pass as argument
+// to the C function. The cDefaultString will then be "returned" by linphone_config_get_string, and
+// instantly destroyed by the Swift garbage collector, causing an empty string as a result.
+
+public extension Config {
+	/// Retrieves a configuration item as a string, given its section, key, and default
+	/// value.
+	/// The default value string is returned if the config item isn't found.
+	/// - Parameter section: The section from which to retrieve a configuration item
+	/// - Parameter key: The name of the configuration item to retrieve
+	/// - Parameter defaultString: The default value to return if not found.
+	/// - Returns: the found value or the default one if not found.
+	public func getString(section:String, key:String, defaultString:String?) -> String
+	{
+		var result = ""
+		(defaultString ?? "").withCString { cStr in
+			result = charArrayToString(charPointer: linphone_config_get_string(cPtr, section, key, cStr))
+		}
+		return result
+	}
+
+	/// Retrieves a default configuration item as a string, given its section, key, and
+	/// default value.
+	/// The default value string is returned if the config item isn't found.
+	/// - Parameter section: The section from which to retrieve the default value
+	/// - Parameter key: The name of the configuration item to retrieve
+	/// - Parameter defaultValue: The default value to return if not found
+	/// - Returns: the found default value or default_value if not found.
+	public func getDefaultString(section:String, key:String, defaultValue:String) -> String
+	{
+		var result = ""
+		defaultValue.withCString { cStr in
+			result = charArrayToString(charPointer: linphone_config_get_section_param_string(cPtr, section, key, cStr))
+		}
+		return result
+	}
+
+	/// Retrieves a section parameter item as a string, given its section and key.
+	/// The default value string is returned if the config item isn't found.
+	/// - Parameter section: The section from which to retrieve the default value
+	/// - Parameter key: The name of the configuration item to retrieve
+	/// - Parameter defaultValue: The default value to return if not found.
+	/// - Returns: the found default value or default_value if not found.
+	public func getSectionParamString(section:String, key:String, defaultValue:String?) -> String
+	{
+		var result = ""
+		(defaultValue ?? "").withCString { cStr in
+			result = charArrayToString(charPointer: linphone_config_get_section_param_string(cPtr, section, key, cStr))
+		}
+		return result
+	}
 }
 
 /// Class basic linphone class
@@ -977,29 +1046,16 @@ public class LinphoneAsyncHelper {
 public protocol AccountDelegate : AnyObject {
 	
 	
-	/// Callback for notifying when a registration state has changed for the account. 
-	/// - Parameter account: LinphoneAccount object whose registration state changed.   
-	/// - Parameter state: The current LinphoneRegistrationState. 
-	/// - Parameter message: A non nil informational message about the state.   
+	/// Get the registration state changed callback. 
+	/// - Returns: The current registration state changed callback. 
 	func onRegistrationStateChanged(account: Account, state: RegistrationState, message: String)
 	
-	/// Callback for notifying a message waiting indication change for the account. 
-	/// - Parameter account: LinphoneAccount object whose message waiting indication
-	/// changed.   
-	/// - Parameter mwi: The current LinphoneMessageWaitingIndication.   
+	/// Get the message waiting indication changed callback. 
+	/// - Returns: The current message waiting indication changed callback. 
 	func onMessageWaitingIndicationChanged(account: Account, mwi: MessageWaitingIndication)
 	
-	/// Callback for notifying that the conference information list of an account has
-	/// been updated. 
-	/// This is generally the case when retrieving conference informations from a CCMP
-	/// server as the request might take a little bit of time to be responded. In order
-	/// to allow the core to perform its tasks while the conference information are
-	/// being sent, the core will send first the list of conference information that
-	/// are locally stored and then this callback is called once it is updated with the
-	/// information received by the CCMP server. 
-	/// - Parameter account: ``Account`` object whose message waiting indication
-	/// changed.   
-	/// - Parameter infos: The updated list of conference informations    
+	/// Get the conference information updated callback. 
+	/// - Returns: The current conference information updated callback. 
 	func onConferenceInformationUpdated(account: Account, infos: [ConferenceInfo])
 }
 
@@ -1089,116 +1145,94 @@ class AccountDelegateManager
 public protocol AccountCreatorDelegate : AnyObject {
 	
 	
-	/// Callback to notify a response of server. 
-	/// - Parameter creator: ``AccountCreator`` object   
-	/// - Parameter status: The status of the ``AccountCreator`` test existence
-	/// operation that has just finished 
-	/// - Parameter response: The response has a string   
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// Get the create account request. 
+	/// - Returns: The current create account request. 
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServicesRequestDelegate`` instead 
 	func onCreateAccount(creator: AccountCreator, status: AccountCreator.Status, response: String)
 	
-	/// Callback to notify a response of server. 
-	/// - Parameter creator: ``AccountCreator`` object   
-	/// - Parameter status: The status of the ``AccountCreator`` test existence
-	/// operation that has just finished 
-	/// - Parameter response: The response has a string   
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// Get the is account exist request. 
+	/// - Returns: The current is account exist request. 
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServicesRequestDelegate`` instead 
 	func onIsAccountExist(creator: AccountCreator, status: AccountCreator.Status, response: String)
 	
-	/// Callback to notify a response of server. 
-	/// - Parameter creator: ``AccountCreator`` object   
-	/// - Parameter status: The status of the ``AccountCreator`` test existence
-	/// operation that has just finished 
-	/// - Parameter response: The response has a string   
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// Get the activate account request. 
+	/// - Returns: The current activate account request. 
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServicesRequestDelegate`` instead 
 	func onActivateAccount(creator: AccountCreator, status: AccountCreator.Status, response: String)
 	
-	/// Callback to notify a response of server. 
-	/// - Parameter creator: ``AccountCreator`` object   
-	/// - Parameter status: The status of the ``AccountCreator`` test existence
-	/// operation that has just finished 
-	/// - Parameter response: The response has a string   
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// Get the activate account request. 
+	/// - Returns: The current activate account request. 
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServicesRequestDelegate`` instead 
 	func onSendToken(creator: AccountCreator, status: AccountCreator.Status, response: String)
 	
-	/// Callback to notify a response of server. 
-	/// - Parameter creator: ``AccountCreator`` object   
-	/// - Parameter status: The status of the ``AccountCreator`` test existence
-	/// operation that has just finished 
-	/// - Parameter response: The response has a string   
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// Get the callback on account creation request token. 
+	/// In response:
+	/// -"token" is the request token to used with
+	/// ``AccountCreator/requestAccountCreationTokenUsingRequestToken()``.
+	/// -"validation_url" is a URL to redirect the user into a browser for validation.
+	/// In status:
+	/// -LinphoneAccountCreatorStatusRequestOk: the request token should be in response
+	/// with the validation url.
+	/// - Returns: The current request token request. 
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServicesRequestDelegate`` instead 
 	func onAccountCreationRequestToken(creator: AccountCreator, status: AccountCreator.Status, response: String)
 	
-	/// Callback to notify a response of server. 
-	/// - Parameter creator: ``AccountCreator`` object   
-	/// - Parameter status: The status of the ``AccountCreator`` test existence
-	/// operation that has just finished 
-	/// - Parameter response: The response has a string   
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// Get the callback on account creation token. 
+	/// In response, "token" is the token to pass to
+	/// ``AccountCreator/setToken(token:)``. It is used for
+	/// ``AccountCreator/createAccount()``
+	/// In status:
+	/// -LinphoneAccountCreatorStatusRequestOk: token can be retrieved from the "token"
+	/// field in response.
+	/// -LinphoneAccountCreatorStatusRequestFailed: request token has not been
+	/// validated. Recall
+	/// ``AccountCreator/requestAccountCreationTokenUsingRequestToken()`` after some
+	/// time.
+	/// -LinphoneAccountCreatorStatusMissingArguments: request_token has not been set
+	/// from ``AccountCreator/setToken(token:)``.
+	/// -LinphoneAccountCreatorStatusServerError: URL is not reachable.
+	/// - Returns: The current request token request. 
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServicesRequestDelegate`` instead 
 	func onAccountCreationTokenUsingRequestToken(creator: AccountCreator, status: AccountCreator.Status, response: String)
 	
-	/// Callback to notify a response of server. 
-	/// - Parameter creator: ``AccountCreator`` object   
-	/// - Parameter status: The status of the ``AccountCreator`` test existence
-	/// operation that has just finished 
-	/// - Parameter response: The response has a string   
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// Get the is account activated request. 
+	/// - Returns: The current is account activated request. 
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServicesRequestDelegate`` instead 
 	func onIsAccountActivated(creator: AccountCreator, status: AccountCreator.Status, response: String)
 	
-	/// Callback to notify a response of server. 
-	/// - Parameter creator: ``AccountCreator`` object   
-	/// - Parameter status: The status of the ``AccountCreator`` test existence
-	/// operation that has just finished 
-	/// - Parameter response: The response has a string   
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// Get the link account request. 
+	/// - Returns: The current link account request. 
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServicesRequestDelegate`` instead 
 	func onLinkAccount(creator: AccountCreator, status: AccountCreator.Status, response: String)
 	
-	/// Callback to notify a response of server. 
-	/// - Parameter creator: ``AccountCreator`` object   
-	/// - Parameter status: The status of the ``AccountCreator`` test existence
-	/// operation that has just finished 
-	/// - Parameter response: The response has a string   
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// Get the activate alias request. 
+	/// - Returns: The current link account request. 
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServicesRequestDelegate`` instead 
 	func onActivateAlias(creator: AccountCreator, status: AccountCreator.Status, response: String)
 	
-	/// Callback to notify a response of server. 
-	/// - Parameter creator: ``AccountCreator`` object   
-	/// - Parameter status: The status of the ``AccountCreator`` test existence
-	/// operation that has just finished 
-	/// - Parameter response: The response has a string   
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// Get the is alias used request. 
+	/// - Returns: The current is alias used request. 
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServicesRequestDelegate`` instead 
 	func onIsAliasUsed(creator: AccountCreator, status: AccountCreator.Status, response: String)
 	
-	/// Callback to notify a response of server. 
-	/// - Parameter creator: ``AccountCreator`` object   
-	/// - Parameter status: The status of the ``AccountCreator`` test existence
-	/// operation that has just finished 
-	/// - Parameter response: The response has a string   
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// Get the is account linked request. 
+	/// - Returns: The current is account linked request. 
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServicesRequestDelegate`` instead 
 	func onIsAccountLinked(creator: AccountCreator, status: AccountCreator.Status, response: String)
 	
-	/// Callback to notify a response of server. 
-	/// - Parameter creator: ``AccountCreator`` object   
-	/// - Parameter status: The status of the ``AccountCreator`` test existence
-	/// operation that has just finished 
-	/// - Parameter response: The response has a string   
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// Get the recover account request. 
+	/// - Returns: The current recover account request. 
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServicesRequestDelegate`` instead 
 	func onRecoverAccount(creator: AccountCreator, status: AccountCreator.Status, response: String)
 	
-	/// Callback to notify a response of server. 
-	/// - Parameter creator: ``AccountCreator`` object   
-	/// - Parameter status: The status of the ``AccountCreator`` test existence
-	/// operation that has just finished 
-	/// - Parameter response: The response has a string   
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// Get the update account request. 
+	/// - Returns: The current update account request. 
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServicesRequestDelegate`` instead 
 	func onUpdateAccount(creator: AccountCreator, status: AccountCreator.Status, response: String)
 	
-	/// Callback to notify a response of server. 
-	/// - Parameter creator: ``AccountCreator`` object   
-	/// - Parameter status: The status of the ``AccountCreator`` test existence
-	/// operation that has just finished 
-	/// - Parameter response: The response has a string   
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// Get the login linphone account request. 
+	/// - Returns: The current login linphone account request. 
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServicesRequestDelegate`` instead 
 	func onLoginLinphoneAccount(creator: AccountCreator, status: AccountCreator.Status, response: String)
 }
 
@@ -1445,25 +1479,16 @@ class AccountCreatorDelegateManager
 public protocol AccountManagerServicesRequestDelegate : AnyObject {
 	
 	
-	/// Callback for notifying a request was successful. 
-	/// - Parameter request: ``AccountManagerServicesRequest`` object.   
-	/// - Parameter data: any relevant data depending on the request (for example SIP
-	/// identity for account creation).   
+	/// Gets the request successful callback. 
+	/// - Returns: The current request successful callback. 
 	func onRequestSuccessful(request: AccountManagerServicesRequest, data: String)
 	
-	/// Callback for notifying a request has failed. 
-	/// - Parameter request: ``AccountManagerServicesRequest`` object.   
-	/// - Parameter statusCode: The error status code. 
-	/// - Parameter errorMessage: An error message, if any.   
-	/// - Parameter parameterErrors: A ``Dictionary`` with parameter specific errors,
-	/// if any.   
+	/// Gets the request error callback. 
+	/// - Returns: The current request error callback. 
 	func onRequestError(request: AccountManagerServicesRequest, statusCode: Int, errorMessage: String, parameterErrors: Dictionary?)
 	
-	/// Callback for notifying when the
-	/// #LinphoneAccountManagerServicesRequestGetDevicesList request has results
-	/// available. 
-	/// - Parameter request: ``AccountManagerServicesRequest`` object.   
-	/// - Parameter devicesList: the  of fetched devices.   
+	/// Gets the devices list fetched callback. 
+	/// - Returns: The current devices list fetched callback. 
 	func onDevicesListFetched(request: AccountManagerServicesRequest, devicesList: [AccountDevice])
 }
 
@@ -1553,8 +1578,8 @@ class AccountManagerServicesRequestDelegateManager
 public protocol AlertDelegate : AnyObject {
 	
 	
-	/// Callback to know if an alert stops. 
-	/// - Parameter alert: the alert that stops   
+	/// Get the callback for when the alert is terminated. 
+	/// - Returns: The LinphoneAlertCbsTerminatedCb callback to execute.    
 	func onTerminated(alert: Alert)
 }
 
@@ -1606,125 +1631,115 @@ class AlertDelegateManager
 public protocol CallDelegate : AnyObject {
 	
 	
-	/// Callback for being notified of received DTMFs. 
-	/// - Parameter call: LinphoneCall object that received the dtmf   
-	/// - Parameter dtmf: The ascii code of the dtmf 
+	/// Get the dtmf received callback. 
+	/// - Returns: The current dtmf received callback. 
 	func onDtmfReceived(call: Call, dtmf: Int)
 	
-	/// GoClear ACK sent callback. 
-	/// - Parameter call: the ``Call`` on which the GoClear ACK was sent.   
+	/// Get the GoClear Ack sent callback. 
+	/// - Returns: The GoClear Ack sent callback. 
 	func onGoclearAckSent(call: Call)
 	
-	/// Call security level downgraded callback. 
-	/// - Parameter call: ``Call`` object whose security level is downgraded.   
+	/// Get the security level downgraded callback. 
+	/// - Returns: The current security level downgraded callback. 
 	func onSecurityLevelDowngraded(call: Call)
 	
-	/// Call encryption changed callback. 
-	/// - Parameter call: ``Call`` object whose encryption is changed.   
-	/// - Parameter on: Whether encryption is activated. 
-	/// - Parameter authenticationToken: An authentication_token, currently set for
-	/// ZRTP kind of encryption only.   
+	/// Get the encryption changed callback. 
+	/// - Returns: The current encryption changed callback. 
 	func onEncryptionChanged(call: Call, on: Bool, authenticationToken: String)
 	
-	/// Call authentication token verified callback. 
-	/// - Parameter call: ``Call`` object whose authentication is verified.   
-	/// - Parameter verified: Whether encryption is verified. 
+	/// Get the authentication token verified callback. 
+	/// - Returns: The current authentication token verified callback. 
 	func onAuthenticationTokenVerified(call: Call, verified: Bool)
 	
-	/// Call send master key changed callback. 
-	/// - Parameter call: ``Call`` object whose encryption is changed.   
-	/// - Parameter sendMasterKey: The send master key of the SRTP session.   
+	/// Get the send master key changed callback. 
+	/// - Returns: The current send master key changed callback. 
 	func onSendMasterKeyChanged(call: Call, sendMasterKey: String)
 	
-	/// Call receive master key changed callback. 
-	/// - Parameter call: ``Call`` object whose encryption is changed.   
-	/// - Parameter receiveMasterKey: The receive master key of the SRTP session.   
+	/// Get the receive master key changed callback. 
+	/// - Returns: The current receive master key changed callback. 
 	func onReceiveMasterKeyChanged(call: Call, receiveMasterKey: String)
 	
-	/// Callback for receiving info messages. 
-	/// - Parameter call: ``Call`` whose info message belongs to.   
-	/// - Parameter message: ``InfoMessage`` object.   
+	/// Get the info message received callback. 
+	/// - Returns: The current info message received callback. 
 	func onInfoMessageReceived(call: Call, message: InfoMessage)
 	
-	/// Call state notification callback. 
-	/// - Parameter call: ``Call`` whose state is changed.   
-	/// - Parameter state: The new ``Call.State`` of the call 
-	/// - Parameter message: An informational message about the state.   
+	/// Get the state changed callback. 
+	/// - Returns: The current state changed callback. 
 	func onStateChanged(call: Call, state: Call.State, message: String)
 	
-	/// Callback for receiving quality statistics for calls. 
-	/// - Parameter call: ``Call`` object whose statistics are notified   
-	/// - Parameter stats: ``CallStats`` object   
+	/// Get the stats updated callback. 
+	/// - Returns: The current stats updated callback. 
 	func onStatsUpdated(call: Call, stats: CallStats)
 	
-	/// Callback for notifying progresses of transfers. 
-	/// - Parameter call: LinphoneCall that was transferred   
-	/// - Parameter state: The LinphoneCallState of the call to transfer target at the
-	/// far end. 
+	/// Get the transfer state changed callback. 
+	/// - Returns: The current transfer state changed callback. 
 	func onTransferStateChanged(call: Call, state: Call.State)
 	
-	/// Callback for notifying when a call transfer (refer) is requested. 
-	/// - Parameter call: ``Call`` associated with the transfer request.   
-	/// - Parameter referTo: The target ``Address`` to which the call is being
-	/// transferred.   
+	/// Get the refer requested callback. 
+	/// - Returns: The refer requested callback. 
 	func onReferRequested(call: Call, referTo: Address)
 	
-	/// Callback for notifying the processing SIP ACK messages. 
-	/// - Parameter call: ``Call`` for which an ACK is being received or sent   
-	/// - Parameter ack: the ACK ``Headers``   
-	/// - Parameter isReceived: if true this ACK is an incoming one, otherwise it is an
-	/// ACK about to be sent. 
+	/// Get the ACK processing callback. 
+	/// - Returns: The current ack processing callback. 
 	func onAckProcessing(call: Call, ack: Headers, isReceived: Bool)
 	
-	/// Callback for notifying a received TMMBR. 
-	/// - Parameter call: LinphoneCall for which the TMMBR has changed   
-	/// - Parameter streamIndex: the index of the current stream 
-	/// - Parameter tmmbr: the value of the received TMMBR 
+	/// Get the TMMBR received callback. 
+	/// - Returns: The current TMMBR received callback. 
 	func onTmmbrReceived(call: Call, streamIndex: Int, tmmbr: Int)
 	
-	/// Callback for notifying a snapshot taken. 
-	/// - Parameter call: LinphoneCall for which the snapshot was taken   
-	/// - Parameter filePath: the name of the saved file   
+	/// Get the snapshot taken callback. 
+	/// - Returns: The current snapshot taken callback. 
 	func onSnapshotTaken(call: Call, filePath: String)
 	
-	/// Callback to notify a next video frame has been decoded. 
-	/// - Parameter call: LinphoneCall for which the next video frame has been decoded 
-	///  
+	/// Get the next video frame decoded callback. 
+	/// - Returns: The current next video frame decoded callback. 
 	func onNextVideoFrameDecoded(call: Call)
 	
-	/// Callback to notify that the camera is not working and has been changed to "No
-	/// Webcam". 
-	/// A camera is detected as mis-functionning as soon as it outputs no frames at all
-	/// during a period of 5 seconds. This check is only performed on desktop
-	/// platforms, in the purpose of notifying camera failures, for example if when a
-	/// usb cable gets disconnected.
-	/// - Parameter call: LinphoneCall for which the next video frame has been decoded 
-	///  
-	/// - Parameter cameraName: the name of the non-working camera   
+	/// Get the camera not working callback. 
+	/// - Returns: The camera not working callback. 
 	func onCameraNotWorking(call: Call, cameraName: String)
 	
-	/// Callback to notify that there are errors from the video rendering. 
-	/// The error code depends of the implementation.
-	/// - Parameter call: LinphoneCall   
-	/// - Parameter errorCode: error code from render. It depends of the renderer. 
+	/// Get the callback that will be used to notify that there are errors from the
+	/// video rendering. 
+	/// Check LinphoneCallCbsVideoDisplayErrorOccurredCb for more details.
+	/// - Returns: The failing rendering callback. 
 	func onVideoDisplayErrorOccurred(call: Call, errorCode: Int)
 	
-	/// Callback to notify that the audio device has been changed. 
-	/// - Parameter call: LinphoneCall for which the audio device has changed   
-	/// - Parameter audioDevice: the new audio device used for this call   
+	/// Get the audio device changed callback. 
+	/// - Returns: The audio device changed callback. 
 	func onAudioDeviceChanged(call: Call, audioDevice: AudioDevice)
 	
-	/// Callback to notify that the call is being recorded by the remote. 
-	/// - Parameter call: LinphoneCall for which the audio is recorded   
-	/// - Parameter recording: true if the call is being recorded by the remote, false
-	/// otherwise 
+	/// Get the call remote recording callback. 
+	/// - Returns: The call remote recording callback. 
 	func onRemoteRecording(call: Call, recording: Bool)
 	
-	/// Callback to notify that Baudot tones have been detected in the audio received
-	/// from the remote. 
-	/// - Parameter call: LinphoneCall where Baudot tones have been detected   
-	/// - Parameter standard: The Baudot standard of the detected tones. 
+	/// Get the Baudot detected callback. 
+	/// - Returns: The Baudot detected callback. 
 	func onBaudotDetected(call: Call, standard: BaudotStandard)
+	
+	/// Get the headset answer call requested callback. 
+	/// - Returns: The headset answer call requested callback. 
+	func onHeadsetAnswerCallRequested(call: Call)
+	
+	/// Get the headset end call requested callback. 
+	/// - Returns: The headset end call requested callback. 
+	func onHeadsetEndCallRequested(call: Call)
+	
+	/// Get the headset hold call requested callback. 
+	/// - Returns: The headset hold call requested callback. 
+	func onHeadsetHoldCallRequested(call: Call)
+	
+	/// Get the headset microphone mute toggled callback. 
+	/// - Returns: The headset microphone mute toggled callback. 
+	func onHeadsetMicrophoneMuteToggled(call: Call, mute: Bool)
+	
+	/// Get the headset reject call requested callback. 
+	/// - Returns: The headset reject call requested callback. 
+	func onHeadsetRejectCallRequested(call: Call)
+	
+	/// Get the headset resume call requested callback. 
+	/// - Returns: The headset resume call requested callback. 
+	func onHeadsetResumeCallRequested(call: Call)
 }
 
 public extension CallDelegate {
@@ -1770,6 +1785,18 @@ public extension CallDelegate {
 	func onRemoteRecording(call: Call, recording: Bool) {}
 	
 	func onBaudotDetected(call: Call, standard: BaudotStandard) {}
+	
+	func onHeadsetAnswerCallRequested(call: Call) {}
+	
+	func onHeadsetEndCallRequested(call: Call) {}
+	
+	func onHeadsetHoldCallRequested(call: Call) {}
+	
+	func onHeadsetMicrophoneMuteToggled(call: Call, mute: Bool) {}
+	
+	func onHeadsetRejectCallRequested(call: Call) {}
+	
+	func onHeadsetResumeCallRequested(call: Call) {}
 }
 
 public final class CallDelegateStub : CallDelegate
@@ -1795,6 +1822,12 @@ public final class CallDelegateStub : CallDelegate
 	var _onAudioDeviceChanged: ((Call, AudioDevice) -> Void)?
 	var _onRemoteRecording: ((Call, Bool) -> Void)?
 	var _onBaudotDetected: ((Call, BaudotStandard) -> Void)?
+	var _onHeadsetAnswerCallRequested: ((Call) -> Void)?
+	var _onHeadsetEndCallRequested: ((Call) -> Void)?
+	var _onHeadsetHoldCallRequested: ((Call) -> Void)?
+	var _onHeadsetMicrophoneMuteToggled: ((Call, Bool) -> Void)?
+	var _onHeadsetRejectCallRequested: ((Call) -> Void)?
+	var _onHeadsetResumeCallRequested: ((Call) -> Void)?
 
 	
 	public func onDtmfReceived(call: Call, dtmf: Int){_onDtmfReceived.map{$0(call, dtmf)}}
@@ -1838,6 +1871,18 @@ public final class CallDelegateStub : CallDelegate
 	public func onRemoteRecording(call: Call, recording: Bool){_onRemoteRecording.map{$0(call, recording)}}
 	
 	public func onBaudotDetected(call: Call, standard: BaudotStandard){_onBaudotDetected.map{$0(call, standard)}}
+	
+	public func onHeadsetAnswerCallRequested(call: Call){_onHeadsetAnswerCallRequested.map{$0(call)}}
+	
+	public func onHeadsetEndCallRequested(call: Call){_onHeadsetEndCallRequested.map{$0(call)}}
+	
+	public func onHeadsetHoldCallRequested(call: Call){_onHeadsetHoldCallRequested.map{$0(call)}}
+	
+	public func onHeadsetMicrophoneMuteToggled(call: Call, mute: Bool){_onHeadsetMicrophoneMuteToggled.map{$0(call, mute)}}
+	
+	public func onHeadsetRejectCallRequested(call: Call){_onHeadsetRejectCallRequested.map{$0(call)}}
+	
+	public func onHeadsetResumeCallRequested(call: Call){_onHeadsetResumeCallRequested.map{$0(call)}}
 
 	public init (
 		onDtmfReceived: ((Call, Int) -> Void)? = nil,
@@ -1860,7 +1905,13 @@ public final class CallDelegateStub : CallDelegate
 		onVideoDisplayErrorOccurred: ((Call, Int) -> Void)? = nil,
 		onAudioDeviceChanged: ((Call, AudioDevice) -> Void)? = nil,
 		onRemoteRecording: ((Call, Bool) -> Void)? = nil,
-		onBaudotDetected: ((Call, BaudotStandard) -> Void)? = nil
+		onBaudotDetected: ((Call, BaudotStandard) -> Void)? = nil,
+		onHeadsetAnswerCallRequested: ((Call) -> Void)? = nil,
+		onHeadsetEndCallRequested: ((Call) -> Void)? = nil,
+		onHeadsetHoldCallRequested: ((Call) -> Void)? = nil,
+		onHeadsetMicrophoneMuteToggled: ((Call, Bool) -> Void)? = nil,
+		onHeadsetRejectCallRequested: ((Call) -> Void)? = nil,
+		onHeadsetResumeCallRequested: ((Call) -> Void)? = nil
 	) {
 		self._onDtmfReceived = onDtmfReceived
 		self._onGoclearAckSent = onGoclearAckSent
@@ -1883,6 +1934,12 @@ public final class CallDelegateStub : CallDelegate
 		self._onAudioDeviceChanged = onAudioDeviceChanged
 		self._onRemoteRecording = onRemoteRecording
 		self._onBaudotDetected = onBaudotDetected
+		self._onHeadsetAnswerCallRequested = onHeadsetAnswerCallRequested
+		self._onHeadsetEndCallRequested = onHeadsetEndCallRequested
+		self._onHeadsetHoldCallRequested = onHeadsetHoldCallRequested
+		self._onHeadsetMicrophoneMuteToggled = onHeadsetMicrophoneMuteToggled
+		self._onHeadsetRejectCallRequested = onHeadsetRejectCallRequested
+		self._onHeadsetResumeCallRequested = onHeadsetResumeCallRequested
 	}
 }
 
@@ -2067,6 +2124,54 @@ class CallDelegateManager
 				delegate?.onBaudotDetected(call: sObject, standard: BaudotStandard(rawValue: Int(standard.rawValue))!)
 			}
 		})
+
+		linphone_call_cbs_set_headset_answer_call_requested(cPtr, { (call) -> Void in
+			if (call != nil) {
+				let sObject = Call.getSwiftObject(cObject: call!)
+				let delegate = sObject.currentDelegate
+				delegate?.onHeadsetAnswerCallRequested(call: sObject)
+			}
+		})
+
+		linphone_call_cbs_set_headset_end_call_requested(cPtr, { (call) -> Void in
+			if (call != nil) {
+				let sObject = Call.getSwiftObject(cObject: call!)
+				let delegate = sObject.currentDelegate
+				delegate?.onHeadsetEndCallRequested(call: sObject)
+			}
+		})
+
+		linphone_call_cbs_set_headset_hold_call_requested(cPtr, { (call) -> Void in
+			if (call != nil) {
+				let sObject = Call.getSwiftObject(cObject: call!)
+				let delegate = sObject.currentDelegate
+				delegate?.onHeadsetHoldCallRequested(call: sObject)
+			}
+		})
+
+		linphone_call_cbs_set_headset_microphone_mute_toggled(cPtr, { (call, mute) -> Void in
+			if (call != nil) {
+				let sObject = Call.getSwiftObject(cObject: call!)
+				let delegate = sObject.currentDelegate
+				delegate?.onHeadsetMicrophoneMuteToggled(call: sObject, mute: mute != 0)
+			}
+		})
+
+		linphone_call_cbs_set_headset_reject_call_requested(cPtr, { (call) -> Void in
+			if (call != nil) {
+				let sObject = Call.getSwiftObject(cObject: call!)
+				let delegate = sObject.currentDelegate
+				delegate?.onHeadsetRejectCallRequested(call: sObject)
+			}
+		})
+
+		linphone_call_cbs_set_headset_resume_call_requested(cPtr, { (call) -> Void in
+			if (call != nil) {
+				let sObject = Call.getSwiftObject(cObject: call!)
+				let delegate = sObject.currentDelegate
+				delegate?.onHeadsetResumeCallRequested(call: sObject)
+			}
+		})
 	}
 
 
@@ -2075,86 +2180,65 @@ class CallDelegateManager
 public protocol ChatMessageDelegate : AnyObject {
 	
 	
-	/// Call back used to notify message delivery status. 
-	/// - Parameter message: ``ChatMessage`` object   
-	/// - Parameter state: ``ChatMessage.State`` 
+	/// Get the message state changed callback. 
+	/// - Returns: The current message state changed callback. 
 	func onMsgStateChanged(message: ChatMessage, state: ChatMessage.State)
 	
-	/// Callback used to notify a reaction has been received or sent for a given
-	/// message. 
-	/// - Parameter message: LinphoneChatMessage object   
-	/// - Parameter reaction: the LinphoneChatMessageReaction reaction that was sent or
-	/// received   
+	/// Get the new reaction callback. 
+	/// - Returns: The current new reaction callback. 
 	func onNewMessageReaction(message: ChatMessage, reaction: ChatMessageReaction)
 	
-	/// Callback used to notify a reaction has been removed from a given message. 
-	/// - Parameter message: LinphoneChatMessage object   
-	/// - Parameter address: the LinphoneAddress of the person that removed it's
-	/// reaction   
+	/// Gets the removed reaction callback. 
+	/// - Returns: The current new reaction callback. 
 	func onReactionRemoved(message: ChatMessage, address: Address)
 	
-	/// File transfer terminated callback prototype. 
-	/// - Parameter message: ``ChatMessage`` message from which the body is received.   
-	/// - Parameter content: ``Content`` incoming content information   
+	/// Gets the content edited callback. 
+	/// - Returns: The current new content edited callback. 
+	func onContentEdited(message: ChatMessage)
+	
+	/// Gets the retracted callback. 
+	/// - Returns: The current new retracted callback. 
+	func onRetracted(message: ChatMessage)
+	
+	/// Get the download file transfer terminated callback. 
+	/// - Warning: this callback is called everytime a message attachment is
+	/// downloaded. For a message with more than one attachment, this callback will be
+	/// called as many times as attachments in the message. 
+	/// - Returns: The current file transfer terminated callback. 
 	func onFileTransferTerminated(message: ChatMessage, content: Content)
 	
-	/// File transfer receive callback prototype. 
-	/// This function is called by the core upon an incoming File transfer is started.
-	/// This function may be call several time for the same file in case of large file. 
-	/// - Parameter message: ``ChatMessage`` message from which the body is received.   
-	/// - Parameter content: ``Content`` incoming content information   
-	/// - Parameter buffer: ``Buffer`` holding the received data. Empty buffer means
-	/// end of file.   
+	/// Get the file transfer receive callback. 
+	/// - Returns: The current file transfer receive callback. 
 	func onFileTransferRecv(message: ChatMessage, content: Content, buffer: Buffer)
 	
-	/// File transfer send callback prototype. 
-	/// This function is called by the core when an outgoing file transfer is started.
-	/// This function is called until size is set to 0. 
-	/// - Parameter message: ``ChatMessage`` message from which the body is received.   
-	/// - Parameter content: ``Content`` outgoing content   
-	/// - Parameter offset: the offset in the file from where to get the data to be
-	/// sent 
-	/// - Parameter size: the number of bytes expected by the framework 
-	/// - Returns: A ``Buffer`` object holding the data written by the application. An
-	/// empty buffer means end of file.    
-	/// - Warning: The returned value isn't used, hence the deprecation! 
-	/// - deprecated: 17/08/2020 Use LinphoneChatMessageCbsFileTransferSendChunkCb
-	/// instead. 
+	/// Get the file transfer send callback. 
+	/// - Returns: The current file transfer send callback. 
+	/// - Deprecated: 17/08/2020 Use
+	/// linphone_chat_message_cbs_get_file_transfer_send_chunk instead. 
 	func onFileTransferSend(message: ChatMessage, content: Content, offset: Int, size: Int) -> Buffer?
 	
-	/// File transfer send callback prototype. 
-	/// This function is called by the core when an outgoing file transfer is started.
-	/// This function is called until size is set to 0. 
-	/// - Parameter message: ``ChatMessage`` message from which the body is received.   
-	/// - Parameter content: ``Content`` outgoing content   
-	/// - Parameter offset: the offset in the file from where to get the data to be
-	/// sent 
-	/// - Parameter size: the number of bytes expected by the framework 
-	/// - Parameter buffer: A ``Buffer`` to be filled. Leave it empty when end of file
-	/// has been reached.   
+	/// Get the file transfer send callback. 
+	/// - Returns: The current file transfer send callback. 
 	func onFileTransferSendChunk(message: ChatMessage, content: Content, offset: Int, size: Int, buffer: Buffer)
 	
-	/// File transfer progress indication callback prototype. 
-	/// - Parameter message: ``ChatMessage`` message from which the body is received.   
-	/// - Parameter content: ``Content`` incoming content information   
-	/// - Parameter offset: The number of bytes sent/received since the beginning of
-	/// the transfer. 
-	/// - Parameter total: The total number of bytes to be sent/received. 
+	/// Get the file transfer progress indication callback. 
+	/// - Returns: The current file transfer progress indication callback. 
 	func onFileTransferProgressIndication(message: ChatMessage, content: Content, offset: Int, total: Int)
 	
-	/// Call back used to notify participant IMDN state. 
-	/// - Parameter message: ``ChatMessage`` object   
-	/// - Parameter state: ``ParticipantImdnState``   
+	/// Get the participant IMDN state changed callback. 
+	/// - Returns: The current participant IMDN state changed callback. 
 	func onParticipantImdnStateChanged(message: ChatMessage, state: ParticipantImdnState)
 	
-	/// Callback used to notify an ephemeral message that its lifespan before
-	/// disappearing has started to decrease. 
-	/// This callback is called when the ephemeral message is read by the receiver. 
-	/// - Parameter message: LinphoneChatMessage object   
+	/// Get the current "ephemeral message timer started" callback. 
+	/// This callback is called when the message deletion timer starts (the message has
+	/// been viewed). 
+	/// - Returns: The current ephemeral message timer started callback. 
 	func onEphemeralMessageTimerStarted(message: ChatMessage)
 	
-	/// Call back used to notify ephemeral message is deleted. 
-	/// - Parameter message: LinphoneChatMessage object   
+	/// Get the ephemeral message deleted callback. 
+	/// This callback is used when a message deletion timer runs out (message is
+	/// deleted). 
+	/// - Returns: The current ephemeral message deleted callback. 
 	func onEphemeralMessageDeleted(message: ChatMessage)
 }
 
@@ -2165,6 +2249,10 @@ public extension ChatMessageDelegate {
 	func onNewMessageReaction(message: ChatMessage, reaction: ChatMessageReaction) {}
 	
 	func onReactionRemoved(message: ChatMessage, address: Address) {}
+	
+	func onContentEdited(message: ChatMessage) {}
+	
+	func onRetracted(message: ChatMessage) {}
 	
 	func onFileTransferTerminated(message: ChatMessage, content: Content) {}
 	
@@ -2188,6 +2276,8 @@ public final class ChatMessageDelegateStub : ChatMessageDelegate
 	var _onMsgStateChanged: ((ChatMessage, ChatMessage.State) -> Void)?
 	var _onNewMessageReaction: ((ChatMessage, ChatMessageReaction) -> Void)?
 	var _onReactionRemoved: ((ChatMessage, Address) -> Void)?
+	var _onContentEdited: ((ChatMessage) -> Void)?
+	var _onRetracted: ((ChatMessage) -> Void)?
 	var _onFileTransferTerminated: ((ChatMessage, Content) -> Void)?
 	var _onFileTransferRecv: ((ChatMessage, Content, Buffer) -> Void)?
 	var _onFileTransferSend: ((ChatMessage, Content, Int, Int) -> Void)?
@@ -2203,6 +2293,10 @@ public final class ChatMessageDelegateStub : ChatMessageDelegate
 	public func onNewMessageReaction(message: ChatMessage, reaction: ChatMessageReaction){_onNewMessageReaction.map{$0(message, reaction)}}
 	
 	public func onReactionRemoved(message: ChatMessage, address: Address){_onReactionRemoved.map{$0(message, address)}}
+	
+	public func onContentEdited(message: ChatMessage){_onContentEdited.map{$0(message)}}
+	
+	public func onRetracted(message: ChatMessage){_onRetracted.map{$0(message)}}
 	
 	public func onFileTransferTerminated(message: ChatMessage, content: Content){_onFileTransferTerminated.map{$0(message, content)}}
 	
@@ -2224,6 +2318,8 @@ public final class ChatMessageDelegateStub : ChatMessageDelegate
 		onMsgStateChanged: ((ChatMessage, ChatMessage.State) -> Void)? = nil,
 		onNewMessageReaction: ((ChatMessage, ChatMessageReaction) -> Void)? = nil,
 		onReactionRemoved: ((ChatMessage, Address) -> Void)? = nil,
+		onContentEdited: ((ChatMessage) -> Void)? = nil,
+		onRetracted: ((ChatMessage) -> Void)? = nil,
 		onFileTransferTerminated: ((ChatMessage, Content) -> Void)? = nil,
 		onFileTransferRecv: ((ChatMessage, Content, Buffer) -> Void)? = nil,
 		onFileTransferSend: ((ChatMessage, Content, Int, Int) -> Void)? = nil,
@@ -2236,6 +2332,8 @@ public final class ChatMessageDelegateStub : ChatMessageDelegate
 		self._onMsgStateChanged = onMsgStateChanged
 		self._onNewMessageReaction = onNewMessageReaction
 		self._onReactionRemoved = onReactionRemoved
+		self._onContentEdited = onContentEdited
+		self._onRetracted = onRetracted
 		self._onFileTransferTerminated = onFileTransferTerminated
 		self._onFileTransferRecv = onFileTransferRecv
 		self._onFileTransferSend = onFileTransferSend
@@ -2282,6 +2380,22 @@ class ChatMessageDelegateManager
 				let sObject = ChatMessage.getSwiftObject(cObject: message!)
 				let delegate = sObject.currentDelegate
 				delegate?.onReactionRemoved(message: sObject, address: Address.getSwiftObject(cObject: address!))
+			}
+		})
+
+		linphone_chat_message_cbs_set_content_edited(cPtr, { (message) -> Void in
+			if (message != nil) {
+				let sObject = ChatMessage.getSwiftObject(cObject: message!)
+				let delegate = sObject.currentDelegate
+				delegate?.onContentEdited(message: sObject)
+			}
+		})
+
+		linphone_chat_message_cbs_set_retracted(cPtr, { (message) -> Void in
+			if (message != nil) {
+				let sObject = ChatMessage.getSwiftObject(cObject: message!)
+				let delegate = sObject.currentDelegate
+				delegate?.onRetracted(message: sObject)
 			}
 		})
 
@@ -2358,194 +2472,161 @@ class ChatMessageDelegateManager
 public protocol ChatRoomDelegate : AnyObject {
 	
 	
-	/// Is composing notification callback prototype. 
-	/// - Parameter chatRoom: LinphoneChatRoom involved in the conversation   
-	/// - Parameter remoteAddress: The LinphoneAddress that has sent the is-composing
-	/// notification   
-	/// - Parameter isComposing: A boolean value telling whether the remote is
-	/// composing or not 
+	/// Get the is-composing received callback. 
+	/// - Returns: The current is-composing received callback. 
 	func onIsComposingReceived(chatRoom: ChatRoom, remoteAddress: Address, isComposing: Bool)
 	
-	/// Callback used to notify a chat room that a message has been received. 
-	/// - Parameter chatRoom: LinphoneChatRoom object   
-	/// - Parameter message: The LinphoneChatMessage that has been received   
+	/// Get the message received callback. 
+	/// - Returns: The current message received callback. 
 	func onMessageReceived(chatRoom: ChatRoom, message: ChatMessage)
 	
-	/// Callback used to notify a chat room that many chat messages have been received. 
+	/// Get the chat messages received callback. 
 	/// Only called when aggregation is enabled (aka [sip] chat_messages_aggregation ==
 	/// 1 or using linphone_core_set_chat_messages_aggregation_enabled), it replaces
 	/// the single message received callback. 
-	/// - Parameter chatRoom: LinphoneChatRoom object   
-	/// - Parameter chatMessages: The  list of events to be notified   
+	/// - Returns: The current chat messages received callback. 
 	func onMessagesReceived(chatRoom: ChatRoom, chatMessages: [ChatMessage])
 	
-	/// Callback used to notify a chat room that an event log has been created. 
-	/// - Parameter chatRoom: ``ChatRoom`` object   
-	/// - Parameter eventLog: ``EventLog`` The event to be notified   
+	/// Get the new event log callback. 
+	/// This callback will be called before every other ``EventLog`` related callback. 
+	/// - Returns: The current event log created callback. 
 	func onNewEvent(chatRoom: ChatRoom, eventLog: EventLog)
 	
-	/// Callback used to notify a chat room that many event logs have been created. 
-	/// - Parameter chatRoom: ``ChatRoom`` object   
-	/// - Parameter eventLogs: The  list of events to be notified   
+	/// Get the new event logs callback. 
+	/// This callback will be called before every other ``EventLog`` related callback. 
+	/// - Returns: The current event logs created callback. 
 	func onNewEvents(chatRoom: ChatRoom, eventLogs: [EventLog])
 	
-	/// Callback used to notify a chat room that a chat message has been received. 
-	/// - Parameter chatRoom: ``ChatRoom`` object   
-	/// - Parameter eventLog: ``EventLog`` The event to be notified   
+	/// Get the chat message received callback. 
+	/// - Returns: The current chat message received callback. 
 	func onChatMessageReceived(chatRoom: ChatRoom, eventLog: EventLog)
 	
-	/// Callback used to notify a chat room that one or many chat messages have been
-	/// received. 
+	/// Get the chat messages received callback. 
 	/// Only called when aggregation is enabled (aka [sip] chat_messages_aggregation ==
 	/// 1 or using ``Core/setChatMessagesAggregationEnabled(enabled:)``), it replaces
 	/// the single chat message received callback. 
-	/// - Parameter chatRoom: ``ChatRoom`` object   
-	/// - Parameter eventLogs: The  list of events to be notified   
+	/// - Returns: The current chat message received callback. 
 	func onChatMessagesReceived(chatRoom: ChatRoom, eventLogs: [EventLog])
 	
-	/// Callback used to notify a chat room that a chat message is being sent. 
-	/// - Parameter chatRoom: ``ChatRoom`` object   
-	/// - Parameter eventLog: ``EventLog`` The event to be notified   
+	/// Get the chat message sending callback. 
+	/// - Returns: The current chat message being sent callback. 
 	func onChatMessageSending(chatRoom: ChatRoom, eventLog: EventLog)
 	
-	/// Callback used to notify a chat room that a chat message has been sent. 
-	/// - Parameter chatRoom: ``ChatRoom`` object   
-	/// - Parameter eventLog: ``EventLog`` The event to be notified   
+	/// Get the chat message sent callback. 
+	/// - Returns: The current chat message sent callback. 
 	func onChatMessageSent(chatRoom: ChatRoom, eventLog: EventLog)
 	
-	/// Callback used to notify a chat room that a participant has been added. 
-	/// - Parameter chatRoom: ``ChatRoom`` object   
-	/// - Parameter eventLog: ``EventLog`` The event to be notified   
+	/// Get the participant added callback. 
+	/// - Returns: The current participant added callback. 
 	func onParticipantAdded(chatRoom: ChatRoom, eventLog: EventLog)
 	
-	/// Callback used to notify a chat room that a participant has been removed. 
-	/// - Parameter chatRoom: ``ChatRoom`` object   
-	/// - Parameter eventLog: ``EventLog`` The event to be notified   
+	/// Get the participant removed callback. 
+	/// - Returns: The current participant removed callback. 
 	func onParticipantRemoved(chatRoom: ChatRoom, eventLog: EventLog)
 	
-	/// Callback used to notify a chat room that the admin status of a participant has
-	/// been changed. 
-	/// - Parameter chatRoom: ``ChatRoom`` object   
-	/// - Parameter eventLog: ``EventLog`` The event to be notified   
+	/// Get the participant admin status changed callback. 
+	/// - Returns: The current participant admin status changed callback. 
 	func onParticipantAdminStatusChanged(chatRoom: ChatRoom, eventLog: EventLog)
 	
-	/// Callback used to notify a chat room state has changed. 
-	/// - Parameter chatRoom: LinphoneChatRoom object   
-	/// - Parameter newState: The new LinphoneChatRoomState of the chat room 
+	/// Get the leave failed callback. 
+	/// - Returns: The current leave failed callback. 
+	func onOperationFailed(chatRoom: ChatRoom)
+	
+	/// Get the state changed callback. 
+	/// - Returns: The current state changed callback. 
 	func onStateChanged(chatRoom: ChatRoom, newState: ChatRoom.State)
 	
-	/// Callback used to notify a security event in the chat room. 
-	/// - Parameter chatRoom: ``ChatRoom`` object   
-	/// - Parameter eventLog: ``EventLog`` The event to be notified   
+	/// Get the security event callback. 
+	/// - Returns: The security event callback to be used. 
 	func onSecurityEvent(chatRoom: ChatRoom, eventLog: EventLog)
 	
-	/// Callback used to notify that the subject of a chat room has changed. 
-	/// - Parameter chatRoom: ``ChatRoom`` object   
-	/// - Parameter eventLog: ``EventLog`` The event to be notified   
+	/// Get the subject changed callback. 
+	/// - Returns: The current subject changed callback. 
 	func onSubjectChanged(chatRoom: ChatRoom, eventLog: EventLog)
 	
-	/// Callback used to notify a chat room that a message has been received but we
-	/// were unable to decrypt it. 
-	/// - Parameter chatRoom: ``ChatRoom`` involved in this conversation   
-	/// - Parameter message: The ``ChatMessage`` that has been received   
+	/// Get the message early failure callback. 
+	/// - Returns: The current message early failure callback. 
+	func onMessageEarlyFailure(chatRoom: ChatRoom, eventLog: EventLog)
+	
+	/// Get the undecryptable message received callback. 
+	/// - Returns: The current undecryptable message received callback. 
 	func onUndecryptableMessageReceived(chatRoom: ChatRoom, message: ChatMessage)
 	
-	/// Callback used to notify a chat room that a participant has been added. 
-	/// - Parameter chatRoom: ``ChatRoom`` object   
-	/// - Parameter eventLog: ``EventLog`` The event to be notified   
+	/// Get the participant device added callback. 
+	/// - Returns: The current participant device added callback. 
 	func onParticipantDeviceAdded(chatRoom: ChatRoom, eventLog: EventLog)
 	
-	/// Callback used to notify a chat room that a participant has been removed. 
-	/// - Parameter chatRoom: ``ChatRoom`` object   
-	/// - Parameter eventLog: ``EventLog`` The event to be notified   
+	/// Get the participant device removed callback. 
+	/// - Returns: The current participant device removed callback. 
 	func onParticipantDeviceRemoved(chatRoom: ChatRoom, eventLog: EventLog)
 	
-	/// Callback used to notify a conference that a participant device has changed
-	/// state. 
-	/// - Parameter chatRoom: ``ChatRoom`` object   
-	/// - Parameter eventLog: ``EventLog`` The event to be notified   
-	/// - Parameter state: new participant device state 
+	/// Get the participant device state callback. 
+	/// - Returns: The current participant device state callback. 
 	func onParticipantDeviceStateChanged(chatRoom: ChatRoom, eventLog: EventLog, state: ParticipantDevice.State)
 	
-	/// Callback used to notify a conference that the media availability of a
-	/// participant device has been changed. 
-	/// - Parameter chatRoom: ``ChatRoom`` object   
-	/// - Parameter eventLog: ``EventLog`` The event to be notified   
+	/// Get the participant device media availability changed callback. 
+	/// - Returns: The current participant device media availability changed callback. 
 	func onParticipantDeviceMediaAvailabilityChanged(chatRoom: ChatRoom, eventLog: EventLog)
 	
-	/// Callback used to notify a chat room has been joined. 
-	/// - Parameter chatRoom: ``ChatRoom`` object   
-	/// - Parameter eventLog: ``EventLog`` The event to be notified   
+	/// Get the conference joined callback. 
+	/// - Returns: The current conference joined callback. 
 	func onConferenceJoined(chatRoom: ChatRoom, eventLog: EventLog)
 	
-	/// Callback used to notify a chat room has been left. 
-	/// - Parameter chatRoom: ``ChatRoom`` object   
-	/// - Parameter eventLog: ``EventLog`` The event to be notified   
+	/// Get the conference left callback. 
+	/// - Returns: The current conference left callback. 
 	func onConferenceLeft(chatRoom: ChatRoom, eventLog: EventLog)
 	
-	/// Callback used to notify a chat room that an ephemeral related event has been
-	/// generated. 
-	/// - Parameter chatRoom: ``ChatRoom`` object   
-	/// - Parameter eventLog: ``EventLog`` The event to be notified   
+	/// Get the ephemeral event callback. 
+	/// - Returns: The ephemeral event callback to be used. 
 	func onEphemeralEvent(chatRoom: ChatRoom, eventLog: EventLog)
 	
-	/// Callback used to notify a chat room that the lifespan of an ephemeral message
-	/// before disappearing has started to decrease. 
-	/// This callback is called when the ephemeral message is read by the receiver. 
-	/// - Parameter chatRoom: ``ChatRoom`` object   
-	/// - Parameter eventLog: ``EventLog`` The event to be notified   
+	/// Get the current "ephemeral message timer started" callback. 
+	/// This callback is called when a message deletion timer starts (the message has
+	/// been viewed). 
+	/// - Returns: The current ephemeral message "timer started" callback. 
 	func onEphemeralMessageTimerStarted(chatRoom: ChatRoom, eventLog: EventLog)
 	
-	/// Callback used to notify a chat room that an ephemeral message has been deleted. 
-	/// - Parameter chatRoom: ``ChatRoom`` object   
-	/// - Parameter eventLog: ``EventLog`` The event to be notified   
+	/// Get the ephemeral message deleted callback. 
+	/// This callback is used when a message deletion timer runs out (message is
+	/// deleted). 
+	/// - Returns: The current ephemeral message deleted callback. 
 	func onEphemeralMessageDeleted(chatRoom: ChatRoom, eventLog: EventLog)
 	
-	/// Callback used when a group chat room is created server-side to generate the
-	/// address of the chat room. 
-	/// The function ``ChatRoom/setConferenceAddress(conferenceAddress:)`` needs to be
-	/// called by this callback. 
-	/// - Parameter chatRoom: ``ChatRoom`` object   
+	/// Get the conference address generation callback. 
+	/// - Returns: The current conference address generation callback 
 	func onConferenceAddressGeneration(chatRoom: ChatRoom)
 	
-	/// Callback used when a group chat room server is subscribing to registration
-	/// state of a participant. 
-	/// - Parameter chatRoom: ``ChatRoom`` object   
-	/// - Parameter participantAddress: ``Address`` object   
+	/// Get the participant registration subscription callback. 
+	/// - Returns: The participant registration subscription callback 
 	func onParticipantRegistrationSubscriptionRequested(chatRoom: ChatRoom, participantAddress: Address)
 	
-	/// Callback used when a group chat room server is unsubscribing to registration
-	/// state of a participant. 
-	/// - Parameter chatRoom: ``ChatRoom`` object   
-	/// - Parameter participantAddress: ``Address`` object   
+	/// Get the participant registration unsubscription callback. 
+	/// - Returns: The participant registration unsubscription callback 
 	func onParticipantRegistrationUnsubscriptionRequested(chatRoom: ChatRoom, participantAddress: Address)
 	
-	/// Callback used to tell the core whether or not to store the incoming message in
-	/// db or not using ``ChatMessage/setToBeStored(toBeStored:)``. 
-	/// - Parameter chatRoom: ``ChatRoom`` object   
-	/// - Parameter message: The ``ChatMessage`` that is being received   
+	/// Get the message should be stored callback. 
+	/// - Returns: The message should be stored callback 
 	func onChatMessageShouldBeStored(chatRoom: ChatRoom, message: ChatMessage)
 	
-	/// Callback used to notify a participant state has changed in a message of this
-	/// chat room. 
-	/// - Parameter chatRoom: ``ChatRoom`` object   
-	/// - Parameter message: The ``ChatMessage`` for which a participant has it's state
-	/// changed   
-	/// - Parameter state: The ``ParticipantImdnState``   
+	/// Get the message's participant state changed callback. 
+	/// - Returns: The message's participant state changed callback callback 
 	func onChatMessageParticipantImdnStateChanged(chatRoom: ChatRoom, message: ChatMessage, state: ParticipantImdnState)
 	
-	/// Callback used to notify a chat room was "marked as read". 
-	/// - Parameter chatRoom: The LinphoneChatRoom object that was marked as read   
+	/// Get the "marked as read" callback. 
+	/// - Returns: The marked as read callback. 
 	func onChatRoomRead(chatRoom: ChatRoom)
 	
-	/// Callback used to notify a reaction has been received or sent for a given
-	/// message. 
-	/// - Parameter chatRoom: LinphoneChatRoom object   
-	/// - Parameter message: LinphoneChatMessage object for which we received a
-	/// reaction   
-	/// - Parameter reaction: the LinphoneChatMessageReaction reaction that was sent or
-	/// received   
+	/// Get the new reaction callback. 
+	/// - Returns: The current new reaction callback. 
 	func onNewMessageReaction(chatRoom: ChatRoom, message: ChatMessage, reaction: ChatMessageReaction)
+	
+	/// Get the message content edited callback. 
+	/// - Returns: The current message content edited callback. 
+	func onMessageContentEdited(chatRoom: ChatRoom, message: ChatMessage)
+	
+	/// Get the message retracted callback. 
+	/// - Returns: The current message retracted callback. 
+	func onMessageRetracted(chatRoom: ChatRoom, message: ChatMessage)
 }
 
 public extension ChatRoomDelegate {
@@ -2574,11 +2655,15 @@ public extension ChatRoomDelegate {
 	
 	func onParticipantAdminStatusChanged(chatRoom: ChatRoom, eventLog: EventLog) {}
 	
+	func onOperationFailed(chatRoom: ChatRoom) {}
+	
 	func onStateChanged(chatRoom: ChatRoom, newState: ChatRoom.State) {}
 	
 	func onSecurityEvent(chatRoom: ChatRoom, eventLog: EventLog) {}
 	
 	func onSubjectChanged(chatRoom: ChatRoom, eventLog: EventLog) {}
+	
+	func onMessageEarlyFailure(chatRoom: ChatRoom, eventLog: EventLog) {}
 	
 	func onUndecryptableMessageReceived(chatRoom: ChatRoom, message: ChatMessage) {}
 	
@@ -2613,6 +2698,10 @@ public extension ChatRoomDelegate {
 	func onChatRoomRead(chatRoom: ChatRoom) {}
 	
 	func onNewMessageReaction(chatRoom: ChatRoom, message: ChatMessage, reaction: ChatMessageReaction) {}
+	
+	func onMessageContentEdited(chatRoom: ChatRoom, message: ChatMessage) {}
+	
+	func onMessageRetracted(chatRoom: ChatRoom, message: ChatMessage) {}
 }
 
 public final class ChatRoomDelegateStub : ChatRoomDelegate
@@ -2629,9 +2718,11 @@ public final class ChatRoomDelegateStub : ChatRoomDelegate
 	var _onParticipantAdded: ((ChatRoom, EventLog) -> Void)?
 	var _onParticipantRemoved: ((ChatRoom, EventLog) -> Void)?
 	var _onParticipantAdminStatusChanged: ((ChatRoom, EventLog) -> Void)?
+	var _onOperationFailed: ((ChatRoom) -> Void)?
 	var _onStateChanged: ((ChatRoom, ChatRoom.State) -> Void)?
 	var _onSecurityEvent: ((ChatRoom, EventLog) -> Void)?
 	var _onSubjectChanged: ((ChatRoom, EventLog) -> Void)?
+	var _onMessageEarlyFailure: ((ChatRoom, EventLog) -> Void)?
 	var _onUndecryptableMessageReceived: ((ChatRoom, ChatMessage) -> Void)?
 	var _onParticipantDeviceAdded: ((ChatRoom, EventLog) -> Void)?
 	var _onParticipantDeviceRemoved: ((ChatRoom, EventLog) -> Void)?
@@ -2649,6 +2740,8 @@ public final class ChatRoomDelegateStub : ChatRoomDelegate
 	var _onChatMessageParticipantImdnStateChanged: ((ChatRoom, ChatMessage, ParticipantImdnState) -> Void)?
 	var _onChatRoomRead: ((ChatRoom) -> Void)?
 	var _onNewMessageReaction: ((ChatRoom, ChatMessage, ChatMessageReaction) -> Void)?
+	var _onMessageContentEdited: ((ChatRoom, ChatMessage) -> Void)?
+	var _onMessageRetracted: ((ChatRoom, ChatMessage) -> Void)?
 
 	
 	public func onIsComposingReceived(chatRoom: ChatRoom, remoteAddress: Address, isComposing: Bool){_onIsComposingReceived.map{$0(chatRoom, remoteAddress, isComposing)}}
@@ -2675,11 +2768,15 @@ public final class ChatRoomDelegateStub : ChatRoomDelegate
 	
 	public func onParticipantAdminStatusChanged(chatRoom: ChatRoom, eventLog: EventLog){_onParticipantAdminStatusChanged.map{$0(chatRoom, eventLog)}}
 	
+	public func onOperationFailed(chatRoom: ChatRoom){_onOperationFailed.map{$0(chatRoom)}}
+	
 	public func onStateChanged(chatRoom: ChatRoom, newState: ChatRoom.State){_onStateChanged.map{$0(chatRoom, newState)}}
 	
 	public func onSecurityEvent(chatRoom: ChatRoom, eventLog: EventLog){_onSecurityEvent.map{$0(chatRoom, eventLog)}}
 	
 	public func onSubjectChanged(chatRoom: ChatRoom, eventLog: EventLog){_onSubjectChanged.map{$0(chatRoom, eventLog)}}
+	
+	public func onMessageEarlyFailure(chatRoom: ChatRoom, eventLog: EventLog){_onMessageEarlyFailure.map{$0(chatRoom, eventLog)}}
 	
 	public func onUndecryptableMessageReceived(chatRoom: ChatRoom, message: ChatMessage){_onUndecryptableMessageReceived.map{$0(chatRoom, message)}}
 	
@@ -2714,6 +2811,10 @@ public final class ChatRoomDelegateStub : ChatRoomDelegate
 	public func onChatRoomRead(chatRoom: ChatRoom){_onChatRoomRead.map{$0(chatRoom)}}
 	
 	public func onNewMessageReaction(chatRoom: ChatRoom, message: ChatMessage, reaction: ChatMessageReaction){_onNewMessageReaction.map{$0(chatRoom, message, reaction)}}
+	
+	public func onMessageContentEdited(chatRoom: ChatRoom, message: ChatMessage){_onMessageContentEdited.map{$0(chatRoom, message)}}
+	
+	public func onMessageRetracted(chatRoom: ChatRoom, message: ChatMessage){_onMessageRetracted.map{$0(chatRoom, message)}}
 
 	public init (
 		onIsComposingReceived: ((ChatRoom, Address, Bool) -> Void)? = nil,
@@ -2728,9 +2829,11 @@ public final class ChatRoomDelegateStub : ChatRoomDelegate
 		onParticipantAdded: ((ChatRoom, EventLog) -> Void)? = nil,
 		onParticipantRemoved: ((ChatRoom, EventLog) -> Void)? = nil,
 		onParticipantAdminStatusChanged: ((ChatRoom, EventLog) -> Void)? = nil,
+		onOperationFailed: ((ChatRoom) -> Void)? = nil,
 		onStateChanged: ((ChatRoom, ChatRoom.State) -> Void)? = nil,
 		onSecurityEvent: ((ChatRoom, EventLog) -> Void)? = nil,
 		onSubjectChanged: ((ChatRoom, EventLog) -> Void)? = nil,
+		onMessageEarlyFailure: ((ChatRoom, EventLog) -> Void)? = nil,
 		onUndecryptableMessageReceived: ((ChatRoom, ChatMessage) -> Void)? = nil,
 		onParticipantDeviceAdded: ((ChatRoom, EventLog) -> Void)? = nil,
 		onParticipantDeviceRemoved: ((ChatRoom, EventLog) -> Void)? = nil,
@@ -2747,7 +2850,9 @@ public final class ChatRoomDelegateStub : ChatRoomDelegate
 		onChatMessageShouldBeStored: ((ChatRoom, ChatMessage) -> Void)? = nil,
 		onChatMessageParticipantImdnStateChanged: ((ChatRoom, ChatMessage, ParticipantImdnState) -> Void)? = nil,
 		onChatRoomRead: ((ChatRoom) -> Void)? = nil,
-		onNewMessageReaction: ((ChatRoom, ChatMessage, ChatMessageReaction) -> Void)? = nil
+		onNewMessageReaction: ((ChatRoom, ChatMessage, ChatMessageReaction) -> Void)? = nil,
+		onMessageContentEdited: ((ChatRoom, ChatMessage) -> Void)? = nil,
+		onMessageRetracted: ((ChatRoom, ChatMessage) -> Void)? = nil
 	) {
 		self._onIsComposingReceived = onIsComposingReceived
 		self._onMessageReceived = onMessageReceived
@@ -2761,9 +2866,11 @@ public final class ChatRoomDelegateStub : ChatRoomDelegate
 		self._onParticipantAdded = onParticipantAdded
 		self._onParticipantRemoved = onParticipantRemoved
 		self._onParticipantAdminStatusChanged = onParticipantAdminStatusChanged
+		self._onOperationFailed = onOperationFailed
 		self._onStateChanged = onStateChanged
 		self._onSecurityEvent = onSecurityEvent
 		self._onSubjectChanged = onSubjectChanged
+		self._onMessageEarlyFailure = onMessageEarlyFailure
 		self._onUndecryptableMessageReceived = onUndecryptableMessageReceived
 		self._onParticipantDeviceAdded = onParticipantDeviceAdded
 		self._onParticipantDeviceRemoved = onParticipantDeviceRemoved
@@ -2781,6 +2888,8 @@ public final class ChatRoomDelegateStub : ChatRoomDelegate
 		self._onChatMessageParticipantImdnStateChanged = onChatMessageParticipantImdnStateChanged
 		self._onChatRoomRead = onChatRoomRead
 		self._onNewMessageReaction = onNewMessageReaction
+		self._onMessageContentEdited = onMessageContentEdited
+		self._onMessageRetracted = onMessageRetracted
 	}
 }
 
@@ -2918,6 +3027,14 @@ class ChatRoomDelegateManager
 			}
 		})
 
+		linphone_chat_room_cbs_set_operation_failed(cPtr, { (chatRoom) -> Void in
+			if (chatRoom != nil) {
+				let sObject = ChatRoom.getSwiftObject(cObject: chatRoom!)
+				let delegate = sObject.currentDelegate
+				delegate?.onOperationFailed(chatRoom: sObject)
+			}
+		})
+
 		linphone_chat_room_cbs_set_state_changed(cPtr, { (chatRoom, newState) -> Void in
 			if (chatRoom != nil) {
 				let sObject = ChatRoom.getSwiftObject(cObject: chatRoom!)
@@ -2939,6 +3056,14 @@ class ChatRoomDelegateManager
 				let sObject = ChatRoom.getSwiftObject(cObject: chatRoom!)
 				let delegate = sObject.currentDelegate
 				delegate?.onSubjectChanged(chatRoom: sObject, eventLog: EventLog.getSwiftObject(cObject: eventLog!))
+			}
+		})
+
+		linphone_chat_room_cbs_set_message_early_failure(cPtr, { (chatRoom, eventLog) -> Void in
+			if (chatRoom != nil) {
+				let sObject = ChatRoom.getSwiftObject(cObject: chatRoom!)
+				let delegate = sObject.currentDelegate
+				delegate?.onMessageEarlyFailure(chatRoom: sObject, eventLog: EventLog.getSwiftObject(cObject: eventLog!))
 			}
 		})
 
@@ -3077,6 +3202,22 @@ class ChatRoomDelegateManager
 				delegate?.onNewMessageReaction(chatRoom: sObject, message: ChatMessage.getSwiftObject(cObject: message!), reaction: ChatMessageReaction.getSwiftObject(cObject: reaction!))
 			}
 		})
+
+		linphone_chat_room_cbs_set_message_content_edited(cPtr, { (chatRoom, message) -> Void in
+			if (chatRoom != nil) {
+				let sObject = ChatRoom.getSwiftObject(cObject: chatRoom!)
+				let delegate = sObject.currentDelegate
+				delegate?.onMessageContentEdited(chatRoom: sObject, message: ChatMessage.getSwiftObject(cObject: message!))
+			}
+		})
+
+		linphone_chat_room_cbs_set_message_retracted(cPtr, { (chatRoom, message) -> Void in
+			if (chatRoom != nil) {
+				let sObject = ChatRoom.getSwiftObject(cObject: chatRoom!)
+				let delegate = sObject.currentDelegate
+				delegate?.onMessageRetracted(chatRoom: sObject, message: ChatMessage.getSwiftObject(cObject: message!))
+			}
+		})
 	}
 
 
@@ -3085,125 +3226,88 @@ class ChatRoomDelegateManager
 public protocol ConferenceDelegate : AnyObject {
 	
 	
-	/// Callback used to notify a conference that the list of participants allowed to
-	/// join the conference has changed. 
-	/// - Parameter conference: ``Conference`` object   
+	/// Get the allowed participant list changed callback. 
+	/// - Returns: The current allowed participant list changed callback. 
 	func onAllowedParticipantListChanged(conference: Conference)
 	
-	/// Callback used to notify a conference that a participant has been added. 
-	/// - Parameter conference: LinphoneConference object   
-	/// - Parameter participant: LinphoneParticipant that has been added to the
-	/// conference   
+	/// Get the participant added callback. 
+	/// - Returns: The current participant added callback. 
 	func onParticipantAdded(conference: Conference, participant: Participant)
 	
-	/// Callback used to notify a conference that a participant has been removed. 
-	/// - Parameter conference: LinphoneConference object   
-	/// - Parameter participant: LinphoneParticipant that has been removed to the
-	/// conference   
+	/// Get the participant removed callback. 
+	/// - Returns: The current participant removed callback. 
 	func onParticipantRemoved(conference: Conference, participant: Participant)
 	
-	/// Callback used to notify a conference that a participant device has been added. 
-	/// - Parameter conference: LinphoneConference object   
-	/// - Parameter participantDevice: LinphoneParticipantDevice that has been added to
-	/// the conference   
+	/// Get the participant device added callback. 
+	/// - Returns: The current participant device added callback. 
 	func onParticipantDeviceAdded(conference: Conference, participantDevice: ParticipantDevice)
 	
-	/// Callback used to notify a conference that a participant device has been
-	/// removed. 
-	/// - Parameter conference: LinphoneConference object   
-	/// - Parameter participantDevice: LinphoneParticipantDevice that has been removed
-	/// to the conference   
+	/// Get the participant device removed callback. 
+	/// - Returns: The current participant device removed callback. 
 	func onParticipantDeviceRemoved(conference: Conference, participantDevice: ParticipantDevice)
 	
-	/// Callback used to notify a conference that a participant has requested to join
-	/// the conference. 
-	/// - Parameter conference: ``Conference`` object   
-	/// - Parameter participantDevice: ``ParticipantDevice`` that has requested to join
-	/// the conference   
+	/// Get the participant device joining request callback. 
+	/// - Returns: The current participant device joining request callback. 
 	func onParticipantDeviceJoiningRequest(conference: Conference, participantDevice: ParticipantDevice)
 	
-	/// Callback used to notify a conference that the role of a participant has been
-	/// changed. 
-	/// - Parameter conference: ``Conference`` object   
-	/// - Parameter participant: ``Participant`` whose role has changed   
+	/// Get the participant role changed callback. 
+	/// - Returns: The current participant role changed callback. 
 	func onParticipantRoleChanged(conference: Conference, participant: Participant)
 	
-	/// Callback used to notify a conference that the admin status of a participant has
-	/// been changed. 
-	/// - Parameter conference: LinphoneConference object   
-	/// - Parameter participant: LinphoneParticipant whose admin status has changed   
+	/// Get the participant admin status changed callback. 
+	/// - Returns: The current participant admin status changed callback. 
 	func onParticipantAdminStatusChanged(conference: Conference, participant: Participant)
 	
-	/// Callback used to notify a conference that a participant device has changed
-	/// state. 
-	/// - Parameter conference: LinphoneConference object   
-	/// - Parameter device: LinphoneParticipantDevice who change state   
-	/// - Parameter state: new participant device state 
+	/// Get the participant device state changed callback. 
+	/// - Returns: The current participant device state changed callback. 
 	func onParticipantDeviceStateChanged(conference: Conference, device: ParticipantDevice, state: ParticipantDevice.State)
 	
-	/// Callback used to notify a conference that a participant device starts or stops
-	/// screen sharing. 
-	/// - Parameter conference: ``Conference`` object   
-	/// - Parameter device: ``ParticipantDevice`` who starts or stops screen sharing   
-	/// - Parameter enabled: whether the screen sharing is enabled or disabled 
+	/// Get the participant device is screen sharing changed callback. 
+	/// - Returns: The current participant device is screen sharing changed callback. 
 	func onParticipantDeviceScreenSharingChanged(conference: Conference, device: ParticipantDevice, enabled: Bool)
 	
-	/// Callback used to notify a conference that the media availability of a
-	/// participant device has been changed. 
-	/// - Parameter conference: LinphoneConference object   
-	/// - Parameter device: LinphoneParticipantDevice whose media availability changed
-	/// has changed   
+	/// Get the participant device media availability changed callback. 
+	/// - Returns: The current participant device media availability changed callback. 
 	func onParticipantDeviceMediaAvailabilityChanged(conference: Conference, device: ParticipantDevice)
 	
-	/// Callback used to notify a conference that the media capability of a participant
-	/// device has been changed. 
-	/// - Parameter conference: ``Conference`` object   
-	/// - Parameter device: ``ParticipantDevice`` whose media capability changed has
-	/// changed   
+	/// Get the participant device media capabilities changed callback. 
+	/// - Returns: The current participant device media capabilities changed callback. 
 	func onParticipantDeviceMediaCapabilityChanged(conference: Conference, device: ParticipantDevice)
 	
-	/// Callback used to notify a conference state has changed. 
-	/// - Parameter conference: LinphoneConference object   
-	/// - Parameter newState: The new state of the conference 
+	/// Get the leave failed callback. 
+	/// - Returns: The current leave failed callback. 
+	func onOperationFailed(conference: Conference)
+	
+	/// Get the state changed callback. 
+	/// - Returns: The current state changed callback. 
 	func onStateChanged(conference: Conference, newState: Conference.State)
 	
-	/// Callback used to notify that the available media of a conference has changed. 
-	/// - Parameter conference: ``Conference`` object   
+	/// Get the available media changed callback. 
+	/// - Returns: The current available media changed callback. 
 	func onAvailableMediaChanged(conference: Conference)
 	
-	/// Callback used to notify that the subject of a conference has changed. 
-	/// - Parameter conference: LinphoneConference object   
-	/// - Parameter subject: subject of the conference   
+	/// Get the subject changed callback. 
+	/// - Returns: The current subject changed callback. 
 	func onSubjectChanged(conference: Conference, subject: String)
 	
-	/// Callback used to notify that a participant device is speaking or isn't speaking
-	/// anymore. 
-	/// - Parameter conference: ``Conference`` object   
-	/// - Parameter participantDevice: the participant device   
-	/// - Parameter isSpeaking: true if is speaking, false otherwise 
+	/// Get the participant device is speaking changed callback. 
+	/// - Returns: The current participant device is speaking changed callback. 
 	func onParticipantDeviceIsSpeakingChanged(conference: Conference, participantDevice: ParticipantDevice, isSpeaking: Bool)
 	
-	/// Callback used to notify that a participant device is muted or is no longer
-	/// muted. 
-	/// - Parameter conference: ``Conference`` object   
-	/// - Parameter participantDevice: the participant device   
-	/// - Parameter isMuted: true if is muted, false otherwise 
+	/// Get the participant device is muted callback. 
+	/// - Returns: The current participant device is muted callback. 
 	func onParticipantDeviceIsMuted(conference: Conference, participantDevice: ParticipantDevice, isMuted: Bool)
 	
-	/// Callback used to notify that the audio device of a conference has changed. 
-	/// - Parameter conference: LinphoneConference object   
-	/// - Parameter audioDevice: audio device of the conference   
+	/// Get the audio device changed callback. 
+	/// - Returns: The current audio device changed callback. 
 	func onAudioDeviceChanged(conference: Conference, audioDevice: AudioDevice)
 	
-	/// Callback used to notify which participant device video is being displayed as
-	/// "actively speaking". 
-	/// - Parameter conference: ``Conference`` object   
-	/// - Parameter participantDevice: the participant device currently displayed as
-	/// active speaker   
+	/// Get the actively speaking participant device callback. 
+	/// - Returns: The current active speaker participant device callback. 
 	func onActiveSpeakerParticipantDevice(conference: Conference, participantDevice: ParticipantDevice?)
 	
-	/// Callback used to notify when a notify full state has been received. 
-	/// - Parameter conference: ``Conference`` object   
+	/// Get the full state received callback. 
+	/// - Returns: The current full state received callback. 
 	func onFullStateReceived(conference: Conference)
 }
 
@@ -3232,6 +3336,8 @@ public extension ConferenceDelegate {
 	func onParticipantDeviceMediaAvailabilityChanged(conference: Conference, device: ParticipantDevice) {}
 	
 	func onParticipantDeviceMediaCapabilityChanged(conference: Conference, device: ParticipantDevice) {}
+	
+	func onOperationFailed(conference: Conference) {}
 	
 	func onStateChanged(conference: Conference, newState: Conference.State) {}
 	
@@ -3264,6 +3370,7 @@ public final class ConferenceDelegateStub : ConferenceDelegate
 	var _onParticipantDeviceScreenSharingChanged: ((Conference, ParticipantDevice, Bool) -> Void)?
 	var _onParticipantDeviceMediaAvailabilityChanged: ((Conference, ParticipantDevice) -> Void)?
 	var _onParticipantDeviceMediaCapabilityChanged: ((Conference, ParticipantDevice) -> Void)?
+	var _onOperationFailed: ((Conference) -> Void)?
 	var _onStateChanged: ((Conference, Conference.State) -> Void)?
 	var _onAvailableMediaChanged: ((Conference) -> Void)?
 	var _onSubjectChanged: ((Conference, String) -> Void)?
@@ -3298,6 +3405,8 @@ public final class ConferenceDelegateStub : ConferenceDelegate
 	
 	public func onParticipantDeviceMediaCapabilityChanged(conference: Conference, device: ParticipantDevice){_onParticipantDeviceMediaCapabilityChanged.map{$0(conference, device)}}
 	
+	public func onOperationFailed(conference: Conference){_onOperationFailed.map{$0(conference)}}
+	
 	public func onStateChanged(conference: Conference, newState: Conference.State){_onStateChanged.map{$0(conference, newState)}}
 	
 	public func onAvailableMediaChanged(conference: Conference){_onAvailableMediaChanged.map{$0(conference)}}
@@ -3327,6 +3436,7 @@ public final class ConferenceDelegateStub : ConferenceDelegate
 		onParticipantDeviceScreenSharingChanged: ((Conference, ParticipantDevice, Bool) -> Void)? = nil,
 		onParticipantDeviceMediaAvailabilityChanged: ((Conference, ParticipantDevice) -> Void)? = nil,
 		onParticipantDeviceMediaCapabilityChanged: ((Conference, ParticipantDevice) -> Void)? = nil,
+		onOperationFailed: ((Conference) -> Void)? = nil,
 		onStateChanged: ((Conference, Conference.State) -> Void)? = nil,
 		onAvailableMediaChanged: ((Conference) -> Void)? = nil,
 		onSubjectChanged: ((Conference, String) -> Void)? = nil,
@@ -3348,6 +3458,7 @@ public final class ConferenceDelegateStub : ConferenceDelegate
 		self._onParticipantDeviceScreenSharingChanged = onParticipantDeviceScreenSharingChanged
 		self._onParticipantDeviceMediaAvailabilityChanged = onParticipantDeviceMediaAvailabilityChanged
 		self._onParticipantDeviceMediaCapabilityChanged = onParticipantDeviceMediaCapabilityChanged
+		self._onOperationFailed = onOperationFailed
 		self._onStateChanged = onStateChanged
 		self._onAvailableMediaChanged = onAvailableMediaChanged
 		self._onSubjectChanged = onSubjectChanged
@@ -3469,6 +3580,14 @@ class ConferenceDelegateManager
 			}
 		})
 
+		linphone_conference_cbs_set_operation_failed(cPtr, { (conference) -> Void in
+			if (conference != nil) {
+				let sObject = Conference.getSwiftObject(cObject: conference!)
+				let delegate = sObject.currentDelegate
+				delegate?.onOperationFailed(conference: sObject)
+			}
+		})
+
 		linphone_conference_cbs_set_state_changed(cPtr, { (conference, newState) -> Void in
 			if (conference != nil) {
 				let sObject = Conference.getSwiftObject(cObject: conference!)
@@ -3540,20 +3659,12 @@ class ConferenceDelegateManager
 public protocol ConferenceSchedulerDelegate : AnyObject {
 	
 	
-	/// Callback for notifying when a registration state has changed for the conference
-	/// scheduler. 
-	/// - Parameter conferenceScheduler: LinphoneConferenceScheduler object whose state
-	/// has changed.   
-	/// - Parameter state: The current LinphoneConferenceSchedulerState. 
+	/// Get the state changed callback. 
+	/// - Returns: The current state changed callback. 
 	func onStateChanged(conferenceScheduler: ConferenceScheduler, state: ConferenceScheduler.State)
 	
-	/// Callback for notifying when conference invitations have been sent. 
-	/// In case of error for some participants, their addresses will be given as
-	/// parameter. 
-	/// - Parameter conferenceScheduler: ``ConferenceScheduler`` object whose state has
-	/// changed.   
-	/// - Parameter failedInvitations: a list of addresses for which invitation
-	/// couldn't be sent.     
+	/// Get the invitations sent callback. 
+	/// - Returns: The current invitations sent callback. 
 	func onInvitationsSent(conferenceScheduler: ConferenceScheduler, failedInvitations: [Address])
 }
 
@@ -3628,441 +3739,274 @@ class ConferenceSchedulerDelegateManager
 public protocol CoreDelegate : AnyObject {
 	
 	
-	/// Callback for notifying about an alert (e.g on Qos) 
-	/// - Parameter core: ``Core`` object   
-	/// - Parameter alert: ``Alert`` to notify   
+	/// Gets the on alert callback. 
+	/// - Returns: The LinphoneCoreCbsNewAlertTriggeredCb callback called. 
 	func onNewAlertTriggered(core: Core, alert: Alert)
 	
-	/// Global state notification callback. 
-	/// - Parameter core: the ``Core``.   
-	/// - Parameter state: the ``GlobalState`` 
-	/// - Parameter message: informational message.   
+	/// Get the global state changed callback. 
+	/// - Returns: The callback. 
 	func onGlobalStateChanged(core: Core, state: GlobalState, message: String)
 	
-	/// Registration state notification callback prototype. 
-	/// - Parameter core: the ``Core``   
-	/// - Parameter proxyConfig: the ``ProxyConfig`` which state has changed   
-	/// - Parameter state: the current ``RegistrationState`` 
-	/// - Parameter message: a non nil informational message about the state   
-	/// - deprecated: 06/04/2020 Use LinphoneCoreCbsAccountRegistrationStateChangedCb
-	/// instead
+	/// Get the LinphoneCoreCbsRegistrationStateChangedCb callback. 
+	/// - Returns: The callback. 
+	/// - Deprecated: 30/09/2020. see
+	/// linphone_account_cbs_get_registration_state_changed 
 	func onRegistrationStateChanged(core: Core, proxyConfig: ProxyConfig, state: RegistrationState, message: String)
 	
-	/// Callback prototype for notifying the application about a received conference
-	/// info. 
-	/// - Parameter core: ``Core`` object   
-	/// - Parameter conferenceInfo: the ``ConferenceInfo`` received   
+	/// Get the conference info received callback. 
+	/// - Returns: The current conference info received callback. 
 	func onConferenceInfoReceived(core: Core, conferenceInfo: ConferenceInfo)
 	
-	/// Callback prototype for notifying the application a push notification was
-	/// received. 
-	/// On iOS it only works with pushkit (VoIP) pushes. 
-	/// - Parameter core: ``Core`` object   
-	/// - Parameter payload: the body of the push notification, if any   
+	/// Get the push notification received callback. 
+	/// - Returns: The current push notification received callback. 
 	func onPushNotificationReceived(core: Core, payload: String)
 	
-	/// Callback to notify that there are errors from the video rendering. 
-	/// Check LinphoneCallCbsVideoDisplayErrorOccurredCb for more details.
-	/// - Parameter core: ``Core`` object   
-	/// - Parameter errorCode: The error code. It depends of the display filter
-	/// (available for OpenGL) 
+	/// Get the preview display error callback for preview. 
+	/// - Returns: The callback to use 
 	func onPreviewDisplayErrorOccurred(core: Core, errorCode: Int)
 	
-	/// Call state notification callback. 
-	/// - Parameter core: the ``Core``   
-	/// - Parameter call: the ``Call`` object whose state is changed.   
-	/// - Parameter state: the new ``Call.State`` of the call 
-	/// - Parameter message: a non nil informational message about the state.   
+	/// Get the LinphoneCoreCbsCallStateChangedCb callback. 
+	/// - Returns: The callback. 
 	func onCallStateChanged(core: Core, call: Call, state: Call.State, message: String)
 	
-	/// Report status change for a friend previously added to the ``Core`` with
-	/// linphone_core_add_friend(). 
-	/// - Parameter core: ``Core`` object   
-	/// - Parameter linphoneFriend: Updated ``Friend``   
+	/// Get the LinphoneCoreCbsNotifyPresenceReceivedCb callback. 
+	/// - Returns: The callback. 
 	func onNotifyPresenceReceived(core: Core, linphoneFriend: Friend)
 	
-	/// Reports presence model change for a specific URI or phone number of a friend. 
-	/// - Parameter core: ``Core`` object   
-	/// - Parameter linphoneFriend: ``Friend`` object   
-	/// - Parameter uriOrTel: The URI or phone number for which the presence model has
-	/// changed   
-	/// - Parameter presenceModel: The new ``PresenceModel``   
+	/// Get the LinphoneCoreCbsNotifyPresenceReceivedForUriOrTelCb callback. 
+	/// - Returns: The callback. 
 	func onNotifyPresenceReceivedForUriOrTel(core: Core, linphoneFriend: Friend, uriOrTel: String, presenceModel: PresenceModel)
 	
-	/// Reports that a new subscription request has been received and wait for a
-	/// decision. 
-	/// - Note: A subscription request is notified by this function only if the
-	/// ``SubscribePolicy`` for the given ``Friend`` has been set to ``SPWait``. See
-	/// ``Friend/setIncSubscribePolicy(policy:)``. 
-	/// - Parameter core: ``Core`` object   
-	/// - Parameter linphoneFriend: The ``Friend`` aimed by the subscription.   
-	/// - Parameter url: URI of the subscriber   
+	/// Get the LinphoneCoreCbsNewSubscriptionRequestedCb callback. 
+	/// - Returns: The callback. 
 	func onNewSubscriptionRequested(core: Core, linphoneFriend: Friend, url: String)
 	
-	/// Callback for requesting authentication information to application or user. 
-	/// - Parameter core: the ``Core``   
-	/// - Parameter authInfo: a ``AuthInfo`` pre-filled with username, realm and domain
-	/// values as much as possible   
-	/// - Parameter method: the type of authentication requested as ``AuthMethod`` enum
-	///   Application shall reply to this callback using ``Core/addAuthInfo(info:)``. 
+	/// Get the LinphoneCoreCbsAuthenticationRequestedCb callback. 
+	/// - Returns: The callback. 
 	func onAuthenticationRequested(core: Core, authInfo: AuthInfo, method: AuthMethod)
 	
-	/// Callback to notify a new call-log entry has been added. 
-	/// This is done typically when a call terminates. 
-	/// - Parameter core: the ``Core``   
-	/// - Parameter callLog: the new ``CallLog`` entry added.   
+	/// Get the LinphoneCoreCbsCallLogUpdatedCb callback. 
+	/// - Returns: The callback. 
 	func onCallLogUpdated(core: Core, callLog: CallLog)
 	
-	/// Callback to notify the callid of a call has been updated. 
-	/// This is done typically when a call retry. 
-	/// - Parameter core: the ``Core``   
-	/// - Parameter previousCallId: the previous callid.   
-	/// - Parameter currentCallId: the new callid.   
+	/// Get the LinphoneCoreCbsCallIdUpdatedCb callback. 
+	/// - Returns: The callback. 
 	func onCallIdUpdated(core: Core, previousCallId: String, currentCallId: String)
 	
-	/// Chat message callback prototype. 
-	/// - Parameter core: ``Core`` object   
-	/// - Parameter chatRoom: ``ChatRoom`` involved in this conversation. Can be
-	/// created by the framework in case the From-URI is not present in any chat room. 
-	///  
-	/// - Parameter message: ``ChatMessage`` incoming message   
+	/// Get the LinphoneCoreCbsMessageReceivedCb callback. 
+	/// - Returns: The callback. 
 	func onMessageReceived(core: Core, chatRoom: ChatRoom, message: ChatMessage)
 	
-	/// Chat message new reaction callback prototype. 
-	/// - Parameter core: ``Core`` object   
-	/// - Parameter chatRoom: ``ChatRoom`` involved in this conversation. Can be
-	/// created by the framework in case the From-URI is not present in any chat room. 
-	///  
-	/// - Parameter message: the ``ChatMessage`` to which the reaction applies to   
-	/// - Parameter reaction: the ``ChatMessageReaction`` that has been sent or
-	/// received   
+	/// Get the LinphoneCoreCbsNewMessageReactionCb callback. 
+	/// - Returns: The callback. 
 	func onNewMessageReaction(core: Core, chatRoom: ChatRoom, message: ChatMessage, reaction: ChatMessageReaction)
 	
-	/// Chat message removed reaction callback prototype. 
-	/// - Parameter core: ``Core`` object   
-	/// - Parameter chatRoom: ``ChatRoom`` involved in this conversation. Can be
-	/// created by the framework in case the From-URI is not present in any chat room. 
-	///  
-	/// - Parameter message: the ``ChatMessage`` to which a reaction has been removed
-	/// from   
-	/// - Parameter address: the ``Address`` of the person that removed it's reaction   
+	/// Get the LinphoneCoreCbsReactionRemovedCb callback. 
+	/// - Returns: The callback. 
 	func onReactionRemoved(core: Core, chatRoom: ChatRoom, message: ChatMessage, address: Address)
 	
-	/// Chat messages callback prototype. 
-	/// Only called when aggregation is enabled (aka [sip] chat_messages_aggregation ==
-	/// 1 or using ``Core/setChatMessagesAggregationEnabled(enabled:)``), it replaces
-	/// the single message received callback. 
-	/// - Parameter core: ``Core`` object   
-	/// - Parameter chatRoom: ``ChatRoom`` involved in this conversation. Can be
-	/// created by the framework in case the From-URI is not present in any chat room. 
-	///  
-	/// - Parameter messages: The  of incoming messages   
+	/// Get the LinphoneCoreCbsMessagesReceivedCb callback. 
+	/// - Returns: The callback. 
 	func onMessagesReceived(core: Core, chatRoom: ChatRoom, messages: [ChatMessage])
 	
-	/// Called after the ``ChatMessage/send()`` was called. 
-	/// The message will be in state InProgress. In case of resend this callback won't
-	/// be called. 
-	/// - Parameter core: ``Core`` object   
-	/// - Parameter chatRoom: ``ChatRoom`` involved in this conversation. Can be be
-	/// created by the framework in case the From-URI is not present in any chat room. 
-	///  
-	/// - Parameter message: ``ChatMessage`` outgoing message   
+	/// Get the LinphoneCoreCbsMessageSentCb callback. 
+	/// - Returns: The callback. 
 	func onMessageSent(core: Core, chatRoom: ChatRoom, message: ChatMessage)
 	
-	/// Chat room session state changed callback. 
-	/// - Parameter core: ``Core`` object   
-	/// - Parameter chatRoom: ``ChatRoom`` that has been marked as read.   
-	/// - Parameter state: the new ``Call.State`` of the call 
-	/// - Parameter message: a non nil informational message about the state.   
+	/// Get the LinphoneCoreCbsChatRoomSessionStateChangedCb callback. 
+	/// - Returns: The callback. 
 	func onChatRoomSessionStateChanged(core: Core, chatRoom: ChatRoom, state: Call.State, message: String)
 	
-	/// Chat room marked as read callback. 
-	/// - Parameter core: ``Core`` object   
-	/// - Parameter chatRoom: ``ChatRoom`` that has been marked as read.   
+	/// Get the LinphoneCoreCbsChatRoomReadCb callback. 
+	/// - Returns: The callback. 
 	func onChatRoomRead(core: Core, chatRoom: ChatRoom)
 	
-	/// Chat message not decrypted callback prototype. 
-	/// - Parameter core: ``Core`` object   
-	/// - Parameter chatRoom: ``ChatRoom`` involved in this conversation. Can be be
-	/// created by the framework in case the from-URI is not present in any chat room. 
-	///  
-	/// - Parameter message: ``ChatMessage`` incoming message   
+	/// Get the LinphoneCoreCbsMessageReceivedUnableDecryptCb callback. 
+	/// - Returns: The callback. 
 	func onMessageReceivedUnableDecrypt(core: Core, chatRoom: ChatRoom, message: ChatMessage)
 	
-	/// Is composing notification callback prototype. 
-	/// - Parameter core: ``Core`` object   
-	/// - Parameter chatRoom: ``ChatRoom`` involved in the conversation.   
+	/// Get the LinphoneCoreCbsIsComposingReceivedCb callback. 
+	/// - Returns: The callback. 
 	func onIsComposingReceived(core: Core, chatRoom: ChatRoom)
 	
-	/// Callback for being notified of DTMFs received. 
-	/// - Parameter core: the ``Core``   
-	/// - Parameter call: the ``Call`` that received the dtmf   
-	/// - Parameter dtmf: the ascii code of the dtmf 
+	/// Get the LinphoneCoreCbsDtmfReceivedCb callback. 
+	/// - Returns: The callback. 
 	func onDtmfReceived(core: Core, call: Call, dtmf: Int)
 	
-	/// Callback prototype for when a refer is received. 
-	/// - Parameter core: the ``Core``   
-	/// - Parameter referToAddr: the address of the refer   
-	/// - Parameter customHeaders: the headers of the received REFER message   
-	/// - Parameter content: the content of the refer   
+	/// Get the LinphoneCoreCbsReferReceivedCb callback. 
+	/// - Returns: The callback. 
 	func onReferReceived(core: Core, referToAddr: Address, customHeaders: Headers, content: Content?)
 	
-	/// GoClear ACK sent on call callback. 
-	/// - Parameter core: the ``Core``   
-	/// - Parameter call: the ``Call`` on which the GoClear ACK was sent.   
+	/// Gets the LinphoneCoreCbsCallGoClearAckSentCb callback. 
+	/// - Returns: The callback. 
 	func onCallGoclearAckSent(core: Core, call: Call)
 	
-	/// Call encryption changed callback. 
-	/// - Parameter core: the ``Core``   
-	/// - Parameter call: the ``Call`` on which encryption is changed.   
-	/// - Parameter mediaEncryptionEnabled: whether encryption is activated. 
-	/// - Parameter authenticationToken: an authentication token, currently set for
-	/// ZRTP kind of encryption only.   
+	/// Gets the LinphoneCoreCbsCallEncryptionChangedCb callback. 
+	/// - Returns: The callback. 
 	func onCallEncryptionChanged(core: Core, call: Call, mediaEncryptionEnabled: Bool, authenticationToken: String)
 	
-	/// Call send master key changed callback. 
-	/// - Parameter core: the ``Core``   
-	/// - Parameter call: the ``Call`` on which the GoClear ACK was sent.   
-	/// - Parameter masterKey: new master key.   
+	/// Gets the LinphoneCoreCbsCallSendMasterKeyChangedCb callback. 
+	/// - Returns: The callback. 
 	func onCallSendMasterKeyChanged(core: Core, call: Call, masterKey: String)
 	
-	/// Call receive master key changed callback. 
-	/// - Parameter core: the ``Core``   
-	/// - Parameter call: the ``Call`` on which the GoClear ACK was sent.   
-	/// - Parameter masterKey: new master key.   
+	/// Gets the LinphoneCoreCbsCallReceiveMasterKeyChangedCb callback. 
+	/// - Returns: The callback. 
 	func onCallReceiveMasterKeyChanged(core: Core, call: Call, masterKey: String)
 	
-	/// Callback for notifying progresses of transfers. 
-	/// - Parameter core: the ``Core``   
-	/// - Parameter transferred: the ``Call`` that was transferred   
-	/// - Parameter callState: the ``Call.State`` of the call to transfer target at the
-	/// far end. 
+	/// Gets the LinphoneCoreCbsTransferStateChangedCb callback. 
+	/// - Returns: The callback. 
 	func onTransferStateChanged(core: Core, transferred: Call, callState: Call.State)
 	
-	/// Callback prototype when using the buddy plugin. 
-	/// - Parameter core: the ``Core``   
-	/// - Parameter linphoneFriend: the ``Friend`` that has been updated   
+	/// Gets the LinphoneCoreCbsBuddyInfoUpdatedCb callback. 
+	/// - Returns: The callback. 
 	func onBuddyInfoUpdated(core: Core, linphoneFriend: Friend)
 	
-	/// Callback for receiving quality statistics for calls. 
-	/// - Parameter core: the ``Core``   
-	/// - Parameter call: the ``Call``   
-	/// - Parameter callStats: the ``CallStats`` statistics.   
+	/// Gets the LinphoneCoreCbsCallStatsUpdatedCb callback. 
+	/// - Returns: The callback. 
 	func onCallStatsUpdated(core: Core, call: Call, callStats: CallStats)
 	
-	/// Callback prototype for receiving info messages. 
-	/// - Parameter core: the ``Core``   
-	/// - Parameter call: the call whose info message belongs to.   
-	/// - Parameter message: the info message.   
+	/// Gets the LinphoneCoreCbsInfoReceivedCb callback. 
+	/// - Returns: The callback. 
 	func onInfoReceived(core: Core, call: Call, message: InfoMessage)
 	
-	/// Callback prototype for notifying the application about changes of subscription
-	/// states, including arrival of new subscriptions. 
-	/// - Parameter core: ``Core`` object   
-	/// - Parameter linphoneEvent: the ``Event``   
-	/// - Parameter state: the new ``SubscriptionState`` 
+	/// Gets the LinphoneCoreCbsSubscriptionStateChangedCb callback. 
+	/// - Returns: The callback. 
 	func onSubscriptionStateChanged(core: Core, linphoneEvent: Event, state: SubscriptionState)
 	
-	/// Callback prototype for notifying the application about notification that is
-	/// being sent. 
-	/// - Parameter core: ``Core`` object   
-	/// - Parameter linphoneEvent: the ``Event`` received   
-	/// - Parameter body: the ``Content`` of the event   
+	/// Gets the LinphoneCoreCbsNotifySentCb callback. 
+	/// - Returns: The callback. 
 	func onNotifySent(core: Core, linphoneEvent: Event, body: Content?)
 	
-	/// Callback prototype for notifying the application about notification received
-	/// from the network. 
-	/// - Parameter core: ``Core`` object   
-	/// - Parameter linphoneEvent: the ``Event`` received   
-	/// - Parameter notifiedEvent: The event as string   
-	/// - Parameter body: the ``Content`` of the event   
+	/// Gets the LinphoneCoreCbsNotifyReceivedCb callback. 
+	/// - Returns: The callback. 
 	func onNotifyReceived(core: Core, linphoneEvent: Event, notifiedEvent: String, body: Content?)
 	
-	/// Callback prototype for notifying the application about subscription received
-	/// from the network. 
-	/// - Parameter core: ``Core`` object   
-	/// - Parameter linphoneEvent: the ``Event`` received   
-	/// - Parameter subscribeEvent: The event as string   
-	/// - Parameter body: the ``Content`` of the event   
+	/// Gets the LinphoneCoreCbsSubscribeReceivedCb callback. 
+	/// - Returns: The callback. 
 	func onSubscribeReceived(core: Core, linphoneEvent: Event, subscribeEvent: String, body: Content?)
 	
-	/// Callback prototype for notifying the application about changes of publish
-	/// states. 
-	/// - Parameter core: ``Core`` object   
-	/// - Parameter linphoneEvent: the ``Event``   
-	/// - Parameter state: the new ``PublishState`` 
+	/// Gets the LinphoneCoreCbsPublishStateChangedCb callback. 
+	/// - Returns: The callback. 
 	func onPublishStateChanged(core: Core, linphoneEvent: Event, state: PublishState)
 	
-	/// Callback prototype for notifying the application about publish received from
-	/// the network. 
-	/// - Parameter core: ``Core`` object   
-	/// - Parameter linphoneEvent: the ``Event`` received   
-	/// - Parameter publishEvent: The event as string   
-	/// - Parameter body: the ``Content`` of the event   
+	/// Gets the LinphoneCoreCbsPublishReceivedCb callback. 
+	/// - Returns: The callback. 
 	func onPublishReceived(core: Core, linphoneEvent: Event, publishEvent: String, body: Content?)
 	
-	/// Callback prototype for configuring status changes notification. 
-	/// - Parameter core: the ``Core``   
-	/// - Parameter status: the current ``ConfiguringState`` 
-	/// - Parameter message: informational message.   
+	/// Gets the LinphoneCoreCbsConfiguringStatusCb callback. 
+	/// - Returns: The callback. 
 	func onConfiguringStatus(core: Core, status: ConfiguringState, message: String)
 	
-	/// Callback prototype for reporting network change either automatically detected
-	/// or notified by ``Core/setNetworkReachable(reachable:)``. 
-	/// - Parameter core: the ``Core``   
-	/// - Parameter reachable: true if network is reachable. 
+	/// Gets the LinphoneCoreCbsNetworkReachableCb callback. 
+	/// - Returns: The callback. 
 	func onNetworkReachable(core: Core, reachable: Bool)
 	
-	/// Callback prototype for reporting log collection upload state change. 
-	/// - Parameter core: ``Core`` object   
-	/// - Parameter state: The state of the log collection upload 
-	/// - Parameter info: Additional information: error message in case of error state,
-	/// URL of uploaded file in case of success.    
+	/// Gets the LinphoneCoreCbsLogCollectionUploadStateChangedCb callback. 
+	/// - Returns: The callback. 
 	func onLogCollectionUploadStateChanged(core: Core, state: Core.LogCollectionUploadState, info: String)
 	
-	/// Callback prototype for reporting log collection upload progress indication. 
-	/// - Parameter core: ``Core`` object   
-	/// - Parameter offset: the number of bytes sent since the start of the upload 
-	/// - Parameter total: the total number of bytes to upload 
+	/// Gets the LinphoneCoreCbsLogCollectionUploadProgressIndicationCb callback. 
+	/// - Returns: The callback. 
 	func onLogCollectionUploadProgressIndication(core: Core, offset: Int, total: Int)
 	
-	/// Callback prototype for reporting when a friend list has been added to the core
-	/// friend lists. 
-	/// - Parameter core: ``Core`` object   
-	/// - Parameter friendList: ``FriendList`` object   
+	/// Gets the LinphoneCoreCbsFriendListCreatedCb callback. 
+	/// - Returns: The callback. 
 	func onFriendListCreated(core: Core, friendList: FriendList)
 	
-	/// Callback prototype for reporting when a friend list has been removed from the
-	/// core friend lists. 
-	/// - Parameter core: ``Core`` object   
-	/// - Parameter friendList: ``FriendList`` object   
+	/// Gets the LinphoneCoreCbsFriendListRemovedCb callback. 
+	/// - Returns: The callback. 
 	func onFriendListRemoved(core: Core, friendList: FriendList)
 	
-	/// Callback notifying that a new ``Call`` (either incoming or outgoing) has been
-	/// created. 
-	/// - Parameter core: ``Core`` object that has created the call   
-	/// - Parameter call: The newly created ``Call`` object   
+	/// Gets the call created callback. 
+	/// - Returns: The current call created callback. 
 	func onCallCreated(core: Core, call: Call)
 	
-	/// Callback prototype for reporting the result of a version update check. 
-	/// - Parameter core: ``Core`` object   
-	/// - Parameter result: The result of the version update check   
-	/// - Parameter version: The version to update to   
-	/// - Parameter url: The url where to download the new version if the result is
-	/// #LinphoneVersionUpdateCheckNewVersionAvailable    
+	/// Gets the version update check result callback. 
+	/// - Returns: The current callback 
 	func onVersionUpdateCheckResultReceived(core: Core, result: VersionUpdateCheckResult, version: String, url: String)
 	
-	/// Callback prototype telling that a ``Conference`` state has changed. 
-	/// - Parameter core: ``Core`` object   
-	/// - Parameter conference: The ``Conference`` object for which the state has
-	/// changed   
-	/// - Parameter state: the current ``ChatRoom.State`` 
+	/// Gets the conference state changed callback. 
+	/// - Returns: The current callback 
 	func onConferenceStateChanged(core: Core, conference: Conference, state: Conference.State)
 	
-	/// Callback prototype telling that a ``ChatRoom`` state has changed. 
-	/// - Parameter core: ``Core`` object   
-	/// - Parameter chatRoom: The ``ChatRoom`` object for which the state has changed   
-	/// - Parameter state: the current ``ChatRoom.State`` 
+	/// Gets the chat room state changed callback. 
+	/// - Returns: The current callback 
 	func onChatRoomStateChanged(core: Core, chatRoom: ChatRoom, state: ChatRoom.State)
 	
-	/// Callback prototype telling that a ``ChatRoom`` subject has changed. 
-	/// - Parameter core: ``Core`` object   
-	/// - Parameter chatRoom: The ``ChatRoom`` object for which the subject has changed
-	///   
+	/// Gets the chat room subject changed callback. 
+	/// - Returns: The current callback 
 	func onChatRoomSubjectChanged(core: Core, chatRoom: ChatRoom)
 	
-	/// Callback prototype telling that a ``ChatRoom`` ephemeral message has expired. 
-	/// - Parameter core: ``Core`` object   
-	/// - Parameter chatRoom: The ``ChatRoom`` object for which a message has expired. 
-	///  
+	/// Gets the chat room ephemeral message deleted callback. 
+	/// - Returns: The current callback 
 	func onChatRoomEphemeralMessageDeleted(core: Core, chatRoom: ChatRoom)
 	
-	/// Callback prototype telling that an Instant Message Encryption Engine user
-	/// registered on the server with or without success. 
-	/// - Parameter core: ``Core`` object   
-	/// - Parameter status: the return status of the registration action. 
-	/// - Parameter userId: the userId published on the encryption engine server   
-	/// - Parameter info: information about failure   
+	/// Gets the IMEE user registration callback. 
+	/// - Returns: The current callback 
 	func onImeeUserRegistration(core: Core, status: Bool, userId: String, info: String)
 	
-	/// Callback prototype telling the result of decoded qrcode. 
-	/// - Parameter core: ``Core`` object   
-	/// - Parameter result: The result of the decoded qrcode   
+	/// Gets the qrcode found callback. 
+	/// - Returns: The current callback 
 	func onQrcodeFound(core: Core, result: String)
 	
-	/// Callback prototype telling a call has started (incoming or outgoing) while
-	/// there was no other call. 
-	/// - Parameter core: ``Core`` object   
+	/// Gets the first call started callback. 
+	/// - Returns: The current callback 
 	func onFirstCallStarted(core: Core)
 	
-	/// Callback prototype telling the last call has ended (``Core/getCallsNb()``
-	/// returns 0) 
-	/// - Parameter core: ``Core`` object   
+	/// Gets the last call ended callback. 
+	/// - Returns: The current callback 
 	func onLastCallEnded(core: Core)
 	
-	/// Callback prototype telling that the audio device for at least one call has
-	/// changed. 
-	/// - Parameter core: ``Core`` object   
-	/// - Parameter audioDevice: the newly used ``AudioDevice`` object   
+	/// Gets the audio device changed callback. 
+	/// - Returns: The current callback 
 	func onAudioDeviceChanged(core: Core, audioDevice: AudioDevice)
 	
-	/// Callback prototype telling the audio devices list has been updated. 
-	/// Either a new device is available or a previously available device isn't
-	/// anymore. You can call ``Core/getAudioDevices()`` to get the new list. 
-	/// - Parameter core: ``Core`` object   
+	/// Gets the audio devices list updated callback. 
+	/// - Returns: The current callback 
 	func onAudioDevicesListUpdated(core: Core)
 	
-	/// Function prototype used by linphone_core_cbs_set_ec_calibration_result. 
-	/// - Parameter core: The ``Core``.   
-	/// - Parameter status: The ``EcCalibratorStatus`` of the calibrator. 
-	/// - Parameter delayMs: The measured delay if available. 
+	/// Sets a callback to call each time the echo-canceler calibration is completed. 
 	func onEcCalibrationResult(core: Core, status: EcCalibratorStatus, delayMs: Int)
 	
-	/// Function prototype used by linphone_core_cbs_set_ec_calibration_audio_init. 
-	/// - Parameter core: The ``Core``.   
+	/// Sets a callback to call when the echo-canceler calibrator has completed its
+	/// audio graph. 
 	func onEcCalibrationAudioInit(core: Core)
 	
-	/// Function prototype used by linphone_core_cbs_set_ec_calibration_audio_uninit. 
-	/// - Parameter core: The ``Core``.   
+	/// Sets a callback to call when the echo-canceler calibrator destroys its audio
+	/// graph. 
 	func onEcCalibrationAudioUninit(core: Core)
 	
-	/// Callback notifying that a ``Account`` has its registration state changed. 
-	/// - Parameter core: The ``Core`` object.   
-	/// - Parameter account: The ``Account`` object which has its registration changed.
-	///   
-	/// - Parameter state: The new ``RegistrationState`` for this account. 
-	/// - Parameter message: a non nil informational message about the state   
+	/// Gets the account registration state changed callback. 
+	/// - Returns: The current account registration state changed callback. 
 	func onAccountRegistrationStateChanged(core: Core, account: Account, state: RegistrationState, message: String)
 	
-	/// Default account changed callback prototype. 
-	/// - Parameter core: ``Core`` object   
-	/// - Parameter account: ``Account`` object that has been set as the default
-	/// account, probably by calling ``Core/setDefaultAccount(account:)``, or nil if
-	/// the default account was removed.   
+	/// Gets the default account changed callback. 
+	/// - Returns: The default account changed callback that will be triggered. 
 	func onDefaultAccountChanged(core: Core, account: Account?)
 	
-	/// Account added callback prototype. 
-	/// - Parameter core: ``Core`` object   
-	/// - Parameter account: ``Account`` object that has been added to the Core using
-	/// ``Core/addAccount(account:)`` for example.    
+	/// Gets the account added callback. 
+	/// - Returns: The account added callback that will be triggered. 
 	func onAccountAdded(core: Core, account: Account)
 	
-	/// Account removed callback prototype. 
-	/// - Parameter core: ``Core`` object   
-	/// - Parameter account: ``Account`` object that has been added to the Core using
-	/// ``Core/removeAccount(account:)`` for example.    
+	/// Gets the new account removed callback. 
+	/// - Returns: The new account removed callback that will be triggered. 
 	func onAccountRemoved(core: Core, account: Account)
 	
-	/// Callback notifying that a Message Waiting Indication state has changed. 
-	/// - Parameter core: The ``Core`` object.   
-	/// - Parameter lev: The ``Event`` object notifying the MWI.   
-	/// - Parameter mwi: The ``MessageWaitingIndication`` object that is notified.   
+	/// Gets the message waiting indication changed callback. 
+	/// - Returns: The current message waiting indication changed callback. 
 	func onMessageWaitingIndicationChanged(core: Core, lev: Event, mwi: MessageWaitingIndication)
 	
-	/// Callback notifying a snapshot has been taken. 
-	/// - Parameter core: LinphoneCore object.   
-	/// - Parameter filePath: the name of the saved file.   
+	/// Gets the snapshot taken callback. 
+	/// - Returns: The current snapshot taken callback. 
 	func onSnapshotTaken(core: Core, filePath: String)
+	
+	/// Gets the message content edited callback. 
+	/// - Returns: The LinphoneCoreCbsMessageContentEditedCb callback called. 
+	func onMessageContentEdited(core: Core, chatRoom: ChatRoom, message: ChatMessage)
+	
+	/// Gets the message retracted callback. 
+	/// - Returns: The LinphoneCoreCbsMessageRetractedCb callback called. 
+	func onMessageRetracted(core: Core, chatRoom: ChatRoom, message: ChatMessage)
 }
 
 public extension CoreDelegate {
@@ -4196,6 +4140,10 @@ public extension CoreDelegate {
 	func onMessageWaitingIndicationChanged(core: Core, lev: Event, mwi: MessageWaitingIndication) {}
 	
 	func onSnapshotTaken(core: Core, filePath: String) {}
+	
+	func onMessageContentEdited(core: Core, chatRoom: ChatRoom, message: ChatMessage) {}
+	
+	func onMessageRetracted(core: Core, chatRoom: ChatRoom, message: ChatMessage) {}
 }
 
 public final class CoreDelegateStub : CoreDelegate
@@ -4265,6 +4213,8 @@ public final class CoreDelegateStub : CoreDelegate
 	var _onAccountRemoved: ((Core, Account) -> Void)?
 	var _onMessageWaitingIndicationChanged: ((Core, Event, MessageWaitingIndication) -> Void)?
 	var _onSnapshotTaken: ((Core, String) -> Void)?
+	var _onMessageContentEdited: ((Core, ChatRoom, ChatMessage) -> Void)?
+	var _onMessageRetracted: ((Core, ChatRoom, ChatMessage) -> Void)?
 
 	
 	public func onNewAlertTriggered(core: Core, alert: Alert){_onNewAlertTriggered.map{$0(core, alert)}}
@@ -4396,6 +4346,10 @@ public final class CoreDelegateStub : CoreDelegate
 	public func onMessageWaitingIndicationChanged(core: Core, lev: Event, mwi: MessageWaitingIndication){_onMessageWaitingIndicationChanged.map{$0(core, lev, mwi)}}
 	
 	public func onSnapshotTaken(core: Core, filePath: String){_onSnapshotTaken.map{$0(core, filePath)}}
+	
+	public func onMessageContentEdited(core: Core, chatRoom: ChatRoom, message: ChatMessage){_onMessageContentEdited.map{$0(core, chatRoom, message)}}
+	
+	public func onMessageRetracted(core: Core, chatRoom: ChatRoom, message: ChatMessage){_onMessageRetracted.map{$0(core, chatRoom, message)}}
 
 	public init (
 		onNewAlertTriggered: ((Core, Alert) -> Void)? = nil,
@@ -4462,7 +4416,9 @@ public final class CoreDelegateStub : CoreDelegate
 		onAccountAdded: ((Core, Account) -> Void)? = nil,
 		onAccountRemoved: ((Core, Account) -> Void)? = nil,
 		onMessageWaitingIndicationChanged: ((Core, Event, MessageWaitingIndication) -> Void)? = nil,
-		onSnapshotTaken: ((Core, String) -> Void)? = nil
+		onSnapshotTaken: ((Core, String) -> Void)? = nil,
+		onMessageContentEdited: ((Core, ChatRoom, ChatMessage) -> Void)? = nil,
+		onMessageRetracted: ((Core, ChatRoom, ChatMessage) -> Void)? = nil
 	) {
 		self._onNewAlertTriggered = onNewAlertTriggered
 		self._onGlobalStateChanged = onGlobalStateChanged
@@ -4529,6 +4485,8 @@ public final class CoreDelegateStub : CoreDelegate
 		self._onAccountRemoved = onAccountRemoved
 		self._onMessageWaitingIndicationChanged = onMessageWaitingIndicationChanged
 		self._onSnapshotTaken = onSnapshotTaken
+		self._onMessageContentEdited = onMessageContentEdited
+		self._onMessageRetracted = onMessageRetracted
 	}
 }
 
@@ -5073,6 +5031,22 @@ class CoreDelegateManager
 				delegate?.onSnapshotTaken(core: sObject, filePath: charArrayToString(charPointer: filePath))
 			}
 		})
+
+		linphone_core_cbs_set_message_content_edited(cPtr, { (core, chatRoom, message) -> Void in
+			if (core != nil) {
+				let sObject = Core.getSwiftObject(cObject: core!)
+				let delegate = sObject.currentDelegate
+				delegate?.onMessageContentEdited(core: sObject, chatRoom: ChatRoom.getSwiftObject(cObject: chatRoom!), message: ChatMessage.getSwiftObject(cObject: message!))
+			}
+		})
+
+		linphone_core_cbs_set_message_retracted(cPtr, { (core, chatRoom, message) -> Void in
+			if (core != nil) {
+				let sObject = Core.getSwiftObject(cObject: core!)
+				let delegate = sObject.currentDelegate
+				delegate?.onMessageRetracted(core: sObject, chatRoom: ChatRoom.getSwiftObject(cObject: chatRoom!), message: ChatMessage.getSwiftObject(cObject: message!))
+			}
+		})
 	}
 
 
@@ -5081,35 +5055,28 @@ class CoreDelegateManager
 public protocol EventDelegate : AnyObject {
 	
 	
-	/// Callback used to notify the response to a sent NOTIFY. 
-	/// - Parameter event: The ``Event`` object that has sent the NOTIFY and for which
-	/// we received a response   
+	/// Get the notify response callback. 
+	/// - Returns: The current notify response callback. 
 	func onNotifyResponse(event: Event)
 	
-	/// Callback used to notify the received to a NOTIFY. 
-	/// - Parameter event: The LinphoneEvent object that receive the NOTIFY   
-	/// - Parameter content: The LinphoneContent object that containe the body of the
-	/// event   
+	/// Get the notify received callback. 
+	/// - Returns: The current notify received callback. 
 	func onNotifyReceived(event: Event, content: Content?)
 	
-	/// Callback used to notify the received to a SUBSCRIBE. 
-	/// - Parameter event: The LinphoneEvent object that receive the SUBSCRIBE   
+	/// Get the subscribe received callback. 
+	/// - Returns: The current subscribe received callback. 
 	func onSubscribeReceived(event: Event)
 	
-	/// SUBSCRIBE state changed callback. 
-	/// - Parameter event: The ``Event`` object that state changed   
-	/// - Parameter state: The ``SubscriptionState`` 
+	/// Get the subscribe state changed callback. 
+	/// - Returns: The current subscribe state changed callback. 
 	func onSubscribeStateChanged(event: Event, state: SubscriptionState)
 	
-	/// Callback used to notify the received to a PUBLISH. 
-	/// - Parameter event: The LinphoneEvent object that receive the PUBLISH   
-	/// - Parameter content: The LinphoneContent object that containe the body of the
-	/// event   
+	/// Get the publish received callback. 
+	/// - Returns: The current publish received callback. 
 	func onPublishReceived(event: Event, content: Content?)
 	
-	/// PUBLISH state changed callback. 
-	/// - Parameter event: The LinphoneEvent object that state changed   
-	/// - Parameter state: The LinphonePublishState 
+	/// Get the publish state changed callback. 
+	/// - Returns: The current publish state changed callback. 
 	func onPublishStateChanged(event: Event, state: PublishState)
 }
 
@@ -5236,9 +5203,8 @@ class EventDelegateManager
 public protocol FriendDelegate : AnyObject {
 	
 	
-	/// Callback used to notify a friend that it has received presence information. 
-	/// - Parameter linphoneFriend: The ``Friend`` object for which the status has
-	/// changed   
+	/// Get the presence received callback. 
+	/// - Returns: The current presence received callback. 
 	func onPresenceReceived(linphoneFriend: Friend)
 }
 
@@ -5290,47 +5256,28 @@ class FriendDelegateManager
 public protocol FriendListDelegate : AnyObject {
 	
 	
-	/// Callback used to notify a new contact has been created on the CardDAV server
-	/// and downloaded locally. 
-	/// - Parameter friendList: The ``FriendList`` object the new contact is added to   
-	/// - Parameter linphoneFriend: The ``Friend`` object that has been created   
+	/// Get the contact created callback. 
+	/// - Returns: The current contact created callback. 
 	func onContactCreated(friendList: FriendList, linphoneFriend: Friend)
 	
-	/// Callback used to notify a contact has been deleted on the CardDAV server. 
-	/// - Parameter friendList: The ``FriendList`` object a contact has been removed
-	/// from   
-	/// - Parameter linphoneFriend: The ``Friend`` object that has been deleted   
+	/// Get the contact deleted callback. 
+	/// - Returns: The current contact deleted callback. 
 	func onContactDeleted(friendList: FriendList, linphoneFriend: Friend)
 	
-	/// Callback used to notify a contact has been updated on the CardDAV server. 
-	/// - Parameter friendList: The ``FriendList`` object in which a contact has been
-	/// updated   
-	/// - Parameter newFriend: The new ``Friend`` object corresponding to the updated
-	/// contact   
-	/// - Parameter oldFriend: The old ``Friend`` object before update   
+	/// Get the contact updated callback. 
+	/// - Returns: The current contact updated callback. 
 	func onContactUpdated(friendList: FriendList, newFriend: Friend, oldFriend: Friend)
 	
-	/// Callback used to notify the status of the synchronization has changed. 
-	/// - Parameter friendList: The ``FriendList`` object for which the status has
-	/// changed   
-	/// - Parameter status: The new ``FriendList.SyncStatus`` 
-	/// - Parameter message: An additional information on the status update   
+	/// Get the sync status changed callback. 
+	/// - Returns: The current sync status changedcallback. 
 	func onSyncStatusChanged(friendList: FriendList, status: FriendList.SyncStatus, message: String)
 	
-	/// Callback used to notify a list with all friends that have received presence
-	/// information. 
-	/// - Parameter friendList: The LinphoneFriendList object for which the status has
-	/// changed   
-	/// - Parameter friends: A  of the relevant friends   
+	/// Get the presence received callback. 
+	/// - Returns: The current presence received callback. 
 	func onPresenceReceived(friendList: FriendList, friends: [Friend])
 	
-	/// Callback used to notify a list that a new SIP address was discovered through
-	/// long term presence mechanism. 
-	/// - Parameter friendList: The ``FriendList`` object for which the status has
-	/// changed   
-	/// - Parameter linphoneFriend: The ``Friend`` for which the SIP address was
-	/// discovered   
-	/// - Parameter sipUri: The newly discovered SIP URI   
+	/// Get the new SIP address discovered callback. 
+	/// - Returns: The current new SIP address discovered callback. 
 	func onNewSipAddressDiscovered(friendList: FriendList, linphoneFriend: Friend, sipUri: String)
 }
 
@@ -5465,12 +5412,8 @@ class FriendListDelegateManager
 public protocol LoggingServiceDelegate : AnyObject {
 	
 	
-	/// Type of callbacks called each time liblinphone write a log message. 
-	/// - Parameter logService: A pointer on the logging service singleton.   
-	/// - Parameter domain: A string describing which sub-library of liblinphone the
-	/// message is coming from.   
-	/// - Parameter level: Verbosity ``LogLevel`` of the message. 
-	/// - Parameter message: Content of the message.   
+	/// Gets the value of the message event callback. 
+	/// - Returns: the current LinphoneLoggingServiceCbsLogMessageWrittenCb 
 	func onLogMessageWritten(logService: LoggingService, domain: String, level: LogLevel, message: String)
 }
 
@@ -5522,23 +5465,27 @@ class LoggingServiceDelegateManager
 public protocol MagicSearchDelegate : AnyObject {
 	
 	
-	/// Callback used to notify when results are received. 
-	/// - Parameter magicSearch: ``MagicSearch`` object   
+	/// Get the received results callback. 
+	/// - Returns: The current result received callback. 
 	func onSearchResultsReceived(magicSearch: MagicSearch)
 	
-	/// Callback used to notify when LDAP have more results available. 
-	/// - Parameter magicSearch: ``MagicSearch`` object   
-	/// - Parameter ldap: ``Ldap`` object   
-	/// - deprecated: 18/11/2024 use LinphoneMagicSearchCbsMoreResultsAvailableCb
-	/// instead. 
+	/// Get the ldap callback on having more results. 
+	/// - Returns: The ldap callback on having more results. 
+	/// - Deprecated: 18/11/2024 use
+	/// linphone_magic_search_cbs_get_more_results_available instead. 
 	func onLdapHaveMoreResults(magicSearch: MagicSearch, ldap: Ldap)
 	
-	/// Callback used to notify when more results are available for a given
-	/// ``MagicSearch.Source`` flag. 
-	/// - Parameter magicSearch: ``MagicSearch`` object   
-	/// - Parameter source: The source flag indicating for which type of result there
-	/// is more results available. 
+	/// Gets the callback notifying more results for a source flag are available. 
+	/// - Returns: The more results available callback. 
+	/// - Deprecated: 07/07/2025 use
+	/// linphone_magic_search_cbs_get_results_limit_reached instead. 
 	func onMoreResultsAvailable(magicSearch: MagicSearch, source: MagicSearch.Source)
+	
+	/// Gets the callback notifying the search results limit has been reached, which
+	/// means more results are available for currently set query parameters and thus
+	/// user should refine it's request. 
+	/// - Returns: The results limit reached callback. 
+	func onResultsLimitReached(magicSearch: MagicSearch, sourcesFlag: Int)
 }
 
 public extension MagicSearchDelegate {
@@ -5548,6 +5495,8 @@ public extension MagicSearchDelegate {
 	func onLdapHaveMoreResults(magicSearch: MagicSearch, ldap: Ldap) {}
 	
 	func onMoreResultsAvailable(magicSearch: MagicSearch, source: MagicSearch.Source) {}
+	
+	func onResultsLimitReached(magicSearch: MagicSearch, sourcesFlag: Int) {}
 }
 
 public final class MagicSearchDelegateStub : MagicSearchDelegate
@@ -5555,6 +5504,7 @@ public final class MagicSearchDelegateStub : MagicSearchDelegate
 	var _onSearchResultsReceived: ((MagicSearch) -> Void)?
 	var _onLdapHaveMoreResults: ((MagicSearch, Ldap) -> Void)?
 	var _onMoreResultsAvailable: ((MagicSearch, MagicSearch.Source) -> Void)?
+	var _onResultsLimitReached: ((MagicSearch, Int) -> Void)?
 
 	
 	public func onSearchResultsReceived(magicSearch: MagicSearch){_onSearchResultsReceived.map{$0(magicSearch)}}
@@ -5562,15 +5512,19 @@ public final class MagicSearchDelegateStub : MagicSearchDelegate
 	public func onLdapHaveMoreResults(magicSearch: MagicSearch, ldap: Ldap){_onLdapHaveMoreResults.map{$0(magicSearch, ldap)}}
 	
 	public func onMoreResultsAvailable(magicSearch: MagicSearch, source: MagicSearch.Source){_onMoreResultsAvailable.map{$0(magicSearch, source)}}
+	
+	public func onResultsLimitReached(magicSearch: MagicSearch, sourcesFlag: Int){_onResultsLimitReached.map{$0(magicSearch, sourcesFlag)}}
 
 	public init (
 		onSearchResultsReceived: ((MagicSearch) -> Void)? = nil,
 		onLdapHaveMoreResults: ((MagicSearch, Ldap) -> Void)? = nil,
-		onMoreResultsAvailable: ((MagicSearch, MagicSearch.Source) -> Void)? = nil
+		onMoreResultsAvailable: ((MagicSearch, MagicSearch.Source) -> Void)? = nil,
+		onResultsLimitReached: ((MagicSearch, Int) -> Void)? = nil
 	) {
 		self._onSearchResultsReceived = onSearchResultsReceived
 		self._onLdapHaveMoreResults = onLdapHaveMoreResults
 		self._onMoreResultsAvailable = onMoreResultsAvailable
+		self._onResultsLimitReached = onResultsLimitReached
 	}
 }
 
@@ -5611,6 +5565,14 @@ class MagicSearchDelegateManager
 				delegate?.onMoreResultsAvailable(magicSearch: sObject, source: MagicSearch.Source(rawValue: Int(source.rawValue)))
 			}
 		})
+
+		linphone_magic_search_cbs_set_results_limit_reached(cPtr, { (magicSearch, sourcesFlag) -> Void in
+			if (magicSearch != nil) {
+				let sObject = MagicSearch.getSwiftObject(cObject: magicSearch!)
+				let delegate = sObject.currentDelegate
+				delegate?.onResultsLimitReached(magicSearch: sObject, sourcesFlag: Int(sourcesFlag))
+			}
+		})
 	}
 
 
@@ -5619,58 +5581,44 @@ class MagicSearchDelegateManager
 public protocol ParticipantDeviceDelegate : AnyObject {
 	
 	
-	/// Callback used to notify that is this participant device speaking has changed. 
-	/// - Parameter participantDevice: ``ParticipantDevice`` object   
-	/// - Parameter isSpeaking: is this participant device speaking 
+	/// Get the is this participant device speaking changed callback. 
+	/// - Returns: The current is this participant device speaking changed callback. 
 	func onIsSpeakingChanged(participantDevice: ParticipantDevice, isSpeaking: Bool)
 	
-	/// Callback used to notify that this participant device is muted or is no longer
-	/// muted. 
-	/// - Parameter participantDevice: ``ParticipantDevice`` object   
-	/// - Parameter isMuted: is this participant device muted 
+	/// Get the is this participant device muted callback. 
+	/// - Returns: The current is this participant device muted callback. 
 	func onIsMuted(participantDevice: ParticipantDevice, isMuted: Bool)
 	
-	/// Callback used to notify that this participant device is screen sharing or is no
-	/// longer screen sharing. 
-	/// - Parameter participantDevice: ``ParticipantDevice`` object   
-	/// - Parameter isScreenSharing: is this participant device screen sharing 
+	/// Get the is this participant device screen sharing changed callback. 
+	/// - Returns: The current is this participant device screen sharing callback. 
 	func onScreenSharingChanged(participantDevice: ParticipantDevice, isScreenSharing: Bool)
 	
-	/// Callback used to notify that participant device changed state. 
-	/// - Parameter participantDevice: LinphoneParticipantDevice object   
-	/// - Parameter state: new participant device state 
+	/// Get the participant device conference state changed callback. 
+	/// - Returns: The current participant device conference state changed callback. 
 	func onStateChanged(participantDevice: ParticipantDevice, state: ParticipantDevice.State)
 	
-	/// Callback used to notify that participant device stream capability has changed. 
-	/// - Parameter participantDevice: ``ParticipantDevice`` object   
-	/// - Parameter direction: participant device's stream direction 
-	/// - Parameter streamType: type of stream: audio, video or text 
+	/// Get the participant device stream capability changed callback. 
+	/// - Returns: The current participant device stream capability changed callback. 
 	func onStreamCapabilityChanged(participantDevice: ParticipantDevice, direction: MediaDirection, streamType: StreamType)
 	
-	/// Callback used to notify that participant device thumbnail stream capability has
-	/// changed. 
-	/// - Parameter participantDevice: ``ParticipantDevice`` object   
-	/// - Parameter direction: participant device's thumbnail direction 
+	/// Get the participant device thumbnail stream capability changed callback. 
+	/// - Returns: The current participant device thumbnail stream capability changed
+	/// callback. 
 	func onThumbnailStreamCapabilityChanged(participantDevice: ParticipantDevice, direction: MediaDirection)
 	
-	/// Callback used to notify that participant device stream availability has
-	/// changed. 
-	/// - Parameter participantDevice: ``ParticipantDevice`` object   
-	/// - Parameter available: true if the stream is available on our side 
-	/// - Parameter streamType: type of stream: audio, video or text 
+	/// Get the participant device stream availability changed callback. 
+	/// - Returns: The current participant device stream availability changed callback. 
 	func onStreamAvailabilityChanged(participantDevice: ParticipantDevice, available: Bool, streamType: StreamType)
 	
-	/// Callback used to notify that participant device thumbnail stream availability
-	/// has changed. 
-	/// - Parameter participantDevice: ``ParticipantDevice`` object   
-	/// - Parameter available: participant device's thumbnail stream availability 
+	/// Get the participant device thumbnail stream availability changed callback. 
+	/// - Returns: The current participant device thumbnail stream availability changed
+	/// callback. 
 	func onThumbnailStreamAvailabilityChanged(participantDevice: ParticipantDevice, available: Bool)
 	
-	/// Callback to notify that there are errors from the video rendering of the
-	/// participant device. 
+	/// Get the callback that will be used to notify that there are errors from the
+	/// video rendering of the participant device. 
 	/// Check LinphoneCallCbsVideoDisplayErrorOccurredCb for more details.
-	/// - Parameter participantDevice: LinphoneParticipantDevice object   
-	/// - Parameter errorCode: the error code coming from the display render. 
+	/// - Returns: The failing video rendering callback. 
 	func onVideoDisplayErrorOccurred(participantDevice: ParticipantDevice, errorCode: Int)
 }
 
@@ -5842,8 +5790,8 @@ class ParticipantDeviceDelegateManager
 public protocol PlayerDelegate : AnyObject {
 	
 	
-	/// Callback for notifying end of play (file). 
-	/// - Parameter player: The ``Player`` object   
+	/// Get the end-of-file reached callback. 
+	/// - Returns: The current end-of-file reached callback. 
 	func onEofReached(player: Player)
 }
 
@@ -5895,8 +5843,8 @@ class PlayerDelegateManager
 public protocol XmlRpcRequestDelegate : AnyObject {
 	
 	
-	/// Callback used to notify the response to an XML-RPC request. 
-	/// - Parameter request: ``XmlRpcRequest`` object   
+	/// Get the response callback. 
+	/// - Returns: The current response callback. 
 	func onResponse(request: XmlRpcRequest)
 }
 
@@ -5994,10 +5942,10 @@ public class Account : LinphoneObject
 	/// Create a new ``Account`` with a Proxy config backpointer. 
 	/// This is only intended to be used while keeping a backward compatibility with
 	/// proxy config. 
-	/// - Parameter lc: The ``Core`` object.   
-	/// - Parameter params: The ``AccountParams`` object.   
-	/// - Parameter config: The ``ProxyConfig`` object.   
-	/// - Returns: The newly created ``Account`` object.   
+	/// - Parameter lc: The ``Core`` object.    
+	/// - Parameter params: The ``AccountParams`` object.    
+	/// - Parameter config: The ``ProxyConfig`` object.    
+	/// - Returns: The newly created ``Account`` object.    
 	static public func newWithConfig(lc:Core?, params:AccountParams, config:ProxyConfig?) -> Account?
 	{
 		let cPointer = linphone_account_new_with_config(lc?.cPtr, params.cPtr, config?.cPtr)
@@ -6022,7 +5970,7 @@ public class Account : LinphoneObject
 	
 	/// Returns the list of call logs for a given account. 
 	/// This list must be freed after use. 
-	/// - Returns: The list of call logs .     
+	/// - Returns: The list of call logs  .       
 	public var callLogs: [CallLog]
 	{
 	
@@ -6041,7 +5989,7 @@ public class Account : LinphoneObject
 		
 	
 	/// Returns the list of chat rooms for a given account. 
-	/// - Returns: The list of chat rooms .   
+	/// - Returns: The list of chat rooms  .    
 	public var chatRooms: [ChatRoom]
 	{
 	
@@ -6060,10 +6008,10 @@ public class Account : LinphoneObject
 	
 	/// Returns the list of conference information stored locally for a given account. 
 	/// This list must be freed after use. 
-	/// - Returns: The list of call logs .   
-	/// - Warning: this method also start the synchronization with the CCMP server,
-	/// should it be defined in the #AccountParams. The application may want to wait
-	/// for the callback conference_information_updated to get a up-to-date list of
+	/// - Returns: The list of call logs  .    
+	/// - Warning: This method also start the synchronization with the CCMP server,
+	/// should it be defined in the ``AccountParams``. The application may want to wait
+	/// for the callback conference_information_updated to get an up-to-date list of
 	/// conferences 
 	public var conferenceInformationList: [ConferenceInfo]
 	{
@@ -6081,14 +6029,32 @@ public class Account : LinphoneObject
 
 	}
 		
+	/// Sets consolidated presence for a ``Account``. 
+	/// - Parameter presence: ``ConsolidatedPresence`` value 
+	
+	/// Gets consolidated presence for a ``Account``. 
+	/// - Returns: A ``ConsolidatedPresence`` presence 
+	public var consolidatedPresence: ConsolidatedPresence
+	{
+	
+		get
+		{ 
+						return ConsolidatedPresence(rawValue: Int(linphone_account_get_consolidated_presence(cPtr).rawValue))!
+		}
+		set
+		{
+			linphone_account_set_consolidated_presence(cPtr, LinphoneConsolidatedPresence(rawValue: CUnsignedInt(newValue.rawValue)))
+		}
+	}
+		
 	/// Set the contact address for the account. 
 	/// A client application should not use this function, as the Contact address is
 	/// provided by the registrar in the 200 Ok. This function is mainly intended for
 	/// server applications. 
-	/// - Parameter addr: a ``Address`` to use as contact.   
+	/// - Parameter addr: a ``Address`` to use as contact.    
 	
 	/// Return the contact address of the account. 
-	/// - Returns: a ``Address`` correspong to the contact address of the account.   
+	/// - Returns: a ``Address`` correspong to the contact address of the account.    
 	public var contactAddress: Address?
 	{
 	
@@ -6109,7 +6075,7 @@ public class Account : LinphoneObject
 		
 	
 	/// Get the ``Core`` object to which is associated the ``Account``. 
-	/// - Returns: The ``Core`` object to which is associated the ``Account``.   
+	/// - Returns: The ``Core`` object to which is associated the ``Account``.    
 	public var core: Core?
 	{
 	
@@ -6123,10 +6089,10 @@ public class Account : LinphoneObject
 	}
 		
 	
-	/// Gets the current LinphoneAccountCbs. 
+	/// Gets the current ``AccountDelegate``. 
 	/// This is meant only to be called from a callback to be able to get the user_data
 	/// associated with the ``AccountDelegate`` that is calling the callback. 
-	/// - Returns: The ``AccountDelegate`` that has called the last callback.   
+	/// - Returns: The ``AccountDelegate`` that has called the last callback.    
 	public var currentDelegate: AccountDelegate?
 	{
 	
@@ -6148,11 +6114,11 @@ public class Account : LinphoneObject
 	/// Once registered, both accounts will share the same contact address (the
 	/// 'dependency' one).
 	/// This mecanism must be enabled before the account is added to the core
-	/// - Parameter dependsOn: The ``Account`` this one shall be depending on.   
+	/// - Parameter dependsOn: The ``Account`` this one shall be depending on.    
 	
 	/// Get the dependency of a ``Account``. 
 	/// - Returns: The account this one is dependent upon, or nil if not marked
-	/// dependent.   
+	/// dependent.    
 	public var dependency: Account?
 	{
 	
@@ -6186,7 +6152,7 @@ public class Account : LinphoneObject
 	/// Get detailed information why registration failed when the account state is
 	/// LinphoneRegistrationFailed. 
 	/// - Returns: The ``ErrorInfo`` explaining why registration failed for this
-	/// account.   
+	/// account.    
 	public var errorInfo: ErrorInfo?
 	{
 	
@@ -6202,12 +6168,27 @@ public class Account : LinphoneObject
 	
 	/// Indicates whether AVPF/SAVPF is being used for calls using this account. 
 	/// - Returns: true if AVPF/SAVPF is enabled, false otherwise. 
-	/// - deprecated: 16/12/2021 Use ``avpfEnabled()`` instead. 
+	/// - Deprecated: 16/12/2021 Use ``avpfEnabled()`` instead. 
 	@available(*, deprecated)
 	public var isAvpfEnabled: Bool
 	{
 	
 						return linphone_account_is_avpf_enabled(cPtr) != 0
+
+	}
+		
+	
+	/// Returns the latest Message Waiting Indication (MWI) received payload, if any. 
+	/// - Returns: The latest ``MessageWaitingIndication`` or nil.    
+	public var latestReceivedMessageWaitingIndication: MessageWaitingIndication?
+	{
+	
+						let cPointer = linphone_account_get_latest_received_message_waiting_indication(cPtr)
+			if (cPointer == nil) {
+				return nil
+			}
+			let result = MessageWaitingIndication.getSwiftObject(cObject:cPointer!)
+			return result
 
 	}
 		
@@ -6222,13 +6203,13 @@ public class Account : LinphoneObject
 	}
 		
 	/// Set the ``AccountParams`` used by this ``Account``. 
-	/// - Parameter params: The ``AccountParams`` object.   
+	/// - Parameter params: The ``AccountParams`` object.    
 	
 	/// Get the ``AccountParams`` as read-only object. 
 	/// To make changes, clone the returned object using ``AccountParams/clone()``
 	/// method, make your changes on it and apply them using with
 	/// ``setParams(params:)``. 
-	/// - Returns: The ``AccountParams`` attached to this account.   
+	/// - Returns: The ``AccountParams`` attached to this account.    
 	public var params: AccountParams?
 	{
 	
@@ -6247,6 +6228,30 @@ public class Account : LinphoneObject
 		}
 	}
 		
+	/// Set the presence model linked to a given account and send a PUBLISH message to
+	/// the presence server. 
+	/// - Parameter presenceModel: The presence model to assign.    
+	
+	/// Get the presence model linked to a given account. 
+	/// - Returns: the presence model, if assigned, nil otherwise.    
+	public var presenceModel: PresenceModel?
+	{
+	
+		get
+		{ 
+						let cPointer = linphone_account_get_presence_model(cPtr)
+			if (cPointer == nil) {
+				return nil
+			}
+			let result = PresenceModel.getSwiftObject(cObject:cPointer!)
+			return result
+		}
+		set
+		{
+			linphone_account_set_presence_model(cPtr, newValue?.cPtr)
+		}
+	}
+		
 	
 	/// Get the registration state of the given account. 
 	/// - Returns: The ``RegistrationState`` of the account. 
@@ -6260,7 +6265,7 @@ public class Account : LinphoneObject
 	
 	/// Get the transport from either service route, route or addr. 
 	/// - Returns: The transport as a string (I.E udp, tcp, tls, dtls). 
-	/// - deprecated: 01/03/2021 Use Linphone_account_params_get_transport() instead. 
+	/// - Deprecated: 01/03/2021 Use Linphone_account_params_get_transport() instead. 
 	@available(*, deprecated)
 	public var transport: TransportType
 	{
@@ -6280,10 +6285,10 @@ public class Account : LinphoneObject
 	}
 		
 	/// Assign a user pointer to the account. 
-	/// - Parameter userData: The user data.   
+	/// - Parameter userData: The user data.    
 	
 	/// Retrieve the user pointer associated with the account. 
-	/// - Returns: The user data.   
+	/// - Returns: The user data.    
 	public var userData: UnsafeMutableRawPointer?
 	{
 	
@@ -6300,8 +6305,8 @@ public class Account : LinphoneObject
 	
 	
 	/// Set one custom parameter to this ``Account``. 
-	/// - Parameter key: key of the searched parameter.   
-	/// - Parameter value: value of the searched parameter.   
+	/// - Parameter key: key of the searched parameter.    
+	/// - Parameter value: value of the searched parameter.    
 	public func addCustomParam(key:String, value:String) 
 	{
 		linphone_account_add_custom_param(cPtr, key, value)
@@ -6318,7 +6323,7 @@ public class Account : LinphoneObject
 	
 	
 	/// Instantiate a new account with values from source. 
-	/// - Returns: The newly created ``Account`` object.   
+	/// - Returns: The newly created ``Account`` object.    
 	public func clone() -> Account?
 	{
 		let cPointer = linphone_account_clone(cPtr)
@@ -6334,8 +6339,8 @@ public class Account : LinphoneObject
 	
 	/// Returns a filtered list of chat rooms for a given account. 
 	/// - Parameter filter: the criteria a chat room must meet somehow (subject,
-	/// participant address, friend's name).   
-	/// - Returns: The list of chat rooms .     
+	/// participant address, friend's name).    
+	/// - Returns: The list of chat rooms  .       
 	public func filterChatRooms(filter:String) -> [ChatRoom]
 	{
 		var swiftList = [ChatRoom]()
@@ -6355,7 +6360,7 @@ public class Account : LinphoneObject
 	/// Find authentication info matching account, if any, similarly to
 	/// linphone_core_find_auth_info. 
 	/// - Returns: a ``AuthInfo`` matching account criteria if possible, nil if nothing
-	/// can be found.   
+	/// can be found.    
 	public func findAuthInfo() -> AuthInfo?
 	{
 		let cPointer = linphone_account_find_auth_info(cPtr)
@@ -6370,8 +6375,8 @@ public class Account : LinphoneObject
 	
 	/// Returns the list of call logs for a given account. 
 	/// This list must be freed after use. 
-	/// - Parameter remoteAddress: the ``Address`` object to filter call logs.   
-	/// - Returns: The list of filtered call logs .     
+	/// - Parameter remoteAddress: the ``Address`` object to filter call logs.    
+	/// - Returns: The list of filtered call logs  .       
 	public func getCallLogsForAddress(remoteAddress:Address) -> [CallLog]
 	{
 		var swiftList = [CallLog]()
@@ -6390,8 +6395,8 @@ public class Account : LinphoneObject
 	
 	/// Obtain the value of a header sent by the server in last answer to REGISTER. 
 	/// - Parameter headerName: The header name for which to fetch corresponding value.
-	///   
-	/// - Returns: The value of the queried header.   
+	///    
+	/// - Returns: The value of the queried header.    
 	public func getCustomHeader(headerName:String) -> String
 	{
 		let cstr = linphone_account_get_custom_header(cPtr, headerName)
@@ -6402,9 +6407,9 @@ public class Account : LinphoneObject
 	
 	
 	/// Get the custom parameter with key to this ``Account``. 
-	/// - Parameter key: key of the searched parameter.   
+	/// - Parameter key: key of the searched parameter.    
 	/// - Returns: The value of the parameter with key if found or an empty string
-	/// otherwise.   
+	/// otherwise.    
 	public func getCustomParam(key:String) -> String
 	{
 		let cstr = linphone_account_get_custom_param(cPtr, key)
@@ -6415,7 +6420,7 @@ public class Account : LinphoneObject
 	
 	
 	/// Detect if the given input is a phone number or not. 
-	/// - Parameter username: The string to parse.   
+	/// - Parameter username: The string to parse.    
 	/// - Returns: true if input is a phone number, false otherwise. 
 	public func isPhoneNumber(username:String) -> Bool
 	{
@@ -6428,9 +6433,9 @@ public class Account : LinphoneObject
 	/// 888-444-222 becomes 888444222 or +33888444222 depending on the ``Account``
 	/// object. This function will always generate a normalized username if input is a
 	/// phone number. 
-	/// - Parameter username: The string to parse.   
+	/// - Parameter username: The string to parse.    
 	/// - Returns: nil if input is an invalid phone number, normalized phone number
-	/// from username input otherwise.      
+	/// from username input otherwise.       
 	public func normalizePhoneNumber(username:String) -> String
 	{
 		let cstr = linphone_account_normalize_phone_number(cPtr, username)
@@ -6443,12 +6448,17 @@ public class Account : LinphoneObject
 	
 	
 	
-	/// Normalize a human readable sip uri into a fully qualified LinphoneAddress. 
+	/// Normalize a human readable sip uri into a fully qualified ``Address``. 
 	/// A sip address should look like DisplayName <sip:username@domain:port> .
 	/// Basically this function performs the following tasks
+	/// -if a phone number is entered, prepend country prefix and eventually escape the
+	/// '+' by 00 of the proxy config.
+	/// -if no domain part is supplied, append the domain name of the proxy config.
+	/// Returns nil if no proxy is provided at this point.
+	/// -if no sip: is present, prepend it.
 	/// The result is a syntactically correct SIP address. 
-	/// - Parameter username: The string to parse.   
-	/// - Returns: nil if invalid input, normalized sip address otherwise.     
+	/// - Parameter username: The string to parse.    
+	/// - Returns: nil if invalid input, normalized sip address otherwise.       
 	public func normalizeSipUri(username:String) -> Address?
 	{
 		let cPointer = linphone_account_normalize_sip_uri(cPtr, username)
@@ -6494,8 +6504,8 @@ public class Account : LinphoneObject
 	
 	
 	/// Set the value of a custom header sent to the server in REGISTERs request. 
-	/// - Parameter headerName: The header name.   
-	/// - Parameter headerValue: The header value.   
+	/// - Parameter headerName: The header name.    
+	/// - Parameter headerValue: The header value.    
 	public func setCustomHeader(headerName:String, headerValue:String?) 
 	{
 		linphone_account_set_custom_header(cPtr, headerName, headerValue)
@@ -6503,8 +6513,10 @@ public class Account : LinphoneObject
 }
 
 
-/// The object used to configure an account on a server via XML-RPC, see
-/// https://wiki.linphone.org/xwiki/wiki/public/view/Lib/Features/Override%20account%20creator%20request/.
+/// The object used to configure an account on a server via XML-RPC See: Override
+/// account creator request 
+/// The object used to configure an account on a server via XML-RPC See: Override
+/// account creator request 
 public class AccountCreator : LinphoneObject
 {
 	var delegateManagers : [AccountCreatorDelegateManager] = []
@@ -6738,9 +6750,9 @@ public class AccountCreator : LinphoneObject
 	
 	
 	/// Create a ``AccountCreator`` and set Linphone Request callbacks. 
-	/// - Parameter core: The ``Core`` used for the XML-RPC communication   
-	/// - Returns: The new ``AccountCreator`` object.   
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// - Parameter core: The ``Core`` used for the XML-RPC communication    
+	/// - Returns: The new ``AccountCreator`` object.    
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
 	@available(*, deprecated)
 	static public func create(core:Core) throws -> AccountCreator
 	{
@@ -6753,10 +6765,10 @@ public class AccountCreator : LinphoneObject
 		return result
 	}
 	
-	/// Assign a proxy config pointer to the LinphoneAccountCreator. 
-	/// - Parameter account: The LinphoneAccount to associate with the
-	/// LinphoneAccountCreator.   
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// Assign a proxy config pointer to the ``AccountCreator``. 
+	/// - Parameter account: The ``Account`` to associate with the ``AccountCreator``. 
+	///   
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
 	
 	public var account: Account?
 	{
@@ -6770,13 +6782,13 @@ public class AccountCreator : LinphoneObject
 		
 	/// Set the account creation request token received to be used to check user
 	/// validation. 
-	/// - Parameter token: The token to set   
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// - Parameter token: The token to set    
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
 	
 	/// Get the account creation request token received to be used to check user
 	/// validation. 
-	/// - Returns: The token set, if any   
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// - Returns: The token set, if any    
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
 	public var accountCreationRequestToken: String?
 	{
 	@available(*, deprecated)
@@ -6798,13 +6810,13 @@ public class AccountCreator : LinphoneObject
 	}
 		
 	/// Set the activation code. 
-	/// - Parameter activationCode: The activation code to set   
+	/// - Parameter activationCode: The activation code to set    
 	/// - Returns: ``Ok`` if everything is OK, or a specific error otherwise. 
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
 	
 	/// Get the activation code. 
-	/// - Returns: The activation code of the ``AccountCreator``.   
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// - Returns: The activation code of the ``AccountCreator``.    
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
 	public var activationCode: String?
 	{
 	@available(*, deprecated)
@@ -6826,14 +6838,14 @@ public class AccountCreator : LinphoneObject
 	}
 		
 	/// Set the supported algorithm. 
-	/// - Parameter algorithm: The algorithm to use   
+	/// - Parameter algorithm: The algorithm to use    
 	/// - Returns: LinphoneAccountCreatorAlgoStatusOk if everything is OK, or a
 	/// specific error otherwise. 
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
 	
 	/// Get the algorithm configured in the account creator. 
-	/// - Returns: The algorithm of the ``AccountCreator``.   
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// - Returns: The algorithm of the ``AccountCreator``.    
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
 	public var algorithm: String?
 	{
 	@available(*, deprecated)
@@ -6858,7 +6870,7 @@ public class AccountCreator : LinphoneObject
 	/// - Parameter setAsDefault: true for the created proxy config to be set as
 	/// default in ``Core``, false otherwise 
 	/// - Returns: ``RequestOk`` if everything is OK, or a specific error otherwise. 
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
 	
 	public var asDefault: Bool?
 	{
@@ -6872,10 +6884,10 @@ public class AccountCreator : LinphoneObject
 		
 	
 	/// Get the current ``AccountCreatorDelegate`` object associated with a
-	/// LinphoneAccountCreator. 
+	/// ``AccountCreator``. 
 	/// - Returns: The current ``AccountCreatorDelegate`` object associated with the
-	/// LinphoneAccountCreator.   
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// ``AccountCreator``.    
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
 	@available(*, deprecated)
 	public var currentDelegate: AccountCreatorDelegate?
 	{
@@ -6890,13 +6902,13 @@ public class AccountCreator : LinphoneObject
 	}
 		
 	/// Set the display name. 
-	/// - Parameter displayName: The display name to set   
+	/// - Parameter displayName: The display name to set    
 	/// - Returns: ``Ok`` if everything is OK, or a specific error otherwise. 
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
 	
 	/// Get the display name. 
-	/// - Returns: The display name of the ``AccountCreator``.   
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// - Returns: The display name of the ``AccountCreator``.    
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
 	public var displayName: String?
 	{
 	@available(*, deprecated)
@@ -6918,13 +6930,13 @@ public class AccountCreator : LinphoneObject
 	}
 		
 	/// Set the domain. 
-	/// - Parameter domain: The domain to set   
+	/// - Parameter domain: The domain to set    
 	/// - Returns: ``Ok`` if everything is OK, or a specific error otherwise. 
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
 	
 	/// Get the domain. 
-	/// - Returns: The domain of the ``AccountCreator``.   
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// - Returns: The domain of the ``AccountCreator``.    
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
 	public var domain: String?
 	{
 	@available(*, deprecated)
@@ -6946,13 +6958,13 @@ public class AccountCreator : LinphoneObject
 	}
 		
 	/// Set the email. 
-	/// - Parameter email: The email to set   
+	/// - Parameter email: The email to set    
 	/// - Returns: ``Ok`` if everything is OK, or a specific error otherwise. 
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
 	
 	/// Get the email. 
-	/// - Returns: The email of the ``AccountCreator``.   
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// - Returns: The email of the ``AccountCreator``.    
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
 	public var email: String?
 	{
 	@available(*, deprecated)
@@ -6974,13 +6986,13 @@ public class AccountCreator : LinphoneObject
 	}
 		
 	/// Set the ha1. 
-	/// - Parameter ha1: The ha1 to set   
+	/// - Parameter ha1: The ha1 to set    
 	/// - Returns: ``Ok`` if everything is OK, or a specific error otherwise. 
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
 	
 	/// Get the ha1. 
-	/// - Returns: The ha1 of the ``AccountCreator``.   
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// - Returns: The ha1 of the ``AccountCreator``.    
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
 	public var ha1: String?
 	{
 	@available(*, deprecated)
@@ -7002,13 +7014,13 @@ public class AccountCreator : LinphoneObject
 	}
 		
 	/// Set the language to use in email or SMS if supported. 
-	/// - Parameter lang: The language to use   
+	/// - Parameter lang: The language to use    
 	/// - Returns: ``Ok`` if everything is OK, or a specific error otherwise. 
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
 	
 	/// Get the language use in email of SMS. 
-	/// - Returns: The language of the ``AccountCreator``.   
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// - Returns: The language of the ``AccountCreator``.    
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
 	public var language: String?
 	{
 	@available(*, deprecated)
@@ -7030,13 +7042,13 @@ public class AccountCreator : LinphoneObject
 	}
 		
 	/// Set the password. 
-	/// - Parameter password: The password to set   
+	/// - Parameter password: The password to set    
 	/// - Returns: ``Ok`` if everything is OK, or specific(s) error(s) otherwise. 
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
 	
 	/// Get the password. 
-	/// - Returns: The password of the ``AccountCreator``.   
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// - Returns: The password of the ``AccountCreator``.    
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
 	public var password: String?
 	{
 	@available(*, deprecated)
@@ -7060,8 +7072,8 @@ public class AccountCreator : LinphoneObject
 	
 	/// Get the international prefix. 
 	/// - Returns: The international prefix (or phone country code) of the
-	/// ``AccountCreator``.   
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// ``AccountCreator``.    
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
 	@available(*, deprecated)
 	public var phoneCountryCode: String?
 	{
@@ -7078,8 +7090,8 @@ public class AccountCreator : LinphoneObject
 		
 	
 	/// Get the RFC 3966 normalized phone number. 
-	/// - Returns: The phone number of the ``AccountCreator``.   
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// - Returns: The phone number of the ``AccountCreator``.    
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
 	@available(*, deprecated)
 	public var phoneNumber: String?
 	{
@@ -7096,13 +7108,13 @@ public class AccountCreator : LinphoneObject
 		
 	/// Set the param to be used by the backend to send the push notification to the
 	/// device asking for an auth token. 
-	/// - Parameter pnParam: The pn_param to set   
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// - Parameter pnParam: The pn_param to set    
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
 	
 	/// Get the param to be used by the backend to send the push notification to the
 	/// device asking for an auth token. 
-	/// - Returns: The pn_param set, if any   
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// - Returns: The pn_param set, if any    
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
 	public var pnParam: String?
 	{
 	@available(*, deprecated)
@@ -7125,13 +7137,13 @@ public class AccountCreator : LinphoneObject
 		
 	/// Set the prid to be used by the backend to send the push notification to the
 	/// device asking for an auth token. 
-	/// - Parameter pnPrid: The pn_prid to set   
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// - Parameter pnPrid: The pn_prid to set    
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
 	
 	/// Get the prid to be used by the backend to send the push notification to the
 	/// device asking for an auth token. 
-	/// - Returns: The pn_prid set, if any   
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// - Returns: The pn_prid set, if any    
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
 	public var pnPrid: String?
 	{
 	@available(*, deprecated)
@@ -7154,13 +7166,13 @@ public class AccountCreator : LinphoneObject
 		
 	/// Set the provider to be used by the backend to send the push notification to the
 	/// device asking for an auth token. 
-	/// - Parameter pnProvider: The pn_provider to set   
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// - Parameter pnProvider: The pn_provider to set    
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
 	
 	/// Get the provider to be used by the backend to send the push notification to the
 	/// device asking for an auth token. 
-	/// - Returns: The pn_provider set, if any   
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// - Returns: The pn_provider set, if any    
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
 	public var pnProvider: String?
 	{
 	@available(*, deprecated)
@@ -7181,10 +7193,10 @@ public class AccountCreator : LinphoneObject
 		}
 	}
 		
-	/// Assign a proxy config pointer to the LinphoneAccountCreator. 
-	/// - Parameter cfg: The LinphoneProxyConfig to associate with the
-	/// LinphoneAccountCreator.   
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// Assign a proxy config pointer to the ``AccountCreator``. 
+	/// - Parameter cfg: The ``ProxyConfig`` to associate with the ``AccountCreator``. 
+	///   
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
 	
 	public var proxyConfig: ProxyConfig?
 	{
@@ -7199,7 +7211,7 @@ public class AccountCreator : LinphoneObject
 	
 	/// Get the set_as_default property. 
 	/// - Returns: true if account will be set as default, false otherwise. 
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
 	@available(*, deprecated)
 	public var setAsDefault: Bool
 	{
@@ -7210,13 +7222,13 @@ public class AccountCreator : LinphoneObject
 		
 	/// Set the authentication token received by push notification to be used to
 	/// authenticate next queries, if required. 
-	/// - Parameter token: The token to set   
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// - Parameter token: The token to set    
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
 	
 	/// Get the authentication token set (if any) to be used to authenticate next
 	/// queries, if required. 
-	/// - Returns: The token set, if any   
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// - Returns: The token set, if any    
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
 	public var token: String?
 	{
 	@available(*, deprecated)
@@ -7240,11 +7252,11 @@ public class AccountCreator : LinphoneObject
 	/// Set Transport. 
 	/// - Parameter transport: The ``TransportType`` to set 
 	/// - Returns: ``Ok`` if everything is OK, or a specific error otherwise. 
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
 	
 	/// Get Transport. 
 	/// - Returns: The ``TransportType`` of the creator. 
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
 	public var transport: TransportType
 	{
 	@available(*, deprecated)
@@ -7259,14 +7271,14 @@ public class AccountCreator : LinphoneObject
 		}
 	}
 		
-	/// Assign a user pointer to the LinphoneAccountCreator. 
+	/// Assign a user pointer to the ``AccountCreator``. 
 	/// - Parameter userData: The user pointer to associate with the
-	/// LinphoneAccountCreator.   
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// ``AccountCreator``.    
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
 	
-	/// Retrieve the user pointer associated with the LinphoneAccountCreator. 
-	/// - Returns: The user pointer associated with the LinphoneAccountCreator.   
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// Retrieve the user pointer associated with the ``AccountCreator``. 
+	/// - Returns: The user pointer associated with the ``AccountCreator``.    
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
 	public var userData: UnsafeMutableRawPointer?
 	{
 	@available(*, deprecated)
@@ -7282,13 +7294,13 @@ public class AccountCreator : LinphoneObject
 	}
 		
 	/// Set the username. 
-	/// - Parameter username: The username to set   
+	/// - Parameter username: The username to set    
 	/// - Returns: ``Ok`` if everything is OK, or a specific error otherwise. 
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
 	
 	/// Get the username. 
-	/// - Returns: The username of the ``AccountCreator``.   
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// - Returns: The username of the ``AccountCreator``.    
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
 	public var username: String?
 	{
 	@available(*, deprecated)
@@ -7314,7 +7326,7 @@ public class AccountCreator : LinphoneObject
 	/// Send a request to activate an account on server. 
 	/// - Returns: ``RequestOk`` if the request has been sent, ``RequestFailed``
 	/// otherwise 
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
 	@available(*, deprecated)
 	public func activateAccount() -> AccountCreator.Status
 	{
@@ -7326,7 +7338,7 @@ public class AccountCreator : LinphoneObject
 	/// Send a request to activate an alias. 
 	/// - Returns: ``RequestOk`` if the request has been sent, ``RequestFailed``
 	/// otherwise 
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
 	@available(*, deprecated)
 	public func activateAlias() -> AccountCreator.Status
 	{
@@ -7338,7 +7350,7 @@ public class AccountCreator : LinphoneObject
 	/// Send a request to create an account on server. 
 	/// - Returns: ``RequestOk`` if the request has been sent, ``RequestFailed``
 	/// otherwise 
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
 	@available(*, deprecated)
 	public func createAccount() throws -> AccountCreator.Status
 	{
@@ -7349,8 +7361,8 @@ public class AccountCreator : LinphoneObject
 	
 	/// Create and configure a ``Account`` and a ``AuthInfo`` from informations set in
 	/// the ``AccountCreator``. 
-	/// - Returns: A ``Account`` object if successful, nil otherwise.     
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// - Returns: A ``Account`` object if successful, nil otherwise.       
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
 	@available(*, deprecated)
 	public func createAccountInCore() throws -> Account
 	{
@@ -7367,8 +7379,8 @@ public class AccountCreator : LinphoneObject
 	
 	/// Create and configure a proxy config and a authentication info for an account
 	/// creator. 
-	/// - Returns: A ``ProxyConfig`` object if successful, nil otherwise.   
-	/// - deprecated: 05/05/2023 Use ``createAccountInCore()`` instead. 
+	/// - Returns: A ``ProxyConfig`` object if successful, nil otherwise.    
+	/// - Deprecated: 05/05/2023 Use ``createAccountInCore()`` instead. 
 	@available(*, deprecated)
 	public func createProxyConfig() throws -> ProxyConfig
 	{
@@ -7389,7 +7401,7 @@ public class AccountCreator : LinphoneObject
 	/// account is automatically activated. 
 	/// - Returns: ``RequestOk`` if the request has been sent, ``RequestFailed``
 	/// otherwise 
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
 	@available(*, deprecated)
 	public func createPushAccount() throws -> AccountCreator.Status
 	{
@@ -7401,7 +7413,7 @@ public class AccountCreator : LinphoneObject
 	/// Send a request to know if an account is activated on server. 
 	/// - Returns: ``RequestOk`` if the request has been sent, ``RequestFailed``
 	/// otherwise 
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
 	@available(*, deprecated)
 	public func isAccountActivated() -> AccountCreator.Status
 	{
@@ -7413,7 +7425,7 @@ public class AccountCreator : LinphoneObject
 	/// Send a request to know the existence of account on server. 
 	/// - Returns: ``RequestOk`` if the request has been sent, ``RequestFailed``
 	/// otherwise 
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
 	@available(*, deprecated)
 	public func isAccountExist() -> AccountCreator.Status
 	{
@@ -7425,7 +7437,7 @@ public class AccountCreator : LinphoneObject
 	/// Send a request to know if an account is linked. 
 	/// - Returns: ``RequestOk`` if the request has been sent, ``RequestFailed``
 	/// otherwise 
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
 	@available(*, deprecated)
 	public func isAccountLinked() -> AccountCreator.Status
 	{
@@ -7437,7 +7449,7 @@ public class AccountCreator : LinphoneObject
 	/// Send a request to know if an alias is used. 
 	/// - Returns: ``RequestOk`` if the request has been sent, ``RequestFailed``
 	/// otherwise 
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
 	@available(*, deprecated)
 	public func isAliasUsed() -> AccountCreator.Status
 	{
@@ -7449,7 +7461,7 @@ public class AccountCreator : LinphoneObject
 	/// Send a request to link an account to an alias. 
 	/// - Returns: ``RequestOk`` if the request has been sent, ``RequestFailed``
 	/// otherwise 
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
 	@available(*, deprecated)
 	public func linkAccount() -> AccountCreator.Status
 	{
@@ -7461,7 +7473,7 @@ public class AccountCreator : LinphoneObject
 	/// Send a request to get the password & algorithm of an account using the
 	/// confirmation key. 
 	/// - Returns: ``RequestOk`` if everything is OK, or a specific error otherwise. 
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
 	@available(*, deprecated)
 	public func loginLinphoneAccount() -> AccountCreator.Status
 	{
@@ -7473,7 +7485,7 @@ public class AccountCreator : LinphoneObject
 	/// Send a request to recover an account. 
 	/// - Returns: ``RequestOk`` if the request has been sent, ``RequestFailed``
 	/// otherwise 
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
 	@available(*, deprecated)
 	public func recoverAccount() -> AccountCreator.Status
 	{
@@ -7486,7 +7498,7 @@ public class AccountCreator : LinphoneObject
 	/// The request_token is retrieved from the callback
 	/// linphone_account_creator_cbs_get_account_creation_request_token 
 	/// - Returns: ``RequestOk`` if everything is OK, or a specific error otherwise. 
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
 	@available(*, deprecated)
 	public func requestAccountCreationRequestToken() -> AccountCreator.Status
 	{
@@ -7501,7 +7513,7 @@ public class AccountCreator : LinphoneObject
 	/// linphone_account_creator_cbs_get_account_creation_token_using_request_token 
 	/// - Returns: ``RequestOk`` if the request has been sent, ``RequestFailed``
 	/// otherwise 
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
 	@available(*, deprecated)
 	public func requestAccountCreationTokenUsingRequestToken() -> AccountCreator.Status
 	{
@@ -7512,7 +7524,7 @@ public class AccountCreator : LinphoneObject
 	
 	/// Request an auth token to be send by the backend by push notification. 
 	/// - Returns: ``RequestOk`` if everything is OK, or a specific error otherwise. 
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
 	@available(*, deprecated)
 	public func requestAuthToken() -> AccountCreator.Status
 	{
@@ -7522,7 +7534,7 @@ public class AccountCreator : LinphoneObject
 	
 	
 	/// Reset the account creator entries like username, password, phone number... 
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
 	@available(*, deprecated)
 	public func reset() 
 	{
@@ -7532,10 +7544,10 @@ public class AccountCreator : LinphoneObject
 	
 	
 	/// Set the phone number normalized. 
-	/// - Parameter phoneNumber: The phone number to set   
-	/// - Parameter countryCode: Country code to associate phone number with   
+	/// - Parameter phoneNumber: The phone number to set    
+	/// - Parameter countryCode: Country code to associate phone number with    
 	/// - Returns: ``Ok`` if everything is OK, or specific(s) error(s) otherwise. 
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
 	@available(*, deprecated)
 	public func setPhoneNumber(phoneNumber:String?, countryCode:String?) -> UInt
 	{
@@ -7547,7 +7559,7 @@ public class AccountCreator : LinphoneObject
 	/// Send a request to update an account. 
 	/// - Returns: ``RequestOk`` if the request has been sent, ``RequestFailed``
 	/// otherwise 
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
 	@available(*, deprecated)
 	public func updateAccount() -> AccountCreator.Status
 	{
@@ -7561,7 +7573,7 @@ public class AccountCreator : LinphoneObject
 	/// test, and requires the APP_EVERYONE_IS_ADMIN property to be enabled on the
 	/// remote Flexisip Account Manager (FlexiAPI). This feature must never be turned
 	/// on for a production-stage app. 
-	/// - deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
+	/// - Deprecated: 11/06/2024 use ``AccountManagerServices`` instead 
 	@available(*, deprecated)
 	public func useTestAdminAccount() 
 	{
@@ -7591,7 +7603,7 @@ public class AccountDevice : LinphoneObject
 	
 	
 	/// Gets the timestamp at which this devices was updated for the last time. 
-	/// - Returns: the time under ISO 8601 format at which the device was updated.   
+	/// - Returns: the time under ISO 8601 format at which the device was updated.    
 	public var lastUpdateTime: String?
 	{
 	
@@ -7607,7 +7619,7 @@ public class AccountDevice : LinphoneObject
 		
 	
 	/// Gets the timestamp at which this devices was updated for the last time. 
-	/// - Returns: the timestamp (time_t) at which the device was updated.   
+	/// - Returns: the timestamp (time_t) at which the device was updated.    
 	public var lastUpdateTimestamp: time_t?
 	{
 	
@@ -7617,7 +7629,7 @@ public class AccountDevice : LinphoneObject
 		
 	
 	/// Gets the name of the device. 
-	/// - Returns: the name of the device.   
+	/// - Returns: the name of the device.    
 	public var name: String?
 	{
 	
@@ -7633,7 +7645,7 @@ public class AccountDevice : LinphoneObject
 		
 	
 	/// Gets the user-agent of the device. 
-	/// - Returns: the user-agent of the device.   
+	/// - Returns: the user-agent of the device.    
 	public var userAgent: String
 	{
 	
@@ -7646,7 +7658,7 @@ public class AccountDevice : LinphoneObject
 		
 	
 	/// Gets the UUID of the device. 
-	/// - Returns: the UUID of the device.   
+	/// - Returns: the UUID of the device.    
 	public var uuid: String
 	{
 	
@@ -7682,10 +7694,10 @@ public class AccountManagerServices : LinphoneObject
 	/// Sets the preferred language to get error messages from account manager (if
 	/// supported, otherwise will be english). 
 	/// - Parameter language: The language (en, fr, etc...) you'd like to have error
-	/// messages in (if possible).   
+	/// messages in (if possible).    
 	
 	/// Gets the configurer preferred language, if set. 
-	/// - Returns: the language previously set, if any (otherwise nil).   
+	/// - Returns: the language previously set, if any (otherwise nil).    
 	public var language: String?
 	{
 	
@@ -7709,9 +7721,9 @@ public class AccountManagerServices : LinphoneObject
 	
 	/// Requests to delete a device from the list of currently known devices. 
 	/// - Parameter sipIdentity: the SIP identity URI that identifies your account for
-	/// which you want the devices list.   
-	/// - Parameter device: the ``AccountDevice`` to delete.   
-	/// - Returns: the ``AccountManagerServicesRequest`` request object.   
+	/// which you want the devices list.    
+	/// - Parameter device: the ``AccountDevice`` to delete.    
+	/// - Returns: the ``AccountManagerServicesRequest`` request object.    
 	public func createDeleteDeviceRequest(sipIdentity:Address, device:AccountDevice) throws -> AccountManagerServicesRequest
 	{
 		let cPointer = linphone_account_manager_services_create_delete_device_request(cPtr, sipIdentity.cPtr, device.cPtr)
@@ -7731,7 +7743,7 @@ public class AccountManagerServices : LinphoneObject
 	/// obtain a valid account creation token. 
 	/// Once the account creation token is obtained, you can call
 	/// ``createNewAccountUsingTokenRequest(username:password:algorithm:token:)``. 
-	/// - Returns: the ``AccountManagerServicesRequest`` request object.   
+	/// - Returns: the ``AccountManagerServicesRequest`` request object.    
 	public func createGetAccountCreationRequestTokenRequest() throws -> AccountManagerServicesRequest
 	{
 		let cPointer = linphone_account_manager_services_create_get_account_creation_request_token_request(cPtr)
@@ -7751,8 +7763,8 @@ public class AccountManagerServices : LinphoneObject
 	/// The obtained token can be used to call
 	/// ``createNewAccountUsingTokenRequest(username:password:algorithm:token:)``. 
 	/// - Parameter requestToken: the token obtained previously and validated using
-	/// your web browser.   
-	/// - Returns: the ``AccountManagerServicesRequest`` request object.   
+	/// your web browser.    
+	/// - Returns: the ``AccountManagerServicesRequest`` request object.    
 	public func createGetAccountCreationTokenFromRequestTokenRequest(requestToken:String) throws -> AccountManagerServicesRequest
 	{
 		let cPointer = linphone_account_manager_services_create_get_account_creation_token_from_request_token_request(cPtr, requestToken)
@@ -7768,8 +7780,8 @@ public class AccountManagerServices : LinphoneObject
 	
 	/// Requests the list of devices currently known. 
 	/// - Parameter sipIdentity: the SIP identity URI that identifies your account for
-	/// which you want the devices list.   
-	/// - Returns: the ``AccountManagerServicesRequest`` request object.   
+	/// which you want the devices list.    
+	/// - Returns: the ``AccountManagerServicesRequest`` request object.    
 	public func createGetDevicesListRequest(sipIdentity:Address) throws -> AccountManagerServicesRequest
 	{
 		let cPointer = linphone_account_manager_services_create_get_devices_list_request(cPtr, sipIdentity.cPtr)
@@ -7788,8 +7800,8 @@ public class AccountManagerServices : LinphoneObject
 	/// ``createSendEmailLinkingCodeByEmailRequest(sipIdentity:emailAddress:)`` 
 	/// - Parameter sipIdentity: the SIP identity URI that identifies the account to
 	/// which you want to link the email address to.    
-	/// - Parameter code: the code received by email.   
-	/// - Returns: the ``AccountManagerServicesRequest`` request object.   
+	/// - Parameter code: the code received by email.    
+	/// - Returns: the ``AccountManagerServicesRequest`` request object.    
 	public func createLinkEmailToAccountUsingCodeRequest(sipIdentity:Address, code:String) throws -> AccountManagerServicesRequest
 	{
 		let cPointer = linphone_account_manager_services_create_link_email_to_account_using_code_request(cPtr, sipIdentity.cPtr, code)
@@ -7808,8 +7820,8 @@ public class AccountManagerServices : LinphoneObject
 	/// ``createSendPhoneNumberLinkingCodeBySmsRequest(sipIdentity:phoneNumber:)`` 
 	/// - Parameter sipIdentity: the SIP identity URI that identifies the account to
 	/// which you want to link the phone number to.    
-	/// - Parameter code: the code received by SMS.   
-	/// - Returns: the ``AccountManagerServicesRequest`` request object.   
+	/// - Parameter code: the code received by SMS.    
+	/// - Returns: the ``AccountManagerServicesRequest`` request object.    
 	public func createLinkPhoneNumberToAccountUsingCodeRequest(sipIdentity:Address, code:String) throws -> AccountManagerServicesRequest
 	{
 		let cPointer = linphone_account_manager_services_create_link_phone_number_to_account_using_code_request(cPtr, sipIdentity.cPtr, code)
@@ -7825,12 +7837,12 @@ public class AccountManagerServices : LinphoneObject
 	
 	/// Creates an account using an account creation token, for example obtained using
 	/// ``createSendAccountCreationTokenByPushRequest(pnProvider:pnParam:pnPrid:)``. 
-	/// - Parameter username: the username of the newly created account.   
-	/// - Parameter password: the password to use for the newly created account.   
+	/// - Parameter username: the username of the newly created account.    
+	/// - Parameter password: the password to use for the newly created account.    
 	/// - Parameter algorithm: the algorithm to use to hash the password (must be
-	/// either MD5 or SHA-256).   
-	/// - Parameter token: the account creation token obtained previously.   
-	/// - Returns: the ``AccountManagerServicesRequest`` request object.   
+	/// either MD5 or SHA-256).    
+	/// - Parameter token: the account creation token obtained previously.    
+	/// - Returns: the ``AccountManagerServicesRequest`` request object.    
 	public func createNewAccountUsingTokenRequest(username:String, password:String, algorithm:String, token:String) throws -> AccountManagerServicesRequest
 	{
 		let cPointer = linphone_account_manager_services_create_new_account_using_token_request(cPtr, username, password, algorithm, token)
@@ -7850,14 +7862,46 @@ public class AccountManagerServices : LinphoneObject
 	/// ``Core/getPushNotificationConfig()``, but on iOS may need some modifications
 	/// (depending on debug mode for example). Once the token is obtained, you can call
 	/// ``createNewAccountUsingTokenRequest(username:password:algorithm:token:)``. 
-	/// - Parameter pnProvider: The provider, for example "apns.dev".   
+	/// - Parameter pnProvider: The provider, for example "apns.dev".    
 	/// - Parameter pnParam: The parameters, for example
-	/// "ABCD1234.org.linphone.phone.remote".   
-	/// - Parameter pnPrid: The prid, also known as push token.   
-	/// - Returns: the ``AccountManagerServicesRequest`` request object.   
+	/// "ABCD1234.org.linphone.phone.remote".    
+	/// - Parameter pnPrid: The prid, also known as push token.    
+	/// - Returns: the ``AccountManagerServicesRequest`` request object.    
 	public func createSendAccountCreationTokenByPushRequest(pnProvider:String, pnParam:String, pnPrid:String) throws -> AccountManagerServicesRequest
 	{
 		let cPointer = linphone_account_manager_services_create_send_account_creation_token_by_push_request(cPtr, pnProvider, pnParam, pnPrid)
+		if (cPointer == nil) {
+			throw LinphoneError.exception(result: "create null AccountManagerServicesRequest value")
+		}
+		let result = AccountManagerServicesRequest.getSwiftObject(cObject: cPointer!)
+		belle_sip_object_unref(UnsafeMutableRawPointer(cPointer))
+		return result
+	}
+	
+	
+	
+	/// Requests a push notification to be sent to device, containing a valid account
+	/// recovery token. 
+	/// Provider, param & prid can be obtained from
+	/// ``Core/getPushNotificationConfig()``, but on iOS may need some modifications
+	/// (depending on debug mode for example). Once the token is obtained, you can use
+	/// it to open the recovery webpage on the flexisip account manager at
+	/// https://account_manager.domain.tld/recovery/phone/<recovery token>?phone=<phone
+	/// number> 
+	/// Provider, param & prid can be obtained from
+	/// ``Core/getPushNotificationConfig()``, but on iOS may need some modifications
+	/// (depending on debug mode for example). Once the token is obtained, you can use
+	/// it to open the recovery webpage on the flexisip account manager at
+	/// https://account_manager.domain.tld/recovery/phone/<recovery token>?phone=<phone
+	/// number> 
+	/// - Parameter pnProvider: The provider, for example "apns.dev".    
+	/// - Parameter pnParam: The parameters, for example
+	/// "ABCD1234.org.linphone.phone.remote".    
+	/// - Parameter pnPrid: The prid, also known as push token.    
+	/// - Returns: the ``AccountManagerServicesRequest`` request object.    
+	public func createSendAccountRecoveryTokenByPushRequest(pnProvider:String, pnParam:String, pnPrid:String) throws -> AccountManagerServicesRequest
+	{
+		let cPointer = linphone_account_manager_services_create_send_account_recovery_token_by_push_request(cPtr, pnProvider, pnParam, pnPrid)
 		if (cPointer == nil) {
 			throw LinphoneError.exception(result: "create null AccountManagerServicesRequest value")
 		}
@@ -7873,8 +7917,8 @@ public class AccountManagerServices : LinphoneObject
 	/// ``createLinkEmailToAccountUsingCodeRequest(sipIdentity:code:)``. 
 	/// - Parameter sipIdentity: the SIP identity URI that identifies the account to
 	/// which you want to link the email address to.    
-	/// - Parameter emailAddress: the email address to which to send the code to.   
-	/// - Returns: the ``AccountManagerServicesRequest`` request object.   
+	/// - Parameter emailAddress: the email address to which to send the code to.    
+	/// - Returns: the ``AccountManagerServicesRequest`` request object.    
 	public func createSendEmailLinkingCodeByEmailRequest(sipIdentity:Address, emailAddress:String) throws -> AccountManagerServicesRequest
 	{
 		let cPointer = linphone_account_manager_services_create_send_email_linking_code_by_email_request(cPtr, sipIdentity.cPtr, emailAddress)
@@ -7893,8 +7937,8 @@ public class AccountManagerServices : LinphoneObject
 	/// ``createLinkPhoneNumberToAccountUsingCodeRequest(sipIdentity:code:)``. 
 	/// - Parameter sipIdentity: the SIP identity URI that identifies the account to
 	/// which you want to link the phone number to.    
-	/// - Parameter phoneNumber: the phone number to which to send the code by SMS.   
-	/// - Returns: the ``AccountManagerServicesRequest`` request object.   
+	/// - Parameter phoneNumber: the phone number to which to send the code by SMS.    
+	/// - Returns: the ``AccountManagerServicesRequest`` request object.    
 	public func createSendPhoneNumberLinkingCodeBySmsRequest(sipIdentity:Address, phoneNumber:String) throws -> AccountManagerServicesRequest
 	{
 		let cPointer = linphone_account_manager_services_create_send_phone_number_linking_code_by_sms_request(cPtr, sipIdentity.cPtr, phoneNumber)
@@ -7962,6 +8006,9 @@ public class AccountManagerServicesRequest : LinphoneObject
 		case GetDevicesList = 8
 		/// Removes an account device. 
 		case DeleteDevice = 9
+		/// Asks the account manager to send us an account recovery token by push
+		/// notification. 
+		case SendAccountRecoveryTokenByPush = 10
 		case GetCreationTokenAsAdmin = 100
 		case GetAccountInfoAsAdmin = 101
 		case DeleteAccountAsAdmin = 102
@@ -7989,12 +8036,12 @@ public class AccountManagerServicesRequest : LinphoneObject
 		}
 	}	
 	
-	/// Gets the current LinphoneAccountManagerServicesRequest. 
+	/// Gets the current ``AccountManagerServicesRequest``. 
 	/// This is meant only to be called from a callback to be able to get the user_data
 	/// associated with the ``AccountManagerServicesRequestDelegate`` that is calling
 	/// the callback. 
 	/// - Returns: The ``AccountManagerServicesRequestDelegate`` that has called the
-	/// last callback.   
+	/// last callback.    
 	public var currentDelegate: AccountManagerServicesRequestDelegate?
 	{
 	
@@ -8050,9 +8097,9 @@ public class AccountParams : LinphoneObject
 	
 	
 	/// Create a new ``AccountParams`` object from a configuration. 
-	/// - Parameter lc: The ``Core`` object.   
+	/// - Parameter lc: The ``Core`` object.    
 	/// - Parameter index: The index of the configuration. 
-	/// - Returns: The newly created ``AccountParams`` object.   
+	/// - Returns: The newly created ``AccountParams`` object.    
 	static public func newWithConfig(lc:Core, index:Int) -> AccountParams?
 	{
 		let cPointer = linphone_account_params_new_with_config(lc.cPtr, CInt(index))
@@ -8065,10 +8112,10 @@ public class AccountParams : LinphoneObject
 	}
 	
 	/// Set the audio video conference factory uri. 
-	/// - Parameter address: The ``Address`` to set.   
+	/// - Parameter address: The ``Address`` to set.    
 	
 	/// Get the audio video conference factory uri. 
-	/// - Returns: The ``Address`` of the audio video conference factory.   
+	/// - Returns: The ``Address`` of the audio video conference factory.    
 	public var audioVideoConferenceFactoryAddress: Address?
 	{
 	
@@ -8088,13 +8135,12 @@ public class AccountParams : LinphoneObject
 	}
 		
 	/// Enable the use of RTCP feedback (also known as AVPF profile). 
-	/// - Parameter mode: the enablement mode, which can be ``Default`` (use
-	/// LinphoneCore's mode), ``Enabled`` (avpf is enabled), or ``Disabled``
-	/// (disabled). 
+	/// - Parameter mode: the enablement mode, which can be ``Default`` (use ``Core``'s
+	/// mode), ``Enabled`` (avpf is enabled), or ``Disabled`` (disabled). 
 	
 	/// Get enablement status of RTCP feedback (also known as AVPF profile). 
-	/// - Returns: the enablement mode, which can be ``Default`` (use LinphoneCore's
-	/// mode), ``Enabled`` (avpf is enabled), or ``Disabled`` (disabled). 
+	/// - Returns: the enablement mode, which can be ``Default`` (use ``Core``'s mode),
+	/// ``Enabled`` (avpf is enabled), or ``Disabled`` (disabled). 
 	public var avpfMode: AVPFMode
 	{
 	
@@ -8127,10 +8173,10 @@ public class AccountParams : LinphoneObject
 	}
 		
 	/// Set the CCMP server address. 
-	/// - Parameter url: The URL of the CCMP server.   
+	/// - Parameter url: The URL of the CCMP server.    
 	
 	/// Get the CCMP server address. 
-	/// - Returns: The URL of the CCMP server.   
+	/// - Returns: The URL of the CCMP server.    
 	public var ccmpServerUrl: String?
 	{
 	
@@ -8150,11 +8196,27 @@ public class AccountParams : LinphoneObject
 		}
 	}
 		
+	
+	/// Get the CCMP user ID. 
+	/// - Returns: The ID of the CCMP user.    
+	public var ccmpUserId: String?
+	{
+	
+			
+			let cPointer = linphone_account_params_get_ccmp_user_id(cPtr)
+			if (cPointer == nil) {
+				return nil
+			}
+			let result = charArrayToString(charPointer: cPointer)
+			return result
+
+	}
+		
 	/// Set the conference factory uri. 
-	/// - Parameter address: The ``Address`` to set.   
+	/// - Parameter address: The ``Address`` to set.    
 	
 	/// Get the conference factory uri. 
-	/// - Returns: The ``Address`` of the conference factory.   
+	/// - Returns: The ``Address`` of the conference factory.    
 	public var conferenceFactoryAddress: Address?
 	{
 	
@@ -8174,11 +8236,11 @@ public class AccountParams : LinphoneObject
 	}
 		
 	/// Set the conference factory uri. 
-	/// - Parameter uri: The uri of the conference factory.   
-	/// - deprecated: 16/08/2023 Use ``setConferenceFactoryAddress(address:)`` instead. 
+	/// - Parameter uri: The uri of the conference factory.    
+	/// - Deprecated: 16/08/2023 Use ``setConferenceFactoryAddress(address:)`` instead. 
 	
 	/// Get the conference factory uri. 
-	/// - Returns: The uri of the conference factory.   
+	/// - Returns: The uri of the conference factory.    
 	public var conferenceFactoryUri: String?
 	{
 	
@@ -8202,14 +8264,18 @@ public class AccountParams : LinphoneObject
 	/// Set optional contact parameters that will be added to the contact information
 	/// sent in the registration. 
 	/// - Parameter contactParams: A string contaning the additional parameters in text
-	/// form, like "myparam=something;myparam2=something_else"  
+	/// form, like "myparam=something;myparam2=something_else"   
+	/// The main use case for this function is provide the proxy additional information
+	/// regarding the user agent, like for example unique identifier or apple push id.
+	/// As an example, the contact address in the SIP register sent will look like
+	/// <sip:joe@15.128.128.93:50421>;apple-push-id=43143-DFE23F-2323-FA2232. 
 	/// The main use case for this function is provide the proxy additional information
 	/// regarding the user agent, like for example unique identifier or apple push id.
 	/// As an example, the contact address in the SIP register sent will look like
 	/// <sip:joe@15.128.128.93:50421>;apple-push-id=43143-DFE23F-2323-FA2232. 
 	
 	/// Returns the contact parameters. 
-	/// - Returns: The previously set contact parameters.   
+	/// - Returns: The previously set contact parameters.    
 	public var contactParameters: String?
 	{
 	
@@ -8232,14 +8298,18 @@ public class AccountParams : LinphoneObject
 	/// Set optional contact parameters that will be added to the contact information
 	/// sent in the registration, inside the URI. 
 	/// - Parameter contactUriParams: A string containing the additional parameters in
-	/// text form, like "myparam=something;myparam2=something_else"  
+	/// text form, like "myparam=something;myparam2=something_else"   
+	/// The main use case for this function is provide the proxy additional information
+	/// regarding the user agent, like for example unique identifier or apple push id.
+	/// As an example, the contact address in the SIP register sent will look like
+	/// <sip:joe@15.128.128.93:50421;apple-push-id=43143-DFE23F-2323-FA2232>. 
 	/// The main use case for this function is provide the proxy additional information
 	/// regarding the user agent, like for example unique identifier or apple push id.
 	/// As an example, the contact address in the SIP register sent will look like
 	/// <sip:joe@15.128.128.93:50421;apple-push-id=43143-DFE23F-2323-FA2232>. 
 	
 	/// Return the contact URI parameters. 
-	/// - Returns: The previously set contact URI parameters.   
+	/// - Returns: The previously set contact URI parameters.    
 	public var contactUriParameters: String?
 	{
 	
@@ -8288,11 +8358,11 @@ public class AccountParams : LinphoneObject
 	/// server. 
 	/// This is typically used to supply an alternative SIP address to call in case the
 	/// main one is not reachable. 
-	/// - Parameter contact: a ``Address`` the optional alternative contact address.   
+	/// - Parameter contact: a ``Address`` the optional alternative contact address.    
 	
 	/// Get the custom contact address previously used when registering to the SIP
 	/// server. 
-	/// - Returns: a ``Address``   
+	/// - Returns: a ``Address``    
 	public var customContact: Address?
 	{
 	
@@ -8311,14 +8381,15 @@ public class AccountParams : LinphoneObject
 		}
 	}
 		
-	/// Set whether liblinphone should replace "+" by international calling prefix in
-	/// dialed numbers (passed to linphone_core_invite). 
+	/// Set whether liblinphone should replace "+" by international calling prefix
+	/// (ICP) in dialed numbers (passed to linphone_core_invite). 
 	/// - Parameter enable: true to replace + by the international prefix, false
 	/// otherwise. 
 	
-	/// Return whether or not the + should be replaced by 00. 
-	/// - Returns: Whether liblinphone should replace "+" by "00" in dialed numbers
-	/// (passed to ``Core/invite(url:)``). 
+	/// Return whether or not the + should be replaced by the International Call
+	/// Prefix. 
+	/// - Returns: Whether liblinphone should replace "+" by the International Call
+	/// Prefix. in dialed numbers (passed to ``Core/invite(url:)``). 
 	public var dialEscapePlusEnabled: Bool
 	{
 	
@@ -8334,7 +8405,7 @@ public class AccountParams : LinphoneObject
 		
 	
 	/// Get the domain name of the given account params. 
-	/// - Returns: The domain name of the account params.   
+	/// - Returns: The domain name of the account params.    
 	public var domain: String?
 	{
 	
@@ -8368,8 +8439,8 @@ public class AccountParams : LinphoneObject
 		
 	
 	/// Get the identity of the account params. 
-	/// - Returns: The SIP identity that belongs to this account params.   
-	/// - deprecated: 01/03/2021 Use ``getIdentityAddress()`` instead. 
+	/// - Returns: The SIP identity that belongs to this account params.    
+	/// - Deprecated: 01/03/2021 Use ``getIdentityAddress()`` instead. 
 	@available(*, deprecated)
 	public var identity: String?
 	{
@@ -8388,11 +8459,14 @@ public class AccountParams : LinphoneObject
 	/// This identity is normally formed with display name, username and domain, such
 	/// as: Alice <sip:alice@example.net> The REGISTER messages will have from and to
 	/// set to this identity. 
-	/// - Parameter identity: The ``Address`` of the identity to set.   
+	/// This identity is normally formed with display name, username and domain, such
+	/// as: Alice <sip:alice@example.net> The REGISTER messages will have from and to
+	/// set to this identity. 
+	/// - Parameter identity: The ``Address`` of the identity to set.    
 	/// - Returns: 0 if successful, -1 otherwise. 
 	
 	/// Get the identity address of the account params. 
-	/// - Returns: The SIP identity that belongs to this account params.   
+	/// - Returns: The SIP identity that belongs to this account params.    
 	public var identityAddress: Address?
 	{
 	
@@ -8404,9 +8478,9 @@ public class AccountParams : LinphoneObject
 			return result
 
 	}
-	public func setIdentityaddress(newValue: Address) throws
+	public func setIdentityaddress(newValue: Address?) throws
 	{
-		let exception_result = linphone_account_params_set_identity_address(cPtr, newValue.cPtr)
+		let exception_result = linphone_account_params_set_identity_address(cPtr, newValue?.cPtr)
 		guard exception_result == 0 else {
 			throw LinphoneError.exception(result: "username setter returned value \(exception_result)")
 		}
@@ -8416,10 +8490,10 @@ public class AccountParams : LinphoneObject
 	/// This property can the be referenced by another account params 'depends_on' to
 	/// create a dependency relation between them.
 	/// - Parameter idkey: The idkey string to associate to the given
-	/// ``AccountParams``.   
+	/// ``AccountParams``.    
 	
 	/// Get the idkey property of a ``AccountParams``. 
-	/// - Returns: The idkey string, or nil.   
+	/// - Returns: The idkey string, or nil.    
 	public var idkey: String?
 	{
 	
@@ -8458,13 +8532,18 @@ public class AccountParams : LinphoneObject
 		}
 	}
 		
-	/// Sets an international prefix to be automatically prepended when inviting a
-	/// number with ``Core/invite(url:)``; This international prefix shall usually be
-	/// the country code of the country where the user is living, without "+". 
-	/// - Parameter prefix: The prefix to set (withouth the +).   
+	/// Sets an international prefix (country code) to be automatically prepended when
+	/// inviting a number with ``Core/invite(url:)`` or when using
+	/// ``Account/normalizePhoneNumber(username:)``. 
+	/// This international prefix shall usually be the country code of the country
+	/// where the user is living, without "+". - Warning: It is also referred as 'ccc'
+	/// (Calling Country Code) and must not be confused with the ICP (International
+	/// Call Prefix). The ICP is a fixed property of the country dial plan, and cannot
+	/// be set in the ``AccountParams`` . 
+	/// - Parameter prefix: The prefix to set (withouth the +).    
 	
 	/// Gets the prefix set for this account params. 
-	/// - Returns: The international prefix if set, null otherwise.   
+	/// - Returns: The international prefix if set, null otherwise.    
 	public var internationalPrefix: String?
 	{
 	
@@ -8485,11 +8564,11 @@ public class AccountParams : LinphoneObject
 	}
 		
 	/// Sets the ISO country code matching the international prefix. 
-	/// - Parameter prefixIsoCountryCode: The ISO country code to set.   
+	/// - Parameter prefixIsoCountryCode: The ISO country code to set.    
 	
 	/// Gets the ISO country code set for the international prefix in this account
 	/// params. 
-	/// - Returns: The international prefix ISO country code if set, null otherwise.   
+	/// - Returns: The international prefix ISO country code if set, null otherwise.    
 	public var internationalPrefixIsoCountryCode: String?
 	{
 	
@@ -8521,12 +8600,12 @@ public class AccountParams : LinphoneObject
 		
 	/// Set the base(s) x3dh algorithm. 
 	/// accept an ordered comma separated list (without space) of lime base algorithms
-	/// accepted values are a combinaison of : c25519, c448 and c25519k512 nil is also
+	/// accepted values are a combination of: c25519, c448 and c25519mlk512 nil is also
 	/// valid, it will unset the value 
-	/// - Parameter algo: The x3dh base algorithm.   
+	/// - Parameter algo: The x3dh base algorithm.    
 	
 	/// Get the base x3dh algorithm. 
-	/// - Returns: The x3dh base algorithm.   
+	/// - Returns: The x3dh base algorithm.    
 	public var limeAlgo: String?
 	{
 	
@@ -8550,10 +8629,10 @@ public class AccountParams : LinphoneObject
 	/// If empty, this function will disable LIME X3DH from core. Otherwise, or if
 	/// different from the existing value, this will (re-)initialize the LIME X3DH
 	/// engine. 
-	/// - Parameter url: The x3dh server url.   
+	/// - Parameter url: The x3dh server url.    
 	
 	/// Get the x3dh server url. 
-	/// - Returns: The x3dh server url.   
+	/// - Returns: The x3dh server url.    
 	public var limeServerUrl: String?
 	{
 	
@@ -8574,10 +8653,10 @@ public class AccountParams : LinphoneObject
 	}
 		
 	/// Sets the Message Waiting Indication server address. 
-	/// - Parameter address: The Message Waiting Indication server address.   
+	/// - Parameter address: The Message Waiting Indication server address.    
 	
 	/// Gets the Message Waiting Indication server address. 
-	/// - Returns: The Message Waiting Indication server address.   
+	/// - Returns: The Message Waiting Indication server address.    
 	public var mwiServerAddress: Address?
 	{
 	
@@ -8599,13 +8678,13 @@ public class AccountParams : LinphoneObject
 	/// Set the policy to use to pass through NATs/firewalls when using this account
 	/// params. 
 	/// If it is set to nil, the default NAT policy from the core will be used instead. 
-	/// - Parameter policy: The ``NatPolicy`` object.   
+	/// - Parameter policy: The ``NatPolicy`` object.    
 	/// - See also: ``Core/setNatPolicy(policy:)`` 
 	
 	/// Get The policy that is used to pass through NATs/firewalls when using this
 	/// account params. 
 	/// If it is set to nil, the default NAT policy from the core will be used instead. 
-	/// - Returns: The ``NatPolicy`` object in use.   
+	/// - Returns: The ``NatPolicy`` object in use.    
 	/// - See also: ``Core/getNatPolicy()`` 
 	public var natPolicy: NatPolicy?
 	{
@@ -8651,10 +8730,10 @@ public class AccountParams : LinphoneObject
 	}
 		
 	/// Sets an URI for the account picture. 
-	/// - Parameter uri: The account picture URI.   
+	/// - Parameter uri: The account picture URI.    
 	
 	/// Gets the account picture URI if set, nil otherwise. 
-	/// - Returns: The account picture URI.   
+	/// - Returns: The account picture URI.    
 	public var pictureUri: String?
 	{
 	
@@ -8754,10 +8833,10 @@ public class AccountParams : LinphoneObject
 	}
 		
 	/// Sets the push notification configuration. 
-	/// - Parameter config: The ``PushNotificationConfig`` object.   
+	/// - Parameter config: The ``PushNotificationConfig`` object.    
 	
 	/// Returns the push notification configuration. 
-	/// - Returns: The ``PushNotificationConfig`` object.   
+	/// - Returns: The ``PushNotificationConfig`` object.    
 	public var pushNotificationConfig: PushNotificationConfig?
 	{
 	
@@ -8782,14 +8861,14 @@ public class AccountParams : LinphoneObject
 	/// and will not receive any messages. If nil, reports will be send to the proxy
 	/// domain. 
 	/// - Parameter collector: route of the collector end-point, if nil PUBLISH will be
-	/// sent to the proxy domain.   
+	/// sent to the proxy domain.    
 	
 	/// Get the route of the collector end-point when using quality reporting. 
 	/// This SIP address should be used on server-side to process packets directly
 	/// before discarding packets. Collector address should be a non existing account
 	/// and will not receive any messages. If nil, reports will be send to the proxy
 	/// domain. 
-	/// - Returns: The SIP address of the collector end-point.   
+	/// - Returns: The SIP address of the collector end-point.    
 	public var qualityReportingCollector: String?
 	{
 	
@@ -8854,10 +8933,20 @@ public class AccountParams : LinphoneObject
 	}
 		
 	/// Set the realm of the given account params. 
-	/// - Parameter realm: New realm value.   
+	/// This is optional, but recommended as it allows digest authentication context to
+	/// be re-used accross subsequent SIP requests, which reduces by almost half the
+	/// number of SIP rmessages exchanged between a client and a server. The server is
+	/// required to support the qop=auth digest authentication mode to benefit from
+	/// this feature. - See also: rfc7616 https://datatracker.ietf.org/doc/html/rfc7616 
+	/// - Parameter realm: New realm value.    
 	
 	/// Get the realm of the given account params. 
-	/// - Returns: The realm of the account params.   
+	/// This is optional, but recommended as it allows digest authentication context to
+	/// be re-used accross subsequent SIP requests, which reduces by almost half the
+	/// number of SIP rmessages exchanged between a client and a server. The server is
+	/// required to support the qop=auth digest authentication mode to benefit from
+	/// this feature. - See also: rfc7616 https://datatracker.ietf.org/doc/html/rfc7616 
+	/// - Returns: The realm of the account params.    
 	public var realm: String?
 	{
 	
@@ -8881,7 +8970,7 @@ public class AccountParams : LinphoneObject
 	/// The reference key can be for example an id to an external database. It is
 	/// stored in the config file, thus can survive to process exits/restarts.
 	/// - Parameter refkey: The reference key string to associate to the account
-	/// params.   
+	/// params.    
 	
 	/// Get the persistent reference key associated to the account params. 
 	/// The reference key can be for example an id to an external database. It is
@@ -8953,11 +9042,11 @@ public class AccountParams : LinphoneObject
 	/// this account is the default one (see ``Core/setDefaultAccount(account:)``).
 	/// - Warning: This function shall not be used in conjunction with
 	/// ``enableOutboundProxy(enable:)``. 
-	/// - Parameter routes: A list of routes.    
+	/// - Parameter routes: A list of routes.      
 	/// - Returns: -1 if routes are invalid, 0 otherwise. 
 	
 	/// Gets the list of the routes set for this account params. 
-	/// - Returns: The list of routes.    
+	/// - Returns: The list of routes.      
 	public var routesAddresses: [Address]
 	{
 	
@@ -8996,10 +9085,17 @@ public class AccountParams : LinphoneObject
 	/// when making an outgoing call. This setting is meaningful only if rtp bundle is
 	/// enabled. See https://datatracker.ietf.org/doc/html/rfc8843 for more information
 	/// about the feature. 
+	/// See ``enableRtpBundle(value:)`` for background information about rtp bundle.
+	/// Assumption that RTP bundling support allows interesting optimizations, such as
+	/// not gathering RTCP candidates, and not gathering candidates for video stream
+	/// when making an outgoing call. This setting is meaningful only if rtp bundle is
+	/// enabled. See https://datatracker.ietf.org/doc/html/rfc8843 for more information
+	/// about the feature. 
 	/// - Parameter value: a boolean to indicate whether RTP bundle support can be
 	/// assumed. 
 	
 	/// Returns whether RTP bundle mode is assumed. 
+	/// See https://datatracker.ietf.org/doc/html/rfc8843 for more information. 
 	/// See https://datatracker.ietf.org/doc/html/rfc8843 for more information. 
 	/// - Returns: a boolean indicating when rtp bundle support is assumed. 
 	public var rtpBundleAssumptionEnabled: Bool
@@ -9020,9 +9116,14 @@ public class AccountParams : LinphoneObject
 	/// the feature. When enabled, liblinphone will try to negociate the use of a
 	/// single port for all streams when doing an outgoing call. It automatically
 	/// enables rtcp-mux. 
+	/// See https://datatracker.ietf.org/doc/html/rfc8843 for more information about
+	/// the feature. When enabled, liblinphone will try to negociate the use of a
+	/// single port for all streams when doing an outgoing call. It automatically
+	/// enables rtcp-mux. 
 	/// - Parameter value: a boolean to indicate whether the feature is to be enabled. 
 	
 	/// Returns whether RTP bundle mode (also known as Media Multiplexing) is enabled. 
+	/// See https://datatracker.ietf.org/doc/html/rfc8843 for more information. 
 	/// See https://datatracker.ietf.org/doc/html/rfc8843 for more information. 
 	/// - Returns: a boolean indicating the enablement of rtp bundle mode. 
 	public var rtpBundleEnabled: Bool
@@ -9040,13 +9141,16 @@ public class AccountParams : LinphoneObject
 		
 	/// Sets the proxy address. 
 	/// Examples of valid sip proxy address are:
-	/// - Parameter serverAddress: The proxy address to set.   
+	/// -IP address: sip:87.98.157.38
+	/// -IP address with port: sip:87.98.157.38:5062
+	/// -hostnames : sip:sip.example.net
+	/// - Parameter serverAddress: The proxy address to set.    
 	/// - Returns: 0 if successful, -1 otherwise. 
-	/// - deprecated: 01/03/2021 Use ``setServerAddress(serverAddress:)`` instead. 
+	/// - Deprecated: 01/03/2021 Use ``setServerAddress(serverAddress:)`` instead. 
 	
 	/// Get the account params proxy address. 
-	/// - Returns: The proxy's SIP address.   
-	/// - deprecated: 01/03/2021 Use ``getServerAddress()`` instead. 
+	/// - Returns: The proxy's SIP address.    
+	/// - Deprecated: 01/03/2021 Use ``getServerAddress()`` instead. 
 	@available(*, deprecated)
 	public var serverAddr: String?
 	{
@@ -9061,7 +9165,7 @@ public class AccountParams : LinphoneObject
 
 	}
 	@available(*, deprecated)
-	public func setServeraddr(newValue: String) throws
+	public func setServeraddr(newValue: String?) throws
 	{
 		let exception_result = linphone_account_params_set_server_addr(cPtr, newValue)
 		guard exception_result == 0 else {
@@ -9071,11 +9175,14 @@ public class AccountParams : LinphoneObject
 		
 	/// Sets the SIP proxy or registrar address. 
 	/// Examples of valid sip proxy address are:
-	/// - Parameter serverAddress: The proxy as ``Address`` to set.   
+	/// -IP address: sip:87.98.157.38
+	/// -IP address with port: sip:87.98.157.38:5062
+	/// -hostnames : sip:sip.example.net
+	/// - Parameter serverAddress: The proxy as ``Address`` to set.    
 	/// - Returns: 0 if successful, -1 otherwise. 
 	
 	/// Get the account params SIP proxy or registrar address. 
-	/// - Returns: The proxy's SIP ``Address``.   
+	/// - Returns: The proxy's SIP ``Address``.    
 	public var serverAddress: Address?
 	{
 	
@@ -9087,19 +9194,19 @@ public class AccountParams : LinphoneObject
 			return result
 
 	}
-	public func setServeraddress(newValue: Address) throws
+	public func setServeraddress(newValue: Address?) throws
 	{
-		let exception_result = linphone_account_params_set_server_address(cPtr, newValue.cPtr)
+		let exception_result = linphone_account_params_set_server_address(cPtr, newValue?.cPtr)
 		guard exception_result == 0 else {
 			throw LinphoneError.exception(result: "username setter returned value \(exception_result)")
 		}
 	}
 		
 	/// Sets the list of supported tags. 
-	/// - Parameter supportedTags: The list of supported tags .   
+	/// - Parameter supportedTags: The list of supported tags  .    
 	
 	/// Gets the list of supported tags. 
-	/// - Returns: The list of supported tags .   
+	/// - Returns: The list of supported tags  .    
 	public var supportedTagsList: [String]
 	{
 	
@@ -9185,10 +9292,10 @@ public class AccountParams : LinphoneObject
 	}
 		
 	/// Assign a user pointer to the account params. 
-	/// - Parameter userData: The user data.   
+	/// - Parameter userData: The user data.    
 	
 	/// Retrieve the user pointer associated with the account params. 
-	/// - Returns: The user data.   
+	/// - Returns: The user data.    
 	public var userData: UnsafeMutableRawPointer?
 	{
 	
@@ -9203,10 +9310,10 @@ public class AccountParams : LinphoneObject
 	}
 		
 	/// Sets the Voicemail address. 
-	/// - Parameter address: The Voicemail address.   
+	/// - Parameter address: The Voicemail address.    
 	
 	/// Gets the Voicemail address. 
-	/// - Returns: The Voicemail address.   
+	/// - Returns: The Voicemail address.    
 	public var voicemailAddress: Address?
 	{
 	
@@ -9228,8 +9335,8 @@ public class AccountParams : LinphoneObject
 	
 	
 	/// Set one custom parameter to this ``AccountParams``. 
-	/// - Parameter key: key of the searched parameter.   
-	/// - Parameter value: value of the searched parameter.   
+	/// - Parameter key: key of the searched parameter.    
+	/// - Parameter value: value of the searched parameter.    
 	public func addCustomParam(key:String, value:String) 
 	{
 		linphone_account_params_add_custom_param(cPtr, key, value)
@@ -9238,7 +9345,7 @@ public class AccountParams : LinphoneObject
 	
 	
 	/// Instantiate a new account params with values from source. 
-	/// - Returns: The newly created ``AccountParams`` object.   
+	/// - Returns: The newly created ``AccountParams`` object.    
 	public func clone() -> AccountParams?
 	{
 		let cPointer = linphone_account_params_clone(cPtr)
@@ -9253,9 +9360,9 @@ public class AccountParams : LinphoneObject
 	
 	
 	/// Get the custom parameter with key to this ``AccountParams``. 
-	/// - Parameter key: key of the searched parameter.   
+	/// - Parameter key: key of the searched parameter.    
 	/// - Returns: The value of the parameter with key if found or an empty string
-	/// otherwise.   
+	/// otherwise.    
 	public func getCustomParam(key:String) -> String
 	{
 		let cstr = linphone_account_params_get_custom_param(cPtr, key)
@@ -9266,6 +9373,8 @@ public class AccountParams : LinphoneObject
 
 
 /// Object that represents a parsed SIP address. 
+/// A SIP address is made of display name, username, domain name, port, and various
+/// uri headers (such as tags). It looks like 'Alice <sip:alice@example.net>'.
 /// A SIP address is made of display name, username, domain name, port, and various
 /// uri headers (such as tags). It looks like 'Alice <sip:alice@example.net>'.
 /// You can create an address using ``Factory/createAddress(addr:)`` or
@@ -9305,10 +9414,10 @@ public class Address : LinphoneObject
 	}
 	
 	/// Sets the display name. 
-	/// - Parameter displayName: the display name to set.   
+	/// - Parameter displayName: the display name to set.    
 	
 	/// Returns the display name. 
-	/// - Returns: the display name if any, nil otherwise.   
+	/// - Returns: the display name if any, nil otherwise.    
 	public var displayName: String?
 	{
 	
@@ -9321,7 +9430,7 @@ public class Address : LinphoneObject
 			return result
 
 	}
-	public func setDisplayname(newValue: String) throws
+	public func setDisplayname(newValue: String?) throws
 	{
 		let exception_result = linphone_address_set_display_name(cPtr, newValue)
 		guard exception_result == 0 else {
@@ -9330,10 +9439,10 @@ public class Address : LinphoneObject
 	}
 		
 	/// Sets the domain. 
-	/// - Parameter domain: the domain to set.   
+	/// - Parameter domain: the domain to set.    
 	
 	/// Returns the domain name. 
-	/// - Returns: the domain name if any, nil otherwise.   
+	/// - Returns: the domain name if any, nil otherwise.    
 	public var domain: String?
 	{
 	
@@ -9346,7 +9455,7 @@ public class Address : LinphoneObject
 			return result
 
 	}
-	public func setDomain(newValue: String) throws
+	public func setDomain(newValue: String?) throws
 	{
 		let exception_result = linphone_address_set_domain(cPtr, newValue)
 		guard exception_result == 0 else {
@@ -9375,10 +9484,10 @@ public class Address : LinphoneObject
 	}
 		
 	/// Set the value of the method parameter. 
-	/// - Parameter methodParam: the value to set to the method parameter.   
+	/// - Parameter methodParam: the value to set to the method parameter.    
 	
 	/// Get the value of the method parameter. 
-	/// - Returns: the value of the parameter or nil.   
+	/// - Returns: the value of the parameter or nil.    
 	public var methodParam: String?
 	{
 	
@@ -9400,11 +9509,11 @@ public class Address : LinphoneObject
 		
 	/// Set the password encoded in the address. 
 	/// It is used for basic authentication (not recommended). 
-	/// - Parameter password: the password to set.   
+	/// - Parameter password: the password to set.    
 	
 	/// Get the password encoded in the address. 
 	/// It is used for basic authentication (not recommended). 
-	/// - Returns: the password if any, nil otherwise.   
+	/// - Returns: the password if any, nil otherwise.    
 	public var password: String?
 	{
 	
@@ -9445,7 +9554,7 @@ public class Address : LinphoneObject
 		
 	
 	/// Returns the address scheme, normally "sip". 
-	/// - Returns: the scheme if any, nil otherwise.   
+	/// - Returns: the scheme if any, nil otherwise.    
 	public var scheme: String?
 	{
 	
@@ -9509,10 +9618,10 @@ public class Address : LinphoneObject
 	}
 		
 	/// Sets the username. 
-	/// - Parameter username: the username to set.   
+	/// - Parameter username: the username to set.    
 	
 	/// Returns the username. 
-	/// - Returns: the username name if any, nil otherwise.   
+	/// - Returns: the username name if any, nil otherwise.    
 	public var username: String?
 	{
 	
@@ -9525,7 +9634,7 @@ public class Address : LinphoneObject
 			return result
 
 	}
-	public func setUsername(newValue: String) throws
+	public func setUsername(newValue: String?) throws
 	{
 		let exception_result = linphone_address_set_username(cPtr, newValue)
 		guard exception_result == 0 else {
@@ -9537,7 +9646,7 @@ public class Address : LinphoneObject
 	
 	/// Returns the address as a string. 
 	/// The returned char * must be freed by the application. Use ms_free(). 
-	/// - Returns: a string representation of the address.     
+	/// - Returns: a string representation of the address.       
 	public func asString() -> String
 	{
 		let cstr = linphone_address_as_string(cPtr)
@@ -9552,7 +9661,7 @@ public class Address : LinphoneObject
 	
 	/// Returns the SIP uri only as a string, that is display name is removed. 
 	/// The returned char * must be freed by the application. Use ms_free(). 
-	/// - Returns: a string representation of the address.     
+	/// - Returns: a string representation of the address.       
 	public func asStringUriOnly() -> String
 	{
 		let cstr = linphone_address_as_string_uri_only(cPtr)
@@ -9569,7 +9678,7 @@ public class Address : LinphoneObject
 	/// This function always returns a string whose URI parameters has a constant order
 	/// allowing to easily compute hashes for example. The returned char * must be
 	/// freed by the application. Use ms_free(). 
-	/// - Returns: a string representation of the address.     
+	/// - Returns: a string representation of the address.       
 	public func asStringUriOnlyOrdered() -> String
 	{
 		let cstr = linphone_address_as_string_uri_only_ordered(cPtr)
@@ -9591,7 +9700,7 @@ public class Address : LinphoneObject
 	
 	
 	/// Clones a ``Address`` object. 
-	/// - Returns: a new ``Address`` object.   
+	/// - Returns: a new ``Address`` object.    
 	public func clone() -> Address?
 	{
 		let cPointer = linphone_address_clone(cPtr)
@@ -9606,7 +9715,7 @@ public class Address : LinphoneObject
 	
 	
 	/// Compare two ``Address`` taking the tags and headers into account. 
-	/// - Parameter address2: ``Address`` object.   
+	/// - Parameter address2: ``Address`` object.    
 	/// - Returns: Boolean value telling if the ``Address`` objects are equal. 
 	/// - See also: ``weakEqual(address2:)`` 
 	public func equal(address2:Address) -> Bool
@@ -9617,8 +9726,8 @@ public class Address : LinphoneObject
 	
 	
 	/// Get the header encoded in the address. 
-	/// - Parameter headerName: the header name.   
-	/// - Returns: the header value or nil if it doesn't exists.   
+	/// - Parameter headerName: the header name.    
+	/// - Returns: the header value or nil if it doesn't exists.    
 	public func getHeader(headerName:String) -> String
 	{
 		let cstr = linphone_address_get_header(cPtr, headerName)
@@ -9629,8 +9738,8 @@ public class Address : LinphoneObject
 	
 	
 	/// Get the value of a parameter of the address. 
-	/// - Parameter paramName: The name of the parameter.   
-	/// - Returns: The value of the parameter or nil if it doesn't exists.   
+	/// - Parameter paramName: The name of the parameter.    
+	/// - Returns: The value of the parameter or nil if it doesn't exists.    
 	public func getParam(paramName:String) -> String
 	{
 		let cstr = linphone_address_get_param(cPtr, paramName)
@@ -9641,8 +9750,8 @@ public class Address : LinphoneObject
 	
 	
 	/// Get the value of a parameter of the URI of the address. 
-	/// - Parameter uriParamName: The name of the parameter.   
-	/// - Returns: The value of the parameter or nil if it doesn't exists.   
+	/// - Parameter uriParamName: The name of the parameter.    
+	/// - Returns: The value of the parameter or nil if it doesn't exists.    
 	public func getUriParam(uriParamName:String) -> String
 	{
 		let cstr = linphone_address_get_uri_param(cPtr, uriParamName)
@@ -9653,7 +9762,7 @@ public class Address : LinphoneObject
 	
 	
 	/// Tell whether a parameter is present in the address. 
-	/// - Parameter paramName: The name of the parameter.   
+	/// - Parameter paramName: The name of the parameter.    
 	/// - Returns: A boolean value telling whether the parameter is present in the
 	/// address 
 	public func hasParam(paramName:String) -> Bool
@@ -9664,7 +9773,7 @@ public class Address : LinphoneObject
 	
 	
 	/// Tell whether a parameter is present in the URI of the address. 
-	/// - Parameter uriParamName: The name of the parameter.   
+	/// - Parameter uriParamName: The name of the parameter.    
 	/// - Returns: A boolean value telling whether the parameter is present in the URI
 	/// of the address 
 	public func hasUriParam(uriParamName:String) -> Bool
@@ -9675,7 +9784,7 @@ public class Address : LinphoneObject
 	
 	
 	/// Compare two addresses. 
-	/// - Parameter other: an other ``Address`` object.   
+	/// - Parameter other: an other ``Address`` object.    
 	public func lesser(other:Address) -> Bool
 	{
 		return linphone_address_lesser(cPtr, other.cPtr) != 0
@@ -9684,7 +9793,7 @@ public class Address : LinphoneObject
 	
 	
 	/// Removes the value of a parameter of the URI of the address. 
-	/// - Parameter uriParamName: The name of the parameter.   
+	/// - Parameter uriParamName: The name of the parameter.    
 	public func removeUriParam(uriParamName:String) 
 	{
 		linphone_address_remove_uri_param(cPtr, uriParamName)
@@ -9695,8 +9804,10 @@ public class Address : LinphoneObject
 	/// Set a header into the address. 
 	/// Headers appear in the URI with '?', such as
 	/// <sip:test@linphone.org?SomeHeader=SomeValue>. 
-	/// - Parameter headerName: the header name.   
-	/// - Parameter headerValue: the header value.   
+	/// Headers appear in the URI with '?', such as
+	/// <sip:test@linphone.org?SomeHeader=SomeValue>. 
+	/// - Parameter headerName: the header name.    
+	/// - Parameter headerValue: the header value.    
 	public func setHeader(headerName:String, headerValue:String?) 
 	{
 		linphone_address_set_header(cPtr, headerName, headerValue)
@@ -9705,8 +9816,8 @@ public class Address : LinphoneObject
 	
 	
 	/// Set the value of a parameter of the address. 
-	/// - Parameter paramName: The name of the parameter.   
-	/// - Parameter paramValue: The new value of the parameter.   
+	/// - Parameter paramName: The name of the parameter.    
+	/// - Parameter paramValue: The new value of the parameter.    
 	public func setParam(paramName:String, paramValue:String?) 
 	{
 		linphone_address_set_param(cPtr, paramName, paramValue)
@@ -9715,8 +9826,8 @@ public class Address : LinphoneObject
 	
 	
 	/// Set the value of a parameter of the URI of the address. 
-	/// - Parameter uriParamName: The name of the parameter.   
-	/// - Parameter uriParamValue: The new value of the parameter.   
+	/// - Parameter uriParamName: The name of the parameter.    
+	/// - Parameter uriParamValue: The new value of the parameter.    
 	public func setUriParam(uriParamName:String, uriParamValue:String?) 
 	{
 		linphone_address_set_uri_param(cPtr, uriParamName, uriParamValue)
@@ -9726,7 +9837,7 @@ public class Address : LinphoneObject
 	
 	/// Compare two ``Address`` ignoring tags and headers, basically just domain,
 	/// username, and port. 
-	/// - Parameter address2: ``Address`` object.   
+	/// - Parameter address2: ``Address`` object.    
 	/// - Returns: Boolean value telling if the ``Address`` objects are equal. 
 	/// - See also: ``equal(address2:)`` 
 	public func weakEqual(address2:Address) -> Bool
@@ -9829,7 +9940,7 @@ public class Alert : LinphoneObject
 	
 	
 	/// Return the call from the alert. 
-	/// - Returns: A ``Call`` from the alert.   
+	/// - Returns: A ``Call`` from the alert.    
 	public var call: Call?
 	{
 	
@@ -9843,10 +9954,10 @@ public class Alert : LinphoneObject
 	}
 		
 	
-	/// Gets the current LinphoneAlertCbs. 
+	/// Gets the current ``AlertDelegate``. 
 	/// This is meant only to be called from a callback to be able to get the user_data
 	/// associated with the ``AlertDelegate`` that is calling the callback. 
-	/// - Returns: The ``AlertDelegate`` that has called the last callback.   
+	/// - Returns: The ``AlertDelegate`` that has called the last callback.    
 	public var currentDelegate: AlertDelegate?
 	{
 	
@@ -9871,7 +9982,7 @@ public class Alert : LinphoneObject
 		
 	
 	/// Return more informations about the alerts. 
-	/// - Returns: A ``Dictionary`` containing informations about the current alert.   
+	/// - Returns: A ``Dictionary`` containing informations about the current alert.    
 	public var informations: Dictionary?
 	{
 	
@@ -9917,7 +10028,7 @@ public class Alert : LinphoneObject
 	
 	
 	/// Clone the given alert. 
-	/// - Returns: A new alert with exactly same informations that param.   
+	/// - Returns: A new alert with exactly same informations that param.    
 	public func clone() -> Alert?
 	{
 		let cPointer = linphone_alert_clone(cPtr)
@@ -10014,6 +10125,8 @@ public class AudioDevice : LinphoneObject
 		case Headphones = 10
 		/// Hearing Aid. 
 		case HearingAid = 11
+		/// HDMI. 
+		case Hdmi = 12
 	}
 	
 	
@@ -10029,7 +10142,7 @@ public class AudioDevice : LinphoneObject
 		
 	
 	/// Returns the name of the audio device. 
-	/// - Returns: the name of the audio device.   
+	/// - Returns: the name of the audio device.    
 	public var deviceName: String
 	{
 	
@@ -10042,7 +10155,7 @@ public class AudioDevice : LinphoneObject
 		
 	
 	/// Returns the driver name used by the device. 
-	/// - Returns: the name of the driver used by this audio device.   
+	/// - Returns: the name of the driver used by this audio device.    
 	public var driverName: String
 	{
 	
@@ -10072,7 +10185,7 @@ public class AudioDevice : LinphoneObject
 		
 	
 	/// Returns the id of the audio device. 
-	/// - Returns: the id of the audio device.   
+	/// - Returns: the id of the audio device.    
 	public var id: String
 	{
 	
@@ -10092,6 +10205,25 @@ public class AudioDevice : LinphoneObject
 	
 						return AudioDevice.Kind(rawValue: Int(linphone_audio_device_get_type(cPtr).rawValue))!
 
+	}
+		
+	/// Tells the audio device to be used to play the ringtone or not. 
+	/// - Parameter useForRinging: Whether the audio device must be used to play the
+	/// ringtone or not. 
+	
+	/// Returns whether the audio device is used to play the ringtone or not. 
+	/// - Returns: Whether the audio device is used to play the ringtone or not. 
+	public var useForRinging: Bool
+	{
+	
+		get
+		{ 
+						return linphone_audio_device_get_use_for_ringing(cPtr) != 0
+		}
+		set
+		{
+			linphone_audio_device_set_use_for_ringing(cPtr, newValue==true ? 1:0)
+		}
 	}
 		
 	
@@ -10143,10 +10275,10 @@ public class AuthInfo : LinphoneObject
 	/// "bearer" authentication method. 
 	/// The ``AuthInfo`` takes a reference to the supplied token, it is not making any
 	/// copy. 
-	/// - Parameter token: The ``BearerToken`` object representing the access token.   
+	/// - Parameter token: The ``BearerToken`` object representing the access token.    
 	
 	/// Return a previously set access token. 
-	/// - Returns: the access token, as a ``BearerToken`` object   
+	/// - Returns: the access token, as a ``BearerToken`` object    
 	public var accessToken: BearerToken?
 	{
 	
@@ -10166,10 +10298,10 @@ public class AuthInfo : LinphoneObject
 	}
 		
 	/// Sets the algorithm to use. 
-	/// - Parameter algorithm: The algorithm.   
+	/// - Parameter algorithm: The algorithm.    
 	
 	/// Gets the algorithm. 
-	/// - Returns: The algorithm.   
+	/// - Returns: The algorithm.    
 	public var algorithm: String?
 	{
 	
@@ -10190,10 +10322,10 @@ public class AuthInfo : LinphoneObject
 	}
 		
 	/// Set the authorization server uri. 
-	/// - Parameter uri: the authorization server uri.   
+	/// - Parameter uri: the authorization server uri.    
 	
 	/// Get the previously set authorization server uri. 
-	/// - Returns: the authorization server uri.   
+	/// - Returns: the authorization server uri.    
 	public var authorizationServer: String?
 	{
 	
@@ -10214,10 +10346,10 @@ public class AuthInfo : LinphoneObject
 	}
 		
 	/// Sets the available algorithms list without testing unicity. 
-	/// - Parameter algorithms: The available algorithms list.    
+	/// - Parameter algorithms: The available algorithms list.      
 	
 	/// Gets all available algorithms. 
-	/// - Returns: A list of available algorithms.    
+	/// - Returns: A list of available algorithms.      
 	public var availableAlgorithms: [String]
 	{
 	
@@ -10245,12 +10377,13 @@ public class AuthInfo : LinphoneObject
 	}
 		
 	/// Set the OAUTH2 client_id. 
-	/// The client_id may be used to renew access token from refresh token. - See also:
-	/// ``setRefreshToken(token:)`` 
-	/// - Parameter clientId: the client_id.   
+	/// The client_id may be used to renew access token from refresh token. If a
+	/// client_secret is required, it has to be set through
+	/// ``setClientSecret(clientSecret:)``. - See also: ``setRefreshToken(token:)`` 
+	/// - Parameter clientId: the client_id.    
 	
 	/// Get the previously set OAUTH2 client_id. 
-	/// - Returns: the client_id.   
+	/// - Returns: the client_id.    
 	public var clientId: String?
 	{
 	
@@ -10270,14 +10403,40 @@ public class AuthInfo : LinphoneObject
 		}
 	}
 		
+	/// Set the OAUTH2 client_secret. 
+	/// The client_secret may be used to renew access token from refresh token.
+	/// - See also: ``setRefreshToken(token:)`` 
+	/// - Parameter clientSecret: the client_secret.    
+	
+	/// Get the previously set OAUTH2 client_secret. 
+	/// - Returns: the client_secret.    
+	public var clientSecret: String?
+	{
+	
+		get
+		{ 
+			
+			let cPointer = linphone_auth_info_get_client_secret(cPtr)
+			if (cPointer == nil) {
+				return nil
+			}
+			let result = charArrayToString(charPointer: cPointer)
+			return result
+		}
+		set
+		{
+			linphone_auth_info_set_client_secret(cPtr, newValue)
+		}
+	}
+		
 	/// Sets the domain for which this authentication is valid. 
-	/// - Parameter domain: The domain.   This should not be necessary because realm is
-	/// supposed to be unique and sufficient. However, many SIP servers don't set realm
-	/// correctly, then domain has to be used to distinguish between several SIP
+	/// - Parameter domain: The domain.    This should not be necessary because realm
+	/// is supposed to be unique and sufficient. However, many SIP servers don't set
+	/// realm correctly, then domain has to be used to distinguish between several SIP
 	/// account bearing the same username. 
 	
 	/// Gets the domain. 
-	/// - Returns: The domain.   
+	/// - Returns: The domain.    
 	public var domain: String?
 	{
 	
@@ -10318,10 +10477,10 @@ public class AuthInfo : LinphoneObject
 	}
 		
 	/// Sets the ha1. 
-	/// - Parameter ha1: The ha1.   
+	/// - Parameter ha1: The ha1.    
 	
 	/// Gets the ha1. 
-	/// - Returns: The ha1.   
+	/// - Returns: The ha1.    
 	public var ha1: String?
 	{
 	
@@ -10342,10 +10501,10 @@ public class AuthInfo : LinphoneObject
 	}
 		
 	/// Sets the password. 
-	/// - Parameter password: The password.   
+	/// - Parameter password: The password.    
 	
 	/// Gets the password. 
-	/// - Returns: The password.   
+	/// - Returns: The password.    
 	public var password: String?
 	{
 	
@@ -10366,10 +10525,10 @@ public class AuthInfo : LinphoneObject
 	}
 		
 	/// Sets the realm. 
-	/// - Parameter realm: The realm.   
+	/// - Parameter realm: The realm.    
 	
 	/// Gets the realm. 
-	/// - Returns: The realm.   
+	/// - Returns: The realm.    
 	public var realm: String?
 	{
 	
@@ -10396,10 +10555,11 @@ public class AuthInfo : LinphoneObject
 	/// ``setTokenEndpointUri(uri:)``, once the ``AuthInfo`` is pushed in the ``Core``,
 	/// ``AuthInfo`` object automatically obtains new access token when needed, from
 	/// the supplied refresh token. 
-	/// - Parameter token: The ``BearerToken`` object representing the refresh token.   
+	/// - Parameter token: The ``BearerToken`` object representing the refresh token.  
+	///  
 	
 	/// Return a previously set refresh token. 
-	/// - Returns: the refresh token, as a ``BearerToken`` object.   
+	/// - Returns: the refresh token, as a ``BearerToken`` object.    
 	public var refreshToken: BearerToken?
 	{
 	
@@ -10419,10 +10579,10 @@ public class AuthInfo : LinphoneObject
 	}
 		
 	/// Sets the TLS certificate. 
-	/// - Parameter tlsCert: The TLS certificate.   
+	/// - Parameter tlsCert: The TLS certificate.    
 	
 	/// Gets the TLS certificate. 
-	/// - Returns: The TLS certificate.   
+	/// - Returns: The TLS certificate.    
 	public var tlsCert: String?
 	{
 	
@@ -10443,10 +10603,10 @@ public class AuthInfo : LinphoneObject
 	}
 		
 	/// Sets the TLS certificate path. 
-	/// - Parameter tlsCertPath: The TLS certificate path.   
+	/// - Parameter tlsCertPath: The TLS certificate path.    
 	
 	/// Gets the TLS certificate path. 
-	/// - Returns: The TLS certificate path.   
+	/// - Returns: The TLS certificate path.    
 	public var tlsCertPath: String?
 	{
 	
@@ -10467,10 +10627,10 @@ public class AuthInfo : LinphoneObject
 	}
 		
 	/// Sets the TLS key. 
-	/// - Parameter tlsKey: The TLS key.   
+	/// - Parameter tlsKey: The TLS key.    
 	
 	/// Gets the TLS key. 
-	/// - Returns: The TLS key.   
+	/// - Returns: The TLS key.    
 	public var tlsKey: String?
 	{
 	
@@ -10491,10 +10651,10 @@ public class AuthInfo : LinphoneObject
 	}
 		
 	/// Sets the TLS key path. 
-	/// - Parameter tlsKeyPath: The TLS key path.   
+	/// - Parameter tlsKeyPath: The TLS key path.    
 	
 	/// Gets the TLS key path. 
-	/// - Returns: The TLS key path.   
+	/// - Returns: The TLS key path.    
 	public var tlsKeyPath: String?
 	{
 	
@@ -10517,10 +10677,10 @@ public class AuthInfo : LinphoneObject
 	/// Set the token endpoint https uri (OAUTH2). 
 	/// The token endpoint uri is used to renew access token from refresh token. - See
 	/// also: ``setRefreshToken(token:)`` 
-	/// - Parameter uri: the token endpoint uri.   
+	/// - Parameter uri: the token endpoint uri.    
 	
 	/// Get the previously set token endpoint https uri (OAUTH2). 
-	/// - Returns: the token endpoint uri.   
+	/// - Returns: the token endpoint uri.    
 	public var tokenEndpointUri: String?
 	{
 	
@@ -10544,7 +10704,7 @@ public class AuthInfo : LinphoneObject
 	/// - Parameter userId: The userid.   
 	
 	/// Gets the user id. 
-	/// - Returns: The user id.   
+	/// - Returns: The user id.    
 	public var userid: String?
 	{
 	
@@ -10565,10 +10725,10 @@ public class AuthInfo : LinphoneObject
 	}
 		
 	/// Sets the username. 
-	/// - Parameter username: The username.   
+	/// - Parameter username: The username.    
 	
 	/// Gets the username. 
-	/// - Returns: The username.   
+	/// - Returns: The username.    
 	public var username: String?
 	{
 	
@@ -10592,7 +10752,7 @@ public class AuthInfo : LinphoneObject
 	
 	/// Add an unique algorithm in the the available algorithms list : Algorithms that
 	/// already exist will not be added. 
-	/// - Parameter algorithm: The algorithm to add.   
+	/// - Parameter algorithm: The algorithm to add.    
 	public func addAvailableAlgorithm(algorithm:String?) 
 	{
 		linphone_auth_info_add_available_algorithm(cPtr, algorithm)
@@ -10609,7 +10769,7 @@ public class AuthInfo : LinphoneObject
 	
 	
 	/// Instantiates a new auth info with values from source. 
-	/// - Returns: The newly created ``AuthInfo`` object.   
+	/// - Returns: The newly created ``AuthInfo`` object.    
 	public func clone() -> AuthInfo?
 	{
 		let cPointer = linphone_auth_info_clone(cPtr)
@@ -10624,7 +10784,7 @@ public class AuthInfo : LinphoneObject
 	
 	
 	/// Check if Authinfos are the same without taking account algorithms. 
-	/// - Parameter authInfo2: The second ``AuthInfo`` object.   
+	/// - Parameter authInfo2: The second ``AuthInfo`` object.    
 	/// - Returns: true if all fields (Username, UserId, Realm, Domain) are the same. 
 	public func isEqualButAlgorithms(authInfo2:AuthInfo?) -> Bool
 	{
@@ -10672,7 +10832,7 @@ public class BearerToken : LinphoneObject
 		
 	
 	/// Get the token as a string. 
-	/// - Returns: the token.   
+	/// - Returns: the token.    
 	public var token: String
 	{
 	
@@ -10706,9 +10866,9 @@ public class Buffer : LinphoneObject
 	
 	
 	/// Create a new ``Buffer`` object from existing data. 
-	/// - Parameter data: The initial data to store in the LinphoneBuffer.   
-	/// - Parameter size: The size of the initial data to store in the LinphoneBuffer. 
-	/// - Returns: A new ``Buffer`` object.   
+	/// - Parameter data: The initial data to store in the ``Buffer``.    
+	/// - Parameter size: The size of the initial data to store in the ``Buffer``. 
+	/// - Returns: A new ``Buffer`` object.    
 	static public func newFromData(data:UnsafePointer<UInt8>, size:Int) -> Buffer?
 	{
 		let cPointer = linphone_buffer_new_from_data(data, size)
@@ -10723,8 +10883,8 @@ public class Buffer : LinphoneObject
 	
 	
 	/// Create a new ``Buffer`` object from a string. 
-	/// - Parameter data: The initial string content of the LinphoneBuffer.   
-	/// - Returns: A new ``Buffer`` object.   
+	/// - Parameter data: The initial string content of the ``Buffer``.    
+	/// - Returns: A new ``Buffer`` object.    
 	static public func newFromString(data:String) -> Buffer?
 	{
 		let cPointer = linphone_buffer_new_from_string(data)
@@ -10738,7 +10898,7 @@ public class Buffer : LinphoneObject
 	
 	
 	/// Get the content of the data buffer. 
-	/// - Returns: The content of the data buffer.   
+	/// - Returns: The content of the data buffer.    
 	public var content: UnsafePointer<UInt8>
 	{
 	
@@ -10775,10 +10935,10 @@ public class Buffer : LinphoneObject
 	}
 		
 	/// Set the string content of the data buffer. 
-	/// - Parameter content: The string content of the data buffer.   
+	/// - Parameter content: The string content of the data buffer.    
 	
 	/// Get the string content of the data buffer. 
-	/// - Returns: The string content of the data buffer.   
+	/// - Returns: The string content of the data buffer.    
 	public var stringContent: String
 	{
 	
@@ -10796,10 +10956,10 @@ public class Buffer : LinphoneObject
 	}
 		
 	/// Assign a user pointer to the buffer. 
-	/// - Parameter userData: The user pointer to associate with the buffer.   
+	/// - Parameter userData: The user pointer to associate with the buffer.    
 	
 	/// Retrieve the user pointer associated with the buffer. 
-	/// - Returns: The user pointer associated with the buffer.   
+	/// - Returns: The user pointer associated with the buffer.    
 	public var userData: UnsafeMutableRawPointer?
 	{
 	
@@ -10816,7 +10976,7 @@ public class Buffer : LinphoneObject
 	
 	
 	/// Set the content of the data buffer. 
-	/// - Parameter content: The content of the data buffer.   
+	/// - Parameter content: The content of the data buffer.    
 	/// - Parameter size: The size of the content of the data buffer. 
 	public func setContent(content:UnsafePointer<UInt8>, size:Int) 
 	{
@@ -10966,7 +11126,7 @@ public class Call : LinphoneObject
 	
 	/// Returns a copy of the call statistics for the audio stream. 
 	/// - Returns: a ``CallStats`` object for the audio stream or nil if it isn't
-	/// available.     
+	/// available.       
 	public var audioStats: CallStats?
 	{
 	
@@ -10982,7 +11142,7 @@ public class Call : LinphoneObject
 		
 	
 	/// Returns the ZRTP authentication token to verify. 
-	/// - Returns: the authentication token to verify or nil if ZRTP isn't enabled.   
+	/// - Returns: the authentication token to verify or nil if ZRTP isn't enabled.    
 	public var authenticationToken: String?
 	{
 	
@@ -11089,7 +11249,7 @@ public class Call : LinphoneObject
 		
 	
 	/// Gets the call log associated to this call. 
-	/// - Returns: The ``CallLog`` associated with the specified ``Call``.   
+	/// - Returns: The ``CallLog`` associated with the specified ``Call``.    
 	public var callLog: CallLog?
 	{
 	
@@ -11143,7 +11303,7 @@ public class Call : LinphoneObject
 	
 	/// Returns the associated conference object if any. 
 	/// - Returns: A pointer on ``Conference`` or nil if the call is not part of any
-	/// conference.   
+	/// conference.    
 	public var conference: Conference?
 	{
 	
@@ -11158,7 +11318,7 @@ public class Call : LinphoneObject
 		
 	
 	/// Gets the core that has created the specified call. 
-	/// - Returns: The ``Core`` object that has created the specified call.   
+	/// - Returns: The ``Core`` object that has created the specified call.    
 	public var core: Core?
 	{
 	
@@ -11172,10 +11332,10 @@ public class Call : LinphoneObject
 	}
 		
 	
-	/// Gets the currently invoked LinphoneCallCbs if any. 
+	/// Gets the currently invoked ``CallDelegate`` if any. 
 	/// This is meant only to be called from a callback to be able to get the user_data
 	/// associated with the ``CallDelegate`` that is calling the callback. 
-	/// - Returns: The ``CallDelegate`` that has called the last callback   
+	/// - Returns: The ``CallDelegate`` that has called the last callback    
 	public var currentDelegate: CallDelegate?
 	{
 	
@@ -11190,7 +11350,7 @@ public class Call : LinphoneObject
 		
 	
 	/// Returns current parameters associated to the call. 
-	/// - Returns: the current ``CallParams`` of this call.   
+	/// - Returns: the current ``CallParams`` of this call.    
 	public var currentParams: CallParams?
 	{
 	
@@ -11234,7 +11394,7 @@ public class Call : LinphoneObject
 		
 	
 	/// Returns the diversion address associated to this call. 
-	/// - Returns: the diversion address as ``Address`` or nil.   
+	/// - Returns: the diversion address as ``Address`` or nil.    
 	public var diversionAddress: Address?
 	{
 	
@@ -11299,7 +11459,7 @@ public class Call : LinphoneObject
 		
 	
 	/// Returns full details about call errors or termination reasons. 
-	/// - Returns: ``ErrorInfo`` object holding the reason error.   
+	/// - Returns: ``ErrorInfo`` object holding the reason error.    
 	public var errorInfo: ErrorInfo?
 	{
 	
@@ -11313,11 +11473,11 @@ public class Call : LinphoneObject
 	}
 		
 	/// Sets the given ``AudioDevice`` as input for this call only. 
-	/// - Parameter audioDevice: The ``AudioDevice``. nil does nothing.   
+	/// - Parameter audioDevice: The ``AudioDevice``. nil does nothing.    
 	
 	/// Gets the current input device for this call. 
 	/// - Returns: the ``AudioDevice`` used by this call as input or nil if there is
-	/// currently no soundcard configured (depending on the state of the call)   
+	/// currently no soundcard configured (depending on the state of the call)    
 	public var inputAudioDevice: AudioDevice?
 	{
 	
@@ -11339,7 +11499,7 @@ public class Call : LinphoneObject
 	
 	/// Returns whether or not the call is currently being recorded. 
 	/// - Returns: true if recording is in progress, false otherwise 
-	/// - deprecated: 15/09/2021 Use ``CallParams/isRecording()`` instead. 
+	/// - Deprecated: 15/09/2021 Use ``CallParams/isRecording()`` instead. 
 	@available(*, deprecated)
 	public var isRecording: Bool
 	{
@@ -11351,7 +11511,7 @@ public class Call : LinphoneObject
 	
 	/// Returns the local ZRTP authentication token to verify by the remote. 
 	/// - Returns: the local authentication token to verify or nil if ZRTP isn't
-	/// enabled.   
+	/// enabled.    
 	public var localAuthenticationToken: String?
 	{
 	
@@ -11367,7 +11527,7 @@ public class Call : LinphoneObject
 		
 	
 	/// Returns the local tag of the ``Call``. 
-	/// - Returns: the local tag.   
+	/// - Returns: the local tag.    
 	public var localTag: String
 	{
 	
@@ -11438,12 +11598,12 @@ public class Call : LinphoneObject
 	/// created, unless the special id -1 is given. - See also:
 	/// ``Core/setNativeVideoWindowId(windowId:)`` for a general discussion about
 	/// window IDs. 
-	/// - Parameter windowId: the native video window id.   
+	/// - Parameter windowId: the native video window id.    
 	
 	/// Get the native window handle of the video window, casted as an unsigned long. 
 	/// - See also: ``Core/setNativeVideoWindowId(windowId:)`` for a general discussion
 	/// about window IDs. 
-	/// - Returns: the native video window id (type may vary depending on platform).   
+	/// - Returns: the native video window id (type may vary depending on platform).    
 	public var nativeVideoWindowId: UnsafeMutableRawPointer?
 	{
 	
@@ -11458,11 +11618,11 @@ public class Call : LinphoneObject
 	}
 		
 	/// Sets the given ``AudioDevice`` as output for this call only. 
-	/// - Parameter audioDevice: The ``AudioDevice``. nil does nothing.   
+	/// - Parameter audioDevice: The ``AudioDevice``. nil does nothing.    
 	
 	/// Gets the current output device for this call. 
 	/// - Returns: the ``AudioDevice`` used by this call as output or nil if there is
-	/// currently no soundcard configured (depending on the state of the call)   
+	/// currently no soundcard configured (depending on the state of the call)    
 	public var outputAudioDevice: AudioDevice?
 	{
 	
@@ -11490,14 +11650,14 @@ public class Call : LinphoneObject
 	/// including special headers in INVITE or 200Ok requests, driven by a
 	/// call_state_changed listener method. This function accepts to assign a new
 	/// ``CallParams`` only in ``OutgoingInit`` and ``IncomingReceived`` states.
-	/// - Parameter params: the ``CallParams`` object   
+	/// - Parameter params: the ``CallParams`` object    
 	
 	/// Returns read-only local parameters associated with the call. 
 	/// This is typically the parameters passed at call initiation to
 	/// ``Core/inviteAddressWithParams(addr:params:)`` or
 	/// ``acceptWithParams(params:)``, or some default parameters if no ``CallParams``
 	/// was explicitely passed during call initiation. 
-	/// - Returns: the call's local parameters.   
+	/// - Returns: the call's local parameters.    
 	public var params: CallParams?
 	{
 	
@@ -11518,7 +11678,7 @@ public class Call : LinphoneObject
 		
 	
 	/// Gets the mesured playback volume level (received from remote) in dbm0. 
-	/// - Returns: float Volume level in percentage. 
+	/// - Returns: float Volume level in dbm0. 
 	public var playVolume: Float
 	{
 	
@@ -11529,7 +11689,7 @@ public class Call : LinphoneObject
 	
 	/// Gets a player associated with the call to play a local file and stream it to
 	/// the remote peer. 
-	/// - Returns: A ``Player`` object.   
+	/// - Returns: A ``Player`` object.    
 	public var player: Player?
 	{
 	
@@ -11554,7 +11714,7 @@ public class Call : LinphoneObject
 		
 	
 	/// Gets the mesured record volume level (sent to remote) in dbm0. 
-	/// - Returns: float Volume level in percentage. 
+	/// - Returns: float Volume level in dbm0. 
 	public var recordVolume: Float
 	{
 	
@@ -11564,7 +11724,7 @@ public class Call : LinphoneObject
 		
 	
 	/// Gets the refer-to uri (if the call was transferred). 
-	/// - Returns: The refer-to uri of the call (if it was transferred).   
+	/// - Returns: The refer-to uri of the call (if it was transferred).    
 	public var referTo: String?
 	{
 	
@@ -11580,7 +11740,7 @@ public class Call : LinphoneObject
 		
 	
 	/// Gets the refer-to uri (if the call was transferred). 
-	/// - Returns: The refer-to uri of the call (if it was transferred).   
+	/// - Returns: The refer-to uri of the call (if it was transferred).    
 	public var referToAddress: Address?
 	{
 	
@@ -11598,7 +11758,7 @@ public class Call : LinphoneObject
 	/// a consequence of a call transfer operation by a third party. 
 	/// The referred-by address is the sip identity of the one who initiated the
 	/// transfer. 
-	/// - Returns: The referred-by address   
+	/// - Returns: The referred-by address    
 	public var referredByAddress: Address?
 	{
 	
@@ -11613,7 +11773,7 @@ public class Call : LinphoneObject
 		
 	
 	/// Returns the remote address associated to this call. 
-	/// - Returns: The ``Address`` of the remote end of the call.   
+	/// - Returns: The ``Address`` of the remote end of the call.    
 	public var remoteAddress: Address?
 	{
 	
@@ -11629,8 +11789,8 @@ public class Call : LinphoneObject
 	
 	/// Returns the remote address associated to this call as a string. 
 	/// The result string must be freed by user using ms_free(). 
-	/// - Returns: the remote address as a string.     
-	/// - deprecated: 06/07/2020 use ``getRemoteAddress()`` instead. 
+	/// - Returns: the remote address as a string.       
+	/// - Deprecated: 06/07/2020 use ``getRemoteAddress()`` instead. 
 	@available(*, deprecated)
 	public var remoteAddressAsString: String?
 	{
@@ -11651,7 +11811,8 @@ public class Call : LinphoneObject
 	
 	/// Returns a list of 4 remote ZRTP authentication tokens. 
 	/// The user needs to select one. 
-	/// - Returns: the authentication tokens to verify or nil if ZRTP isn't enabled.    
+	/// - Returns: the authentication tokens to verify or nil if ZRTP isn't enabled.   
+	///   
 	public var remoteAuthenticationTokens: [String]
 	{
 	
@@ -11668,7 +11829,7 @@ public class Call : LinphoneObject
 		
 	
 	/// Returns the far end's sip contact as a string, if available. 
-	/// - Returns: the remote contact or nil.   
+	/// - Returns: the remote contact or nil.    
 	public var remoteContact: String?
 	{
 	
@@ -11684,7 +11845,7 @@ public class Call : LinphoneObject
 		
 	
 	/// Returns the far end's sip contact as an address, if available. 
-	/// - Returns: the remote contact as a ``Address`` or nil.   
+	/// - Returns: the remote contact as a ``Address`` or nil.    
 	public var remoteContactAddress: Address?
 	{
 	
@@ -11701,7 +11862,7 @@ public class Call : LinphoneObject
 	/// Returns call parameters proposed by remote. 
 	/// This is useful when receiving an incoming call, to know whether the remote
 	/// party supports video, encryption or whatever.
-	/// - Returns: the ``CallParams`` suggested by the remote or nil.   
+	/// - Returns: the ``CallParams`` suggested by the remote or nil.    
 	public var remoteParams: CallParams?
 	{
 	
@@ -11716,7 +11877,7 @@ public class Call : LinphoneObject
 		
 	
 	/// Returns the remote tag of the ``Call``. 
-	/// - Returns: the remote tag.   
+	/// - Returns: the remote tag.    
 	public var remoteTag: String
 	{
 	
@@ -11729,7 +11890,7 @@ public class Call : LinphoneObject
 		
 	
 	/// Returns the far end's user agent description string, if available. 
-	/// - Returns: the remote user agent or nil.   
+	/// - Returns: the remote user agent or nil.    
 	public var remoteUserAgent: String?
 	{
 	
@@ -11749,7 +11910,7 @@ public class Call : LinphoneObject
 	/// automatically terminates the replaced call and accept the new one. This
 	/// function allows the application to know whether a new incoming call is a one
 	/// that replaces another one. 
-	/// - Returns: the ``Call`` object this call is replacing or nil.   
+	/// - Returns: the ``Call`` object this call is replacing or nil.    
 	public var replacedCall: Call?
 	{
 	
@@ -11768,7 +11929,10 @@ public class Call : LinphoneObject
 	/// Usually equal to the To field, except when e.g. using a fallback contact
 	/// address. You should probably use getToAddress() instead, unless you know what
 	/// you're doing. 
-	/// - Returns: the ``Address`` matching the URI of the INVITE request.   
+	/// Usually equal to the To field, except when e.g. using a fallback contact
+	/// address. You should probably use getToAddress() instead, unless you know what
+	/// you're doing. 
+	/// - Returns: the ``Address`` matching the URI of the INVITE request.    
 	public var requestAddress: Address?
 	{
 	
@@ -11846,7 +12010,7 @@ public class Call : LinphoneObject
 	
 	/// Returns a copy of the call statistics for the text stream. 
 	/// - Returns: a ``CallStats`` object for the text stream or nil if it isn't
-	/// available.     
+	/// available.       
 	public var textStats: CallStats?
 	{
 	
@@ -11862,7 +12026,7 @@ public class Call : LinphoneObject
 		
 	
 	/// Returns the to address with its headers associated to this call. 
-	/// - Returns: the ``Address`` matching the TO of the call.   
+	/// - Returns: the ``Address`` matching the TO of the call.    
 	public var toAddress: Address?
 	{
 	
@@ -11891,7 +12055,7 @@ public class Call : LinphoneObject
 	
 	/// When this call has received a transfer request, returns the new call that was
 	/// automatically created as a result of the transfer. 
-	/// - Returns: the transfer ``Call`` created.   
+	/// - Returns: the transfer ``Call`` created.    
 	public var transferTargetCall: Call?
 	{
 	
@@ -11909,7 +12073,7 @@ public class Call : LinphoneObject
 	/// incoming transfer request. 
 	/// The call in which the transfer request was received is returned in this case. 
 	/// - Returns: The transferer ``Call`` if the specified call was started
-	/// automatically as a result of an incoming transfer request, nil otherwise.   
+	/// automatically as a result of an incoming transfer request, nil otherwise.    
 	public var transfererCall: Call?
 	{
 	
@@ -11923,10 +12087,10 @@ public class Call : LinphoneObject
 	}
 		
 	/// Assigns a user pointer to the call. 
-	/// - Parameter userData: The user pointer to associate with the call.   
+	/// - Parameter userData: The user pointer to associate with the call.    
 	
 	/// Retrieves the user pointer associated with the call. 
-	/// - Returns: The user pointer associated with the call.   
+	/// - Returns: The user pointer associated with the call.    
 	public var userData: UnsafeMutableRawPointer?
 	{
 	
@@ -11942,11 +12106,11 @@ public class Call : LinphoneObject
 		
 	/// Sets the video source of a call. 
 	/// - Parameter descriptor: The ``VideoSourceDescriptor`` describing the video
-	/// source to set   
+	/// source to set    
 	
 	/// Gets the video source of a call. 
 	/// - Returns: The ``VideoSourceDescriptor`` describing the video source that is
-	/// set   
+	/// set    
 	public var videoSource: VideoSourceDescriptor?
 	{
 	
@@ -11968,7 +12132,7 @@ public class Call : LinphoneObject
 	
 	/// Returns a copy of the call statistics for the video stream. 
 	/// - Returns: a ``CallStats`` object for the video stream or nil if it isn't
-	/// available.     
+	/// available.       
 	public var videoStats: CallStats?
 	{
 	
@@ -11997,10 +12161,10 @@ public class Call : LinphoneObject
 	
 	
 	/// Accepts an incoming call. 
-	/// Basically the application is notified of incoming calls within the
+	/// Basically, the application is notified of incoming calls within the
 	/// call_state_changed callback of the LinphoneCoreVTable structure, where it will
-	/// receive a #LinphoneCallStateIncoming event with the associated ``Call`` object.
-	/// The application can later accept the call using this method. 
+	/// receive a ``IncomingReceived`` event with the associated ``Call`` object. The
+	/// application can later accept the call using this method. 
 	/// - Returns: 0 on success, -1 on failure 
 	public func accept() throws 
 	{
@@ -12033,7 +12197,7 @@ public class Call : LinphoneObject
 	/// call acceptance, mic and camera input are not sent during early-media, though
 	/// received audio & video are played normally. The call can then later be fully
 	/// accepted using ``accept()`` or ``acceptWithParams(params:)``. 
-	/// - Parameter params: The call parameters to use (can be nil).   
+	/// - Parameter params: The call parameters to use (can be nil).    
 	/// - Returns: 0 if successful, -1 otherwise 
 	public func acceptEarlyMediaWithParams(params:CallParams?) throws 
 	{
@@ -12060,6 +12224,11 @@ public class Call : LinphoneObject
 	/// ``acceptUpdate(params:)`` is typically used in response to a
 	/// ``UpdatedByRemote`` state notification. When such notification arrives, the
 	/// application has several choices:
+	/// -use ``deferUpdate()`` so that it can have the time to prompt the user, and
+	/// then later use ``acceptUpdate(params:)`` to answer
+	/// -doing nothing, in which case ``acceptUpdate(params:)`` is internally called
+	/// automatically to generate a default response.
+	/// -immediately ``acceptUpdate(params:)`` to generate a response.
 	/// An application may use ``getRemoteParams()`` to get information about the call
 	/// parameters proposed by the other party (for example when he wants to add a
 	/// video stream), in order to decide what to do, like for example requesting the
@@ -12081,7 +12250,7 @@ public class Call : LinphoneObject
 	/// pretention to control every aspect of the generation of the answer of an SDP
 	/// offer/answer procedure.
 	/// - Parameter params: A ``CallParams`` object describing the call parameters to
-	/// accept.   
+	/// accept.    
 	/// - Returns: 0 if successful, -1 otherwise (actually when this function call is
 	/// performed outside ot ``UpdatedByRemote`` state) 
 	public func acceptUpdate(params:CallParams?) throws 
@@ -12095,12 +12264,12 @@ public class Call : LinphoneObject
 	
 	
 	/// Accepts an incoming call, with parameters. 
-	/// Basically the application is notified of incoming calls within the
+	/// Basically, the application is notified of incoming calls within the
 	/// call_state_changed callback of the LinphoneCoreVTable structure, where it will
-	/// receive a #LinphoneCallStateIncoming event with the associated ``Call`` object.
-	/// The application can later accept the call using this method. 
-	/// - Parameter params: The specific parameters for this call, for example whether
-	/// video is accepted or not. Use nil to use default parameters.   
+	/// receive a ``IncomingReceived`` event with the associated ``Call`` object. The
+	/// application can later accept the call using this method. 
+	/// - Parameter params: The specific parameters for this call, for example, whether
+	/// video is accepted or not. Use nil to use default parameters.    
 	/// - Returns: 0 on success, -1 on failure 
 	public func acceptWithParams(params:CallParams?) throws 
 	{
@@ -12161,8 +12330,24 @@ public class Call : LinphoneObject
 	
 	/// Create a native video window id where the video is to be displayed. 
 	/// - See also: ``Core/setNativeVideoWindowId(windowId:)`` for a general discussion
-	/// about window IDs. 
-	/// - Returns: the native video window id (type may vary depending on platform).   
+	/// about window IDs.
+	/// A context can be used to prevent Linphone from allocating the container
+	/// (MSOglContextInfo for MSOGL). nil if not used.
+	/// A context can be used to prevent Linphone from allocating the container
+	/// (MSOglContextInfo for MSOGL). nil if not used.
+	/// - Parameter context: preallocated Window ID (Used only for MSOGL)    
+	/// - Returns: the native video window id (type may vary depending on platform).    
+	public func createNativeVideoWindowId(context:UnsafeMutableRawPointer?) throws -> UnsafeMutableRawPointer
+	{
+		return linphone_call_create_native_video_window_id_2(cPtr, context)
+	}
+	
+	
+	
+	/// Create a native video window id where the video is to be displayed. 
+	/// - See also: ``Core/setNativeVideoWindowId(windowId:)`` for a general discussion
+	/// about window IDs.
+	/// - Returns: the native video window id (type may vary depending on platform).    
 	public func createNativeVideoWindowId() throws -> UnsafeMutableRawPointer
 	{
 		return linphone_call_create_native_video_window_id(cPtr)
@@ -12174,7 +12359,7 @@ public class Call : LinphoneObject
 	/// created by the call. 
 	/// The call state must have passed through ``Connected``. 
 	/// - Parameter event: The event type to be notified. 
-	/// - Returns: a new ``Event``   
+	/// - Returns: a new ``Event``    
 	public func createNotify(event:String) throws -> Event
 	{
 		let cPointer = linphone_call_create_notify(cPtr, event)
@@ -12203,7 +12388,7 @@ public class Call : LinphoneObject
 	
 	/// Declines a pending incoming call, with a ``ErrorInfo`` object. 
 	/// - Parameter ei: ``ErrorInfo`` containing more information on the call
-	/// rejection.   
+	/// rejection.    
 	/// - Returns: 0 on success, -1 on failure 
 	public func declineWithErrorInfo(ei:ErrorInfo?) -> Int
 	{
@@ -12232,7 +12417,7 @@ public class Call : LinphoneObject
 	/// to notify the application of possible changes in the media session. However in
 	/// such case defering the update has no meaning since we just generated an offer.
 	/// - Returns: 0 if successful, -1 if the ``deferUpdate()`` was done outside a
-	/// valid #LinphoneCallUpdatedByRemote notification 
+	/// valid ``UpdatedByRemote`` notification 
 	public func deferUpdate() throws 
 	{
 		let exception_result = linphone_call_defer_update(cPtr)
@@ -12246,7 +12431,7 @@ public class Call : LinphoneObject
 	/// Returns a copy of the call statistics for a particular stream type. 
 	/// - Parameter type: the ``StreamType`` 
 	/// - Returns: a ``CallStats`` object for the given stream or nil if stream isn't
-	/// available.     
+	/// available.       
 	public func getStats(type:StreamType) -> CallStats?
 	{
 		let cPointer = linphone_call_get_stats(cPtr, LinphoneStreamType(rawValue: CUnsignedInt(type.rawValue)))
@@ -12261,9 +12446,9 @@ public class Call : LinphoneObject
 	
 	
 	/// Returns the value of the header name. 
-	/// - Parameter headerName: the name of the header to check.   
-	/// - Returns: the value of the header if exists.   
-	/// - deprecated: 27/10/2020. Use ``CallParams/getCustomHeader(headerName:)`` on
+	/// - Parameter headerName: the name of the header to check.    
+	/// - Returns: the value of the header if exists.    
+	/// - Deprecated: 27/10/2020. Use ``CallParams/getCustomHeader(headerName:)`` on
 	/// ``getRemoteParams()`` instead. 
 	@available(*, deprecated)
 	public func getToHeader(headerName:String) -> String
@@ -12340,9 +12525,9 @@ public class Call : LinphoneObject
 	
 	
 	/// Redirect the specified call to the given redirect URI. 
-	/// - Parameter redirectUri: The URI to redirect the call to   
+	/// - Parameter redirectUri: The URI to redirect the call to    
 	/// - Returns: 0 if successful, -1 on error. 
-	/// - deprecated: 27/10/2020. Use ``redirectTo(redirectAddress:)`` instead. 
+	/// - Deprecated: 27/10/2020. Use ``redirectTo(redirectAddress:)`` instead. 
 	@available(*, deprecated)
 	public func redirect(redirectUri:String) throws 
 	{
@@ -12355,7 +12540,7 @@ public class Call : LinphoneObject
 	
 	
 	/// Redirects the specified call to the given redirect Address. 
-	/// - Parameter redirectAddress: The ``Address`` to redirect the call to   
+	/// - Parameter redirectAddress: The ``Address`` to redirect the call to    
 	/// - Returns: 0 if successful, -1 on error. 
 	public func redirectTo(redirectAddress:Address) throws 
 	{
@@ -12410,7 +12595,7 @@ public class Call : LinphoneObject
 	/// customizable delay. Sending is canceled if the call state changes to something
 	/// not LinphoneCallStreamsRunning. - See also:
 	/// ``Core/setUseRfc2833ForDtmf(useRfc2833:)`` 
-	/// - Parameter dtmfs: A dtmf sequence such as '123#123123'   
+	/// - Parameter dtmfs: A dtmf sequence such as '123#123123'    
 	/// - Returns: -2 if there is already a DTMF sequence, -1 if call is not ready, 0
 	/// otherwise. 
 	public func sendDtmfs(dtmfs:String) throws 
@@ -12424,7 +12609,7 @@ public class Call : LinphoneObject
 	
 	
 	/// Sends an info message through an established call. 
-	/// - Parameter info: the ``InfoMessage`` to send   
+	/// - Parameter info: the ``InfoMessage`` to send    
 	public func sendInfoMessage(info:InfoMessage) throws 
 	{
 		let exception_result = linphone_call_send_info_message(cPtr, info.cPtr)
@@ -12473,7 +12658,7 @@ public class Call : LinphoneObject
 	/// Takes a photo of currently captured video and write it into a jpeg file. 
 	/// Note that the snapshot is asynchronous, an application shall not assume that
 	/// the file is created when the function returns. 
-	/// - Parameter filePath: a path where to write the jpeg content.   
+	/// - Parameter filePath: a path where to write the jpeg content.    
 	/// - Returns: 0 if successful, -1 otherwise (typically if jpeg format is not
 	/// supported). 
 	public func takePreviewSnapshot(filePath:String) throws 
@@ -12489,7 +12674,7 @@ public class Call : LinphoneObject
 	/// Takes a photo of currently received video and write it into a jpeg file. 
 	/// Note that the snapshot is asynchronous, an application shall not assume that
 	/// the file is created when the function returns. 
-	/// - Parameter filePath: a path where to write the jpeg content.   
+	/// - Parameter filePath: a path where to write the jpeg content.    
 	/// - Returns: 0 if successful, -1 otherwise (typically if jpeg format is not
 	/// supported). 
 	public func takeVideoSnapshot(filePath:String) throws 
@@ -12515,7 +12700,7 @@ public class Call : LinphoneObject
 	
 	
 	/// Terminates a call with additional information, serialized as a Reason header. 
-	/// - Parameter ei: ``ErrorInfo``   
+	/// - Parameter ei: ``ErrorInfo``    
 	/// - Returns: 0 on success, -1 on failure 
 	public func terminateWithErrorInfo(ei:ErrorInfo?) throws 
 	{
@@ -12534,11 +12719,10 @@ public class Call : LinphoneObject
 	/// transferee sends notification about it. In this case, the
 	/// transfer_state_changed callback of the LinphoneCoreVTable is invoked to notify
 	/// of the state of the new call at the other party. The notified states are
-	/// #LinphoneCallOutgoingInit , #LinphoneCallOutgoingProgress,
-	/// #LinphoneCallOutgoingRinging and #LinphoneCallConnected. 
-	/// - Parameter referTo: The destination the call is to be referred to.   
+	/// ``OutgoingInit``, ``OutgoingProgress``, ``OutgoingRinging`` and ``Connected``. 
+	/// - Parameter referTo: The destination the call is to be referred to.    
 	/// - Returns: 0 on success, -1 on failure 
-	/// - deprecated: 27/10/2020. Use ``transferTo(referTo:)`` instead. 
+	/// - Deprecated: 27/10/2020. Use ``transferTo(referTo:)`` instead. 
 	@available(*, deprecated)
 	public func transfer(referTo:String) throws 
 	{
@@ -12558,7 +12742,7 @@ public class Call : LinphoneObject
 	/// changed' callback of the ``CoreDelegate`` is invoked to notify of the state of
 	/// the new call to the other party. The notified states are ``OutgoingInit`` ,
 	/// ``OutgoingProgress``, ``OutgoingRinging`` and ``Connected``. 
-	/// - Parameter referTo: The ``Address`` the call is to be referred to.   
+	/// - Parameter referTo: The ``Address`` the call is to be referred to.    
 	/// - Returns: 0 on success, -1 on failure 
 	public func transferTo(referTo:Address) throws 
 	{
@@ -12584,7 +12768,7 @@ public class Call : LinphoneObject
 	/// call to the other party. The notified states are ``OutgoingInit`` ,
 	/// ``OutgoingProgress``, ``OutgoingRinging`` and ``Connected``. 
 	/// - Parameter dest: A running call whose remote person will receive the transfer 
-	///  
+	///   
 	/// - Returns: 0 on success, -1 on failure 
 	public func transferToAnother(dest:Call) throws 
 	{
@@ -12597,7 +12781,7 @@ public class Call : LinphoneObject
 	
 	
 	/// Updates a running call according to supplied call parameters or parameters
-	/// changed in the LinphoneCore. 
+	/// changed in the ``Core``. 
 	/// It triggers a SIP reINVITE in order to perform a new offer/answer of media
 	/// capabilities. Changing the size of the transmitted video after calling
 	/// linphone_core_set_preferred_video_size can be used by passing nil as params
@@ -12606,7 +12790,7 @@ public class Call : LinphoneObject
 	/// the ``Paused`` state will still result in a paused call even if the media
 	/// directions set in the params are sendrecv. To resume a paused call, you need to
 	/// call ``resume()``.
-	/// - Parameter params: The new call parameters to use (may be nil).   
+	/// - Parameter params: The new call parameters to use (may be nil).    
 	/// - Returns: 0 if successful, -1 otherwise. 
 	public func update(params:CallParams?) throws 
 	{
@@ -12658,7 +12842,7 @@ public class CallLog : LinphoneObject
 	
 	
 	/// Gets the call ID used by the call. 
-	/// - Returns: The call ID used by the call as a string.   
+	/// - Returns: The call ID used by the call as a string.    
 	public var callId: String?
 	{
 	
@@ -12676,7 +12860,7 @@ public class CallLog : LinphoneObject
 	/// Returns the chat room associated with this call-log, if any. 
 	/// This method is typically useful in order to retrieve an IM conversation
 	/// associated with a past conference call. 
-	/// - Returns: The ``ChatRoom`` associated.   
+	/// - Returns: The ``ChatRoom`` associated.    
 	public var chatRoom: ChatRoom?
 	{
 	
@@ -12691,7 +12875,7 @@ public class CallLog : LinphoneObject
 		
 	
 	/// Retrieves the conference info associated to this call log in DB. 
-	/// - Returns: The ``ConferenceInfo`` associated.   
+	/// - Returns: The ``ConferenceInfo`` associated.    
 	public var conferenceInfo: ConferenceInfo?
 	{
 	
@@ -12727,7 +12911,7 @@ public class CallLog : LinphoneObject
 	
 	/// When the call was failed, return an object describing the failure. 
 	/// - Returns: ``ErrorInfo`` about the error encountered by the call associated
-	/// with this call log or nil.   
+	/// with this call log or nil.    
 	public var errorInfo: ErrorInfo?
 	{
 	
@@ -12742,7 +12926,7 @@ public class CallLog : LinphoneObject
 		
 	
 	/// Gets the origin address (ie from) of the call. 
-	/// - Returns: The origin ``Address`` (ie from) of the call.   
+	/// - Returns: The origin ``Address`` (ie from) of the call.    
 	public var fromAddress: Address?
 	{
 	
@@ -12757,7 +12941,7 @@ public class CallLog : LinphoneObject
 		
 	
 	/// Gets the local address (that is from or to depending on call direction) 
-	/// - Returns: The local ``Address`` of the call   
+	/// - Returns: The local ``Address`` of the call    
 	public var localAddress: Address?
 	{
 	
@@ -12784,7 +12968,7 @@ public class CallLog : LinphoneObject
 	/// Associates a persistent reference key to the call log. 
 	/// The reference key can be for example an id to an external database. It is
 	/// stored in the config file, thus can survive to process exits/restarts.
-	/// - Parameter refkey: The reference key string to associate to the call log.   
+	/// - Parameter refkey: The reference key string to associate to the call log.    
 	
 	/// Gets the persistent reference key associated to the call log. 
 	/// The reference key can be for example an id to an external database. It is
@@ -12815,10 +12999,10 @@ public class CallLog : LinphoneObject
 	/// to fill the display name (coming from an external address book) into a call log
 	/// on incoming call. When the call end, the database will take account of the new
 	/// information and can be used later 
-	/// - Parameter address: ``Address`` object   
+	/// - Parameter address: ``Address`` object    
 	
 	/// Gets the remote address (that is from or to depending on call direction). 
-	/// - Returns: The remote ``Address`` of the call.   
+	/// - Returns: The remote ``Address`` of the call.    
 	public var remoteAddress: Address?
 	{
 	
@@ -12859,7 +13043,7 @@ public class CallLog : LinphoneObject
 		
 	
 	/// Gets the destination address (ie to) of the call. 
-	/// - Returns: The destination ``Address`` (ie to) of the call.   
+	/// - Returns: The destination ``Address`` (ie to) of the call.    
 	public var toAddress: Address?
 	{
 	
@@ -12873,10 +13057,10 @@ public class CallLog : LinphoneObject
 	}
 		
 	/// Assigns a user data to the call log. 
-	/// - Parameter userData: The user data to associate with the call log.   
+	/// - Parameter userData: The user data to associate with the call log.    
 	
 	/// Gets the user data associated with the call log. 
-	/// - Returns: The user data associated with the call log.   
+	/// - Returns: The user data associated with the call log.    
 	public var userData: UnsafeMutableRawPointer?
 	{
 	
@@ -12905,7 +13089,7 @@ public class CallLog : LinphoneObject
 	
 	/// Gets a human readable string describing the call. 
 	/// - Note: : the returned string must be freed by the application (use ms_free()). 
-	/// - Returns: A human readable string describing the call.     
+	/// - Returns: A human readable string describing the call.       
 	public func toStr() -> String
 	{
 		let cstr = linphone_call_log_to_str(cPtr)
@@ -12960,11 +13144,11 @@ public class CallParams : LinphoneObject
 	/// Set the ``Account`` to use for the call. 
 	/// - Parameter account: The ``Account`` to use, or nil if none has been selected.
 	/// The ``CallParams`` keeps a reference to it and removes the previous one, if
-	/// any.   
+	/// any.    
 	
 	/// Get the ``Account`` that is used for the call. 
 	/// - Returns: The selected ``Account`` for the call, or nil if none has been
-	/// selected.   
+	/// selected.    
 	public var account: Account?
 	{
 	
@@ -13036,6 +13220,10 @@ public class CallParams : LinphoneObject
 	}
 		
 	/// Use to enable multicast rtp for audio stream. 
+	/// -If enabled, outgoing calls put a multicast address from
+	/// ``Core/getVideoMulticastAddr()`` into audio cline. In case of outgoing call
+	/// audio stream is sent to this multicast address.  For incoming calls behavior is
+	/// unchanged. 
 	
 	/// Use to get multicast state of audio stream. 
 	/// - Returns: true if subsequent calls will propose multicast ip set by
@@ -13168,7 +13356,7 @@ public class CallParams : LinphoneObject
 		
 	
 	/// Gets a list of ``Content`` set if exists. 
-	/// - Returns: A list of ``Content`` set if exists, nil otherwise.      
+	/// - Returns: A list of ``Content`` set if exists, nil otherwise.         
 	public var customContents: [Content]
 	{
 	
@@ -13217,10 +13405,10 @@ public class CallParams : LinphoneObject
 		
 	/// Force the from header of a call when instanciating it (if set, it precludes the
 	/// search in proxy and primary contact) 
-	/// - Parameter fromValue: The value of the forced from, null to delete it.   
+	/// - Parameter fromValue: The value of the forced from, null to delete it.    
 	
 	/// Get the from header in the CallParams. 
-	/// - Returns: The content of the from header, may be null.   
+	/// - Returns: The content of the from header, may be null.    
 	public var fromHeader: String?
 	{
 	
@@ -13244,7 +13432,7 @@ public class CallParams : LinphoneObject
 	/// - Warning: This method won't have any effect once the call has been created!
 	/// Instead use ``Call/setInputAudioDevice(audioDevice:)`` when call has been
 	/// created. 
-	/// - Parameter audioDevice: The ``AudioDevice``. nil does nothing.   
+	/// - Parameter audioDevice: The ``AudioDevice``. nil does nothing.    
 	
 	/// Gets the default input audio device for a call that will be created using this
 	/// call params. 
@@ -13252,7 +13440,7 @@ public class CallParams : LinphoneObject
 	/// currently used input audio device of the call. Instead use
 	/// ``Call/getInputAudioDevice()`` when call has been created. 
 	/// - Returns: the ``AudioDevice`` that will be used by default as input when the
-	/// call will be created   
+	/// call will be created    
 	public var inputAudioDevice: AudioDevice?
 	{
 	
@@ -13274,7 +13462,7 @@ public class CallParams : LinphoneObject
 	
 	/// Check if the capability negotiation (RFC5939) reINVITE is enabled or not. 
 	/// - Returns: true if capability negotiation reINVITE is enabled; false otherwise. 
-	/// - deprecated: 16/12/2021 Use ``capabilityNegotiationReinviteEnabled()`` instead.
+	/// - Deprecated: 16/12/2021 Use ``capabilityNegotiationReinviteEnabled()`` instead.
 	@available(*, deprecated)
 	public var isCapabilityNegotiationReinviteEnabled: Bool
 	{
@@ -13396,7 +13584,7 @@ public class CallParams : LinphoneObject
 	/// - Warning: This method won't have any effect once the call has been created!
 	/// Instead use ``Call/setOutputAudioDevice(audioDevice:)`` when call has been
 	/// created. 
-	/// - Parameter audioDevice: The ``AudioDevice``. nil does nothing.   
+	/// - Parameter audioDevice: The ``AudioDevice``. nil does nothing.    
 	
 	/// Gets the default output audio device for a call that will be created using this
 	/// call params. 
@@ -13404,7 +13592,7 @@ public class CallParams : LinphoneObject
 	/// currently used output audio device of the call. Instead use
 	/// ``Call/getOutputAudioDevice()`` when call has been created. 
 	/// - Returns: the ``AudioDevice`` that will be used by default as output when the
-	/// call will be created   
+	/// call will be created    
 	public var outputAudioDevice: AudioDevice?
 	{
 	
@@ -13444,13 +13632,13 @@ public class CallParams : LinphoneObject
 	/// Set the ``ProxyConfig`` to use for the call. 
 	/// - Parameter proxyConfig: The ``ProxyConfig`` to use, or nil if none has been
 	/// selected. The ``CallParams`` keep a reference on it and remove the older if it
-	/// exists.   
-	/// - deprecated: 28/02/2021 Use ``setAccount(account:)`` instead. 
+	/// exists.    
+	/// - Deprecated: 28/02/2021 Use ``setAccount(account:)`` instead. 
 	
 	/// Get the ``ProxyConfig`` that is used for the call. 
 	/// - Returns: The selected ``ProxyConfig`` for the call, or nil if none has been
-	/// selected.   
-	/// - deprecated: 28/02/2021 Use ``getAccount()`` instead. 
+	/// selected.    
+	/// - Deprecated: 28/02/2021 Use ``getAccount()`` instead. 
 	public var proxyConfig: ProxyConfig?
 	{
 	@available(*, deprecated)
@@ -13523,7 +13711,7 @@ public class CallParams : LinphoneObject
 		
 	
 	/// Get the definition of the received video. 
-	/// - Returns: The received ``VideoDefinition`` or nil.   
+	/// - Returns: The received ``VideoDefinition`` or nil.    
 	public var receivedVideoDefinition: VideoDefinition?
 	{
 	
@@ -13546,7 +13734,7 @@ public class CallParams : LinphoneObject
 	///  
 	
 	/// Get the path for the audio recording of the call. 
-	/// - Returns: The path to the audio recording of the call or nil.   
+	/// - Returns: The path to the audio recording of the call or nil.    
 	public var recordFile: String?
 	{
 	
@@ -13570,12 +13758,16 @@ public class CallParams : LinphoneObject
 	/// See https://datatracker.ietf.org/doc/html/rfc8843 for more information about
 	/// the feature. When enabled, liblinphone will try to negociate the use of a
 	/// single port for all streams. It automatically enables rtcp-mux. 
+	/// See https://datatracker.ietf.org/doc/html/rfc8843 for more information about
+	/// the feature. When enabled, liblinphone will try to negociate the use of a
+	/// single port for all streams. It automatically enables rtcp-mux. 
 	/// - Parameter value: a boolean to indicate whether the feature is to be enabled. 
-	/// - deprecated: This property can no longer be controlled via ``CallParams``. Use
+	/// - Deprecated: This property can no longer be controlled via ``CallParams``. Use
 	/// ``AccountParams/enableRtpBundle(value:)``.
 	
 	/// Indicates whether RTP bundle mode (also known as Media Multiplexing) is
 	/// enabled. 
+	/// See https://datatracker.ietf.org/doc/html/rfc8843 for more information. 
 	/// See https://datatracker.ietf.org/doc/html/rfc8843 for more information. 
 	/// - Returns: a boolean indicating the enablement of rtp bundle mode. 
 	public var rtpBundleEnabled: Bool
@@ -13594,7 +13786,7 @@ public class CallParams : LinphoneObject
 		
 	
 	/// Get the RTP profile being used. 
-	/// - Returns: The RTP profile.   
+	/// - Returns: The RTP profile.    
 	public var rtpProfile: String
 	{
 	
@@ -13636,7 +13828,7 @@ public class CallParams : LinphoneObject
 		
 	
 	/// Get the definition of the sent video. 
-	/// - Returns: The sent ``VideoDefinition`` or nil.   
+	/// - Returns: The sent ``VideoDefinition`` or nil.    
 	public var sentVideoDefinition: VideoDefinition?
 	{
 	
@@ -13652,12 +13844,12 @@ public class CallParams : LinphoneObject
 	/// Set the session name of the media session (ie in SDP). 
 	/// Subject from the SIP message (which is different) can be set using
 	/// linphone_call_params_set_custom_header(). 
-	/// - Parameter name: The session name to be used.   
+	/// - Parameter name: The session name to be used.    
 	
 	/// Get the session name of the media session (ie in SDP). 
 	/// Subject from the SIP message can be retrieved using
 	/// ``getCustomHeader(headerName:)`` and is different. 
-	/// - Returns: The session name of the media session or nil.   
+	/// - Returns: The session name of the media session or nil.    
 	public var sessionName: String?
 	{
 	
@@ -13757,10 +13949,10 @@ public class CallParams : LinphoneObject
 	}
 		
 	/// Assign a user data to the call params. 
-	/// - Parameter userData: The user data to associate with the call params.   
+	/// - Parameter userData: The user data to associate with the call params.    
 	
 	/// Get the user data associated with the call params. 
-	/// - Returns: The user data associated with the call params.   
+	/// - Returns: The user data associated with the call params.    
 	public var userData: UnsafeMutableRawPointer?
 	{
 	
@@ -13838,7 +14030,7 @@ public class CallParams : LinphoneObject
 	
 	
 	/// Adds a ``Content`` to be added to the INVITE SDP. 
-	/// - Parameter content: The ``Content`` to be added.   
+	/// - Parameter content: The ``Content`` to be added.    
 	public func addCustomContent(content:Content) 
 	{
 		linphone_call_params_add_custom_content(cPtr, content.cPtr)
@@ -13847,8 +14039,8 @@ public class CallParams : LinphoneObject
 	
 	
 	/// Add a custom SIP header in the INVITE for a call. 
-	/// - Parameter headerName: The name of the header to add.   
-	/// - Parameter headerValue: The content of the header to add.   
+	/// - Parameter headerName: The name of the header to add.    
+	/// - Parameter headerValue: The content of the header to add.    
 	public func addCustomHeader(headerName:String, headerValue:String?) 
 	{
 		linphone_call_params_add_custom_header(cPtr, headerName, headerValue)
@@ -13858,8 +14050,8 @@ public class CallParams : LinphoneObject
 	
 	/// Add a custom attribute related to all the streams in the SDP exchanged within
 	/// SIP messages during a call. 
-	/// - Parameter attributeName: The name of the attribute to add.   
-	/// - Parameter attributeValue: The content value of the attribute to add.   
+	/// - Parameter attributeName: The name of the attribute to add.    
+	/// - Parameter attributeValue: The content value of the attribute to add.    
 	public func addCustomSdpAttribute(attributeName:String, attributeValue:String?) 
 	{
 		linphone_call_params_add_custom_sdp_attribute(cPtr, attributeName, attributeValue)
@@ -13870,8 +14062,8 @@ public class CallParams : LinphoneObject
 	/// Add a custom attribute related to a specific stream in the SDP exchanged within
 	/// SIP messages during a call. 
 	/// - Parameter type: The type of the stream to add a custom SDP attribute to. 
-	/// - Parameter attributeName: The name of the attribute to add.   
-	/// - Parameter attributeValue: The content value of the attribute to add.   
+	/// - Parameter attributeName: The name of the attribute to add.    
+	/// - Parameter attributeValue: The content value of the attribute to add.    
 	public func addCustomSdpMediaAttribute(type:StreamType, attributeName:String, attributeValue:String?) 
 	{
 		linphone_call_params_add_custom_sdp_media_attribute(cPtr, LinphoneStreamType(rawValue: CUnsignedInt(type.rawValue)), attributeName, attributeValue)
@@ -13912,9 +14104,9 @@ public class CallParams : LinphoneObject
 	/// Copy an existing ``CallParams`` object to a new ``CallParams`` object. 
 	/// ``copy()`` is error-prone, leading to inconsistent parameters being passed to
 	/// ``Core/inviteAddressWithParams(addr:params:)`` or
-	/// ``Call/acceptWithParams(params:)``. - deprecated: use exclusively
+	/// ``Call/acceptWithParams(params:)``. - Deprecated: use exclusively
 	/// ``Core/createCallParams(call:)`` to create ``CallParams`` object. 
-	/// - Returns: A copy of the ``CallParams`` object.     
+	/// - Returns: A copy of the ``CallParams`` object.       
 	@available(*, deprecated)
 	public func copy() -> CallParams?
 	{
@@ -13939,8 +14131,8 @@ public class CallParams : LinphoneObject
 	
 	
 	/// Get a custom SIP header. 
-	/// - Parameter headerName: The name of the header to get.   
-	/// - Returns: The content of the header or nil if not found.   
+	/// - Parameter headerName: The name of the header to get.    
+	/// - Returns: The content of the header or nil if not found.    
 	public func getCustomHeader(headerName:String) -> String
 	{
 		let cstr = linphone_call_params_get_custom_header(cPtr, headerName)
@@ -13951,8 +14143,8 @@ public class CallParams : LinphoneObject
 	
 	
 	/// Get a custom SDP attribute that is related to all the streams. 
-	/// - Parameter attributeName: The name of the attribute to get.   
-	/// - Returns: The content value of the attribute or nil if not found.   
+	/// - Parameter attributeName: The name of the attribute to get.    
+	/// - Returns: The content value of the attribute or nil if not found.    
 	public func getCustomSdpAttribute(attributeName:String) -> String
 	{
 		let cstr = linphone_call_params_get_custom_sdp_attribute(cPtr, attributeName)
@@ -13964,8 +14156,8 @@ public class CallParams : LinphoneObject
 	
 	/// Get a custom SDP attribute that is related to a specific stream. 
 	/// - Parameter type: The type of the stream to add a custom SDP attribute to. 
-	/// - Parameter attributeName: The name of the attribute to get.   
-	/// - Returns: The content value of the attribute or nil if not found.   
+	/// - Parameter attributeName: The name of the attribute to get.    
+	/// - Returns: The content value of the attribute or nil if not found.    
 	public func getCustomSdpMediaAttribute(type:StreamType, attributeName:String) -> String
 	{
 		let cstr = linphone_call_params_get_custom_sdp_media_attribute(cPtr, LinphoneStreamType(rawValue: CUnsignedInt(type.rawValue)), attributeName)
@@ -13977,7 +14169,7 @@ public class CallParams : LinphoneObject
 	
 	/// Returns true if a custom SDP attribute that is related to all the streams is
 	/// present. 
-	/// - Parameter attributeName: The name of the attribute to get.   
+	/// - Parameter attributeName: The name of the attribute to get.    
 	/// - Returns: Whether the attribute is present. 
 	public func hasCustomSdpAttribute(attributeName:String) -> Bool
 	{
@@ -13989,7 +14181,7 @@ public class CallParams : LinphoneObject
 	/// Indicates whether a custom SDP attribute that is related to a specific stream
 	/// is present or not. 
 	/// - Parameter type: The type of the stream to add a custom SDP attribute to. 
-	/// - Parameter attributeName: The name of the attribute to get.   
+	/// - Parameter attributeName: The name of the attribute to get.    
 	/// - Returns: Whether the attribute is present. 
 	public func hasCustomSdpMediaAttribute(type:StreamType, attributeName:String) -> Bool
 	{
@@ -14338,7 +14530,7 @@ public class CallStats : LinphoneObject
 		
 	
 	/// Get the method used for SRTP key exchange. 
-	/// - Returns: The ``MediaEncryption`` method used to exchange the SRTP keys   
+	/// - Returns: The ``MediaEncryption`` method used to exchange the SRTP keys    
 	public var srtpSource: MediaEncryption
 	{
 	
@@ -14348,7 +14540,7 @@ public class CallStats : LinphoneObject
 		
 	
 	/// Get the SRTP Cryto suite in use. 
-	/// - Returns: The SRTP crypto suite currently in use ``SrtpSuite``   
+	/// - Returns: The SRTP crypto suite currently in use ``SrtpSuite``    
 	public var srtpSuite: SrtpSuite
 	{
 	
@@ -14388,10 +14580,10 @@ public class CallStats : LinphoneObject
 	}
 		
 	/// Sets the user data in the ``CallStats`` object. 
-	/// - Parameter data: the user data.   
+	/// - Parameter data: the user data.    
 	
 	/// Gets the user data in the ``CallStats`` object. 
-	/// - Returns: the user data.   
+	/// - Returns: the user data.    
 	public var userData: UnsafeMutableRawPointer?
 	{
 	
@@ -14492,17 +14684,23 @@ public class CardDavParams : LinphoneObject
 	}
 	
 	/// Sets the list of vCard RFC fields to use to match the domain filter on. 
-	/// For example you can use "IMPP". 
+	/// For example, you can use "IMPP". 
 	/// - Parameter list: the list of vCard RFC fields to use to match the domain
-	/// filter on.    
+	/// filter on.      
+	/// - Warning: DO NOT USE ANYMORE, it won't have any effect. 
+	/// - Deprecated: 06/10/2025 domain filter will be applied locally instead of using
+	/// a CardDAV prop filter XML tag. 
 	
 	/// Gets the list of vCard RFC fields to use to match the domain filter on. 
-	/// For example you can use "IMPP". 
+	/// For example, you can use "IMPP". 
 	/// - Returns: The list of vCard fields to make the query on using domain filter.  
-	///    
+	///       
+	/// - Warning: DO NOT USE ANYMORE, it won't have any effect. 
+	/// - Deprecated: 06/10/2025 domain filter will be applied locally instead of using
+	/// a CardDAV prop filter XML tag. 
 	public var domainFields: [String]
 	{
-	
+	@available(*, deprecated)
 		get
 		{ 
 						var swiftList = [String]()
@@ -14515,6 +14713,7 @@ public class CardDavParams : LinphoneObject
 				bctbx_list_free_with_data(cList, bctbx_free)
 			return swiftList
 		}
+	@available(*, deprecated)
 		set
 		{
 			var cList: UnsafeMutablePointer<bctbx_list_t>? = nil
@@ -14549,13 +14748,14 @@ public class CardDavParams : LinphoneObject
 	}
 		
 	/// Sets the list of vCard RFC fields to use to match user input text on. 
-	/// For example you can use "FN", "N", "IMPP", "ORG", etc... 
+	/// For example, you can use "FN", "N", "IMPP", "ORG", etc... 
 	/// - Parameter list: the list of vCard RFC fields to use to match user input text
-	/// on.    
+	/// on.      
 	
 	/// Gets the list of vCard RFC fields to use to match user input text on. 
-	/// For example you can use "FN", "N", "IMPP", "ORG", etc... 
-	/// - Returns: The list of vCard fields to make the query on using user input.      
+	/// For example, you can use "FN", "N", "IMPP", "ORG", etc... 
+	/// - Returns: The list of vCard fields to make the query on using user input.     
+	///    
 	public var userInputFields: [String]
 	{
 	
@@ -14585,7 +14785,7 @@ public class CardDavParams : LinphoneObject
 	
 	
 	/// Instantiates a new ``CardDavParams`` with values from source. 
-	/// - Returns: The newly created ``CardDavParams`` object.   
+	/// - Returns: The newly created ``CardDavParams`` object.    
 	public func clone() -> CardDavParams?
 	{
 		let cPointer = linphone_card_dav_params_clone(cPtr)
@@ -14671,6 +14871,8 @@ public class ChatMessage : LinphoneObject
 		case PendingDelivery = 9
 		/// The user cancelled the file transfer. 
 		case FileTransferCancelling = 10
+		/// Message cannot be sent right now and it is queued. 
+		case Queued = 11
 	}
 	
 	
@@ -14699,12 +14901,12 @@ public class ChatMessage : LinphoneObject
 	/// thumbnail image path.
 	/// Invoking this function will attempt to update the message storage to reflect
 	/// the change if it is enabled.
-	/// - Parameter data: the data to store into the message.   
+	/// - Parameter data: the data to store into the message.    
 	
 	/// Linphone message has an app-specific field that can store a text. 
 	/// The application might want to use it for keeping data over restarts, like
 	/// thumbnail image path. 
-	/// - Returns: the application-specific data or nil if none has been stored.   
+	/// - Returns: the application-specific data or nil if none has been stored.    
 	public var appdata: String?
 	{
 	
@@ -14726,7 +14928,7 @@ public class ChatMessage : LinphoneObject
 		
 	
 	/// Gets the SIP call-id accociated with the message. 
-	/// - Returns: the call-id   
+	/// - Returns: the call-id    
 	public var callId: String
 	{
 	
@@ -14739,7 +14941,7 @@ public class ChatMessage : LinphoneObject
 		
 	
 	/// Returns the chatroom this message belongs to. 
-	/// - Returns: the ``ChatRoom`` in which this message has been sent or received.   
+	/// - Returns: the ``ChatRoom`` in which this message has been sent or received.    
 	public var chatRoom: ChatRoom?
 	{
 	
@@ -14755,10 +14957,10 @@ public class ChatMessage : LinphoneObject
 	/// Sets the content type of a chat message. 
 	/// This content type must match a content that is text representable, such as
 	/// text/plain, text/html or image/svg+xml. 
-	/// - Parameter contentType: The new content type of the chat message   
+	/// - Parameter contentType: The new content type of the chat message    
 	
 	/// Gets the content type of a chat message. 
-	/// - Returns: The content type of the chat message   
+	/// - Returns: The content type of the chat message    
 	public var contentType: String
 	{
 	
@@ -14777,7 +14979,7 @@ public class ChatMessage : LinphoneObject
 		
 	
 	/// Returns the list of contents in the message. 
-	/// - Returns: The list of ``Content``.    
+	/// - Returns: The list of ``Content``.      
 	public var contents: [Content]
 	{
 	
@@ -14795,7 +14997,7 @@ public class ChatMessage : LinphoneObject
 		
 	
 	/// Returns back pointer to ``Core`` object. 
-	/// - Returns: the ``Core`` object associated with this message.   
+	/// - Returns: the ``Core`` object associated with this message.    
 	public var core: Core?
 	{
 	
@@ -14812,7 +15014,7 @@ public class ChatMessage : LinphoneObject
 	/// Gets the current ``ChatMessageDelegate`` being invoked, if any. 
 	/// This is meant only to be called from a callback to be able to get the user_data
 	/// associated with the ``ChatMessageDelegate`` that is calling the callback. 
-	/// - Returns: The ``ChatMessageDelegate`` that has called the last callback.   
+	/// - Returns: The ``ChatMessageDelegate`` that has called the last callback.    
 	public var currentDelegate: ChatMessageDelegate?
 	{
 	
@@ -14852,7 +15054,7 @@ public class ChatMessage : LinphoneObject
 		
 	
 	/// Gets full details about delivery error of a chat message. 
-	/// - Returns: a ``ErrorInfo`` describing the details.   
+	/// - Returns: a ``ErrorInfo`` describing the details.    
 	public var errorInfo: ErrorInfo?
 	{
 	
@@ -14865,12 +15067,27 @@ public class ChatMessage : LinphoneObject
 
 	}
 		
+	
+	/// Returns the event log associated to the chat message. 
+	/// - Returns: The event log, if exists, nil otherwise    
+	public var eventLog: EventLog?
+	{
+	
+						let cPointer = linphone_chat_message_get_event_log(cPtr)
+			if (cPointer == nil) {
+				return nil
+			}
+			let result = EventLog.getSwiftObject(cObject:cPointer!)
+			return result
+
+	}
+		
 	/// Messages can carry external body as defined by rfc2017. 
 	/// - Parameter externalBodyUrl: ex: access-type=URL; URL="http://www.foo.com/file"
-	///   
+	///    
 	
 	/// Messages can carry external body as defined by rfc2017. 
-	/// - Returns: external body url or nil if not present.   
+	/// - Returns: external body url or nil if not present.    
 	public var externalBodyUrl: String?
 	{
 	
@@ -14893,7 +15110,7 @@ public class ChatMessage : LinphoneObject
 	
 	/// Gets the file transfer information (used by callbacks to recover informations
 	/// during a rcs file transfer) 
-	/// - Returns: a pointer to the ``Content`` structure or nil if not present.   
+	/// - Returns: a pointer to the ``Content`` structure or nil if not present.    
 	public var fileTransferInformation: Content?
 	{
 	
@@ -14909,7 +15126,7 @@ public class ChatMessage : LinphoneObject
 	
 	/// Gets the forward info if available as a string. 
 	/// - Returns: the original sender of the message if it has been forwarded, nil
-	/// otherwise.   
+	/// otherwise.    
 	public var forwardInfo: String?
 	{
 	
@@ -14925,7 +15142,7 @@ public class ChatMessage : LinphoneObject
 		
 	
 	/// Gets origin of the message. 
-	/// - Returns: the ``Address`` of the sender.   
+	/// - Returns: the ``Address`` of the sender.    
 	public var fromAddress: Address?
 	{
 	
@@ -14939,7 +15156,29 @@ public class ChatMessage : LinphoneObject
 	}
 		
 	
-	/// Returns wether the chat message is an ephemeral message or not. 
+	/// Returns whether this message can be edited (maximum allowed time to edit it was
+	/// reached or not). 
+	/// - Returns: true if the message can be edited, false otherwise. 
+	public var isEditable: Bool
+	{
+	
+						return linphone_chat_message_is_editable(cPtr) != 0
+
+	}
+		
+	
+	/// Returns whether this message has been edited by it's sender after it was sent. 
+	/// - Returns: true if the message has been edited after it was sent, false
+	/// otherwise. 
+	public var isEdited: Bool
+	{
+	
+						return linphone_chat_message_is_edited(cPtr) != 0
+
+	}
+		
+	
+	/// Returns whether the chat message is an ephemeral message or not. 
 	/// An ephemeral message will automatically disappear from the recipient's screen
 	/// after the message has been viewed. 
 	/// - Returns: true if it is an ephemeral message, false otherwise 
@@ -14953,7 +15192,7 @@ public class ChatMessage : LinphoneObject
 	
 	/// Return whether or not a chat message is a file transfer. 
 	/// - Returns: Whether or not the message is a file transfer 
-	/// - deprecated: 06/07/2020 check if ``getContents()`` contains a ``Content`` for
+	/// - Deprecated: 06/07/2020 check if ``getContents()`` contains a ``Content`` for
 	/// which ``Content/isFileTransfer()`` returns true. 
 	@available(*, deprecated)
 	public var isFileTransfer: Bool
@@ -14974,7 +15213,7 @@ public class ChatMessage : LinphoneObject
 	}
 		
 	
-	/// Returns wether the chat message is a forward message or not. 
+	/// Returns whether the chat message is a forward message or not. 
 	/// - Returns: true if it is a forward message, false otherwise 
 	public var isForward: Bool
 	{
@@ -14994,7 +15233,7 @@ public class ChatMessage : LinphoneObject
 	}
 		
 	
-	/// Returns wether the message has been read or not. 
+	/// Returns whether the message has been read or not. 
 	/// - Returns: true if message has been marked as read, false otherwise. 
 	public var isRead: Bool
 	{
@@ -15004,12 +15243,35 @@ public class ChatMessage : LinphoneObject
 	}
 		
 	
-	/// Returns wether the chat message is a reply message or not. 
+	/// Returns whether the chat message is a reply message or not. 
 	/// - Returns: true if it is a reply message, false otherwise 
 	public var isReply: Bool
 	{
 	
 						return linphone_chat_message_is_reply(cPtr) != 0
+
+	}
+		
+	
+	/// Returns whether this message can be retracted (maximum allowed time to retract
+	/// it was reached or not). 
+	/// - Returns: true if the message can be retracted, false otherwise. 
+	public var isRetractable: Bool
+	{
+	
+						return linphone_chat_message_is_retractable(cPtr) != 0
+
+	}
+		
+	
+	/// Returns whether this message has been retracted by it's sender after it was
+	/// sent. 
+	/// - Returns: true if the message has been retracted after it was sent, false
+	/// otherwise. 
+	public var isRetracted: Bool
+	{
+	
+						return linphone_chat_message_is_retracted(cPtr) != 0
 
 	}
 		
@@ -15027,7 +15289,7 @@ public class ChatMessage : LinphoneObject
 	
 	/// Return whether or not a chat message is a text. 
 	/// - Returns: Whether or not the message is a text 
-	/// - deprecated: 06/07/2020 check if ``getContents()`` contains a ``Content`` with
+	/// - Deprecated: 06/07/2020 check if ``getContents()`` contains a ``Content`` with
 	/// a PlainText content type. 
 	@available(*, deprecated)
 	public var isText: Bool
@@ -15040,7 +15302,7 @@ public class ChatMessage : LinphoneObject
 	
 	/// Returns the local address the message was sent or received with. 
 	/// - Returns: the ``Address`` of the local address used to send/receive this
-	/// message.   
+	/// message.    
 	public var localAddress: Address?
 	{
 	
@@ -15057,7 +15319,7 @@ public class ChatMessage : LinphoneObject
 	/// Get the message identifier. 
 	/// It is used to identify a message so that it can be notified as delivered and/or
 	/// displayed. 
-	/// - Returns: The message identifier.   
+	/// - Returns: The message identifier.    
 	public var messageId: String
 	{
 	
@@ -15071,7 +15333,7 @@ public class ChatMessage : LinphoneObject
 	
 	/// Returns our own reaction for a given chat message, if any. 
 	/// - Returns: Our own ``ChatMessageReaction`` for that message if any, nil
-	/// otherwise.   
+	/// otherwise.    
 	public var ownReaction: ChatMessageReaction?
 	{
 	
@@ -15087,7 +15349,7 @@ public class ChatMessage : LinphoneObject
 	
 	/// Returns the peer (remote) address of the message. 
 	/// - Returns: the ``Address`` of the peer address used to send/receive this
-	/// message.   
+	/// message.    
 	public var peerAddress: Address?
 	{
 	
@@ -15104,7 +15366,7 @@ public class ChatMessage : LinphoneObject
 	/// Gets the list of reactions received for this chat message. 
 	/// Warning: list is ordered by content of reaction message, not by received
 	/// timestamp! 
-	/// - Returns: The sorted list of reaction if any.      
+	/// - Returns: The sorted list of reaction if any.         
 	public var reactions: [ChatMessageReaction]
 	{
 	
@@ -15123,7 +15385,7 @@ public class ChatMessage : LinphoneObject
 		
 	
 	/// Returns the ``ChatMessage`` this message is a reply to. 
-	/// - Returns: the original message ``ChatMessage``.   
+	/// - Returns: the original message ``ChatMessage``.    
 	public var replyMessage: ChatMessage?
 	{
 	
@@ -15138,7 +15400,7 @@ public class ChatMessage : LinphoneObject
 		
 	
 	/// Returns the ID of the message this is a reply to. 
-	/// - Returns: the original message id.   
+	/// - Returns: the original message id.    
 	public var replyMessageId: String?
 	{
 	
@@ -15154,7 +15416,7 @@ public class ChatMessage : LinphoneObject
 		
 	
 	/// Returns the address of the sender of the message this is a reply to. 
-	/// - Returns: the original message sender ``Address``.   
+	/// - Returns: the original message sender ``Address``.    
 	public var replyMessageSenderAddress: Address?
 	{
 	
@@ -15180,8 +15442,8 @@ public class ChatMessage : LinphoneObject
 	
 	/// Gets the text content if available as a string. 
 	/// - Returns: the ``Content`` buffer if available in System Locale, null
-	/// otherwise.   
-	/// - deprecated: 01/07/2020. Use ``getUtf8Text()`` instead. 
+	/// otherwise.    
+	/// - Deprecated: 01/07/2020. Use ``getUtf8Text()`` instead. 
 	@available(*, deprecated)
 	public var textContent: String?
 	{
@@ -15208,7 +15470,7 @@ public class ChatMessage : LinphoneObject
 		
 	
 	/// Gets destination of the message. 
-	/// - Returns: the ``Address`` of the recipient.   
+	/// - Returns: the ``Address`` of the recipient.    
 	public var toAddress: Address?
 	{
 	
@@ -15242,10 +15504,10 @@ public class ChatMessage : LinphoneObject
 	}
 		
 	/// Assigns a user pointer to the chat message. 
-	/// - Parameter userData: The user pointer to associate with the chat message.   
+	/// - Parameter userData: The user pointer to associate with the chat message.    
 	
 	/// Retrieves the user pointer associated with the chat message. 
-	/// - Returns: The user pointer associated with the chat message.   
+	/// - Returns: The user pointer associated with the chat message.    
 	public var userData: UnsafeMutableRawPointer?
 	{
 	
@@ -15260,11 +15522,11 @@ public class ChatMessage : LinphoneObject
 	}
 		
 	/// Sets a text to be sent, given as a string of UTF-8 characters. 
-	/// - Parameter text: The text in UTF8 to set.   
+	/// - Parameter text: The text in UTF8 to set.    
 	/// - Returns: 0 if succeed. 
 	
 	/// Gets text part of this message. 
-	/// - Returns: The text as UTF8 characters or nil if no text.   
+	/// - Returns: The text as UTF8 characters or nil if no text.    
 	public var utf8Text: String?
 	{
 	
@@ -15287,7 +15549,7 @@ public class ChatMessage : LinphoneObject
 	
 	
 	/// Adds a content to the ChatMessage. 
-	/// - Parameter content: the ``Content`` object to add.   
+	/// - Parameter content: the ``Content`` object to add.    
 	public func addContent(content:Content) 
 	{
 		linphone_chat_message_add_content(cPtr, content.cPtr)
@@ -15296,8 +15558,8 @@ public class ChatMessage : LinphoneObject
 	
 	
 	/// Adds custom headers to the message. 
-	/// - Parameter headerName: name of the header   
-	/// - Parameter headerValue: header value   
+	/// - Parameter headerName: name of the header    
+	/// - Parameter headerValue: header value    
 	public func addCustomHeader(headerName:String, headerValue:String?) 
 	{
 		linphone_chat_message_add_custom_header(cPtr, headerName, headerValue)
@@ -15306,7 +15568,7 @@ public class ChatMessage : LinphoneObject
 	
 	
 	/// Adds a file content to the ChatMessage. 
-	/// - Parameter content: the ``Content`` object to add.   
+	/// - Parameter content: the ``Content`` object to add.    
 	public func addFileContent(content:Content) 
 	{
 		linphone_chat_message_add_file_content(cPtr, content.cPtr)
@@ -15315,8 +15577,8 @@ public class ChatMessage : LinphoneObject
 	
 	
 	/// Creates a ``Content`` of type PlainText with the given text as body. 
-	/// - Parameter text: The text in System Locale to add to the message.   
-	/// - deprecated: 01/07/2020. Use ``addUtf8TextContent(text:)`` instead. 
+	/// - Parameter text: The text in System Locale to add to the message.    
+	/// - Deprecated: 01/07/2020. Use ``addUtf8TextContent(text:)`` instead. 
 	@available(*, deprecated)
 	public func addTextContent(text:String) 
 	{
@@ -15327,7 +15589,7 @@ public class ChatMessage : LinphoneObject
 	
 	/// Creates a ``Content`` of type text/plain with the provided string, and attach
 	/// it to the message. 
-	/// - Parameter text: The text to add to the message.   
+	/// - Parameter text: The text to add to the message.    
 	public func addUtf8TextContent(text:String) 
 	{
 		linphone_chat_message_add_utf8_text_content(cPtr, text)
@@ -15345,8 +15607,8 @@ public class ChatMessage : LinphoneObject
 	
 	/// Creates a emoji reaction for the given chat mesage. 
 	/// To send it, use ``ChatMessageReaction/send()``. 
-	/// - Parameter utf8Reaction: the emoji character(s) as UTF-8.   
-	/// - Returns: a ``ChatMessageReaction`` object.   
+	/// - Parameter utf8Reaction: the emoji character(s) as UTF-8.    
+	/// - Returns: a ``ChatMessageReaction`` object.    
 	public func createReaction(utf8Reaction:String) throws -> ChatMessageReaction
 	{
 		let cPointer = linphone_chat_message_create_reaction(cPtr, utf8Reaction)
@@ -15363,7 +15625,7 @@ public class ChatMessage : LinphoneObject
 	/// Starts the download of the ``Content`` referenced in the ``ChatMessage`` from
 	/// remote server. 
 	/// - Parameter content: the ``Content`` object to download (must have the
-	/// ``Content/isFileTransfer()`` method return true).   
+	/// ``Content/isFileTransfer()`` method return true).    
 	/// - Returns: false if there is an error, true otherwise. 
 	public func downloadContent(content:Content) -> Bool
 	{
@@ -15383,8 +15645,8 @@ public class ChatMessage : LinphoneObject
 	
 	
 	/// Retrieves a custom header value given its name. 
-	/// - Parameter headerName: header name searched   
-	/// - Returns: the custom header value or nil if not found.   
+	/// - Parameter headerName: header name searched    
+	/// - Returns: the custom header value or nil if not found.    
 	public func getCustomHeader(headerName:String) -> String
 	{
 		let cstr = linphone_chat_message_get_custom_header(cPtr, headerName)
@@ -15396,10 +15658,10 @@ public class ChatMessage : LinphoneObject
 	
 	/// Gets the list of participants for which the imdn state has reached the
 	/// specified state and the time at which they did. 
-	/// - Parameter state: The LinphoneChatMessageState the imdn have reached (only use
+	/// - Parameter state: The ``State`` the imdn have reached (only use
 	/// LinphoneChatMessageStateDelivered, LinphoneChatMessageStateDeliveredToUser,
 	/// LinphoneChatMessageStateDisplayed and LinphoneChatMessageStateNotDelivered) 
-	/// - Returns: The list of participants.      
+	/// - Returns: The list of participants.         
 	public func getParticipantsByImdnState(state:ChatMessage.State) -> [ParticipantImdnState]
 	{
 		var swiftList = [ParticipantImdnState]()
@@ -15416,7 +15678,7 @@ public class ChatMessage : LinphoneObject
 	
 	
 	
-	/// Returns wether the chat message has a conference invitation content or not. 
+	/// Returns whether the chat message has a conference invitation content or not. 
 	/// - Returns: true if it has one, false otherwise. 
 	public func hasConferenceInvitationContent() -> Bool
 	{
@@ -15425,9 +15687,9 @@ public class ChatMessage : LinphoneObject
 	
 	
 	
-	/// Returns wether the chat message has a text content or not. 
+	/// Returns whether the chat message has a text content or not. 
 	/// - Returns: true if it has one, false otherwise. 
-	/// - deprecated: 27/10/2020. Check if ``getContents()`` contains a ``Content`` for
+	/// - Deprecated: 27/10/2020. Check if ``getContents()`` contains a ``Content`` for
 	/// which it's content type is PlainText. 
 	@available(*, deprecated)
 	public func hasTextContent() -> Bool
@@ -15473,7 +15735,7 @@ public class ChatMessage : LinphoneObject
 	
 	
 	/// Removes a content from the ChatMessage. 
-	/// - Parameter content: the ``Content`` object to remove.   
+	/// - Parameter content: the ``Content`` object to remove.    
 	public func removeContent(content:Content) 
 	{
 		linphone_chat_message_remove_content(cPtr, content.cPtr)
@@ -15482,7 +15744,7 @@ public class ChatMessage : LinphoneObject
 	
 	
 	/// Removes a custom header from the message. 
-	/// - Parameter headerName: name of the header to remove   
+	/// - Parameter headerName: name of the header to remove    
 	public func removeCustomHeader(headerName:String) 
 	{
 		linphone_chat_message_remove_custom_header(cPtr, headerName)
@@ -15525,7 +15787,7 @@ public class ChatMessageReaction : LinphoneObject
 	
 	
 	/// Returns the emoji(s) used for the reaction. 
-	/// - Returns: the emoji(s) used as UTF-8 characters.   
+	/// - Returns: the emoji(s) used as UTF-8 characters.    
 	public var body: String
 	{
 	
@@ -15551,7 +15813,7 @@ public class ChatMessageReaction : LinphoneObject
 		
 	
 	/// Returns the ``Address`` of the participant that sent this reaction. 
-	/// - Returns: the ``Address`` that sent this reaction.   
+	/// - Returns: the ``Address`` that sent this reaction.    
 	public var fromAddress: Address?
 	{
 	
@@ -15719,7 +15981,7 @@ public class ChatParams : LinphoneObject
 	
 	
 	/// Clone a ``ChatParams``. 
-	/// - Returns: An allocated ``ChatParams`` with the same parameters than params   
+	/// - Returns: An allocated ``ChatParams`` with the same parameters than params    
 	public func clone() -> ChatParams?
 	{
 		let cPointer = linphone_chat_params_clone(cPtr)
@@ -15936,7 +16198,7 @@ public class ChatRoom : LinphoneObject
 	
 	/// Converts a ``State`` enum to a string. 
 	/// - Parameter state: a ``State`` to convert to string 
-	/// - Returns: the string representation of the ``State``   
+	/// - Returns: the string representation of the ``State``    
 	static public func stateToString(state:ChatRoom.State) -> String
 	{
 		let cstr = linphone_chat_room_state_to_string(LinphoneChatRoomState(rawValue: CUnsignedInt(state.rawValue)))
@@ -15945,9 +16207,24 @@ public class ChatRoom : LinphoneObject
 	}
 	
 	
+	/// Returns the local account to which this chat room is related. 
+	/// - Returns: the related ``Account`` object if any, nil otherwise.    
+	public var account: Account?
+	{
+	
+						let cPointer = linphone_chat_room_get_account(cPtr)
+			if (cPointer == nil) {
+				return nil
+			}
+			let result = Account.getSwiftObject(cObject:cPointer!)
+			return result
+
+	}
+		
+	
 	/// Gets the current call associated to this chatroom if any To commit a message,
 	/// use ``ChatMessage/send()`` 
-	/// - Returns: ``Call`` or nil.   
+	/// - Returns: ``Call`` or nil.    
 	public var call: Call?
 	{
 	
@@ -15989,7 +16266,7 @@ public class ChatRoom : LinphoneObject
 		
 	
 	/// Gets the list of participants that are currently composing. 
-	/// - Returns: List of addresses that are in the is_composing state.  
+	/// - Returns: List of addresses that are in the is_composing state.   
 	public var composingAddresses: [Address]
 	{
 	
@@ -16005,17 +16282,36 @@ public class ChatRoom : LinphoneObject
 
 	}
 		
+	
+	/// Gets the list of participants that are currently composing. 
+	/// - Returns: List of ``ComposingParticipant`` that are in the is_composing state.
+	///   
+	public var composingParticipants: [ComposingParticipant]
+	{
+	
+						var swiftList = [ComposingParticipant]()
+			let cList = linphone_chat_room_get_composing_participants(cPtr)
+			var listTemp = cList
+			while (listTemp != nil) {
+				let data = unsafeBitCast(listTemp?.pointee.data, to: OpaquePointer.self)
+				swiftList.append(ComposingParticipant.getSwiftObject(cObject: data))
+				listTemp = UnsafePointer<bctbx_list_t>(listTemp?.pointee.next)
+			}
+			return swiftList
+
+	}
+		
 	/// Sets the conference address of a group chat room. 
 	/// This function needs to be called from the
 	/// LinphoneChatRoomCbsConferenceAddressGenerationCb callback and only there. This
 	/// function is meaningful only for server implementation of chatroom, and shall
 	/// not by used by client applications. 
 	/// - Parameter conferenceAddress: The conference ``Address`` to be used by the
-	/// group chat room   
+	/// group chat room    
 	
 	/// Gets the conference address of the chat room. 
 	/// - Returns: The conference address of the chat room or nil if this type of chat
-	/// room is not conference based.   
+	/// room is not conference based.    
 	public var conferenceAddress: Address?
 	{
 	
@@ -16036,7 +16332,7 @@ public class ChatRoom : LinphoneObject
 		
 	
 	/// Gets the conference information associated to the chatroom. 
-	/// - Returns: the ``ConferenceInfo``.   
+	/// - Returns: the ``ConferenceInfo``.    
 	public var conferenceInfo: ConferenceInfo?
 	{
 	
@@ -16051,7 +16347,7 @@ public class ChatRoom : LinphoneObject
 		
 	
 	/// Returns back pointer to ``Core`` object. 
-	/// - Returns: the ``Core`` object this chat room is attached to.   
+	/// - Returns: the ``Core`` object this chat room is attached to.    
 	public var core: Core?
 	{
 	
@@ -16075,10 +16371,10 @@ public class ChatRoom : LinphoneObject
 	}
 		
 	
-	/// Gets the current LinphoneChatRoomCbs. 
+	/// Gets the current ``ChatRoomDelegate``. 
 	/// This is meant only to be called from a callback to be able to get the user_data
-	/// associated with the LinphoneChatRoomCbs that is calling the callback. 
-	/// - Returns: The LinphoneChatRoomCbs that has called the last callback   
+	/// associated with the ``ChatRoomDelegate`` that is calling the callback. 
+	/// - Returns: The ``ChatRoomDelegate`` that has called the last callback    
 	public var currentDelegate: ChatRoomDelegate?
 	{
 	
@@ -16093,10 +16389,13 @@ public class ChatRoom : LinphoneObject
 		
 	
 	/// Returns current parameters associated with the chat room. 
-	/// This is typically the parameters passed at chat room chat_roomeation to
-	/// linphone_core_chat_roomeate_chat_room() or some default parameters if no
-	/// ``ChatRoomParams`` was explicitely passed during chat room chat_roomeation. 
-	/// - Returns: the current ``ChatRoomParams`` parameters.   
+	/// This is typically the parameters passed during the ``ChatRoom`` creation
+	/// process to ``Core/createChatRoom(params:participants:)`` or some default
+	/// parameters if no ``ChatRoomParams`` was explicitely passed during ``ChatRoom``
+	/// creation. 
+	/// - Returns: the current ``ChatRoomParams`` parameters.    
+	/// - Deprecated: 17/07/2025. Use ``getParams()`` instead. 
+	@available(*, deprecated)
 	public var currentParams: ChatRoomParams?
 	{
 	
@@ -16112,7 +16411,7 @@ public class ChatRoom : LinphoneObject
 	
 	/// Gets all contents for which content-type starts with either text/ or
 	/// application/. 
-	/// - Returns: A list of contents considered as "document".    
+	/// - Returns: A list of contents considered as "document".      
 	public var documentContents: [Content]
 	{
 	
@@ -16129,11 +16428,24 @@ public class ChatRoom : LinphoneObject
 
 	}
 		
+	
+	/// Gets the number of document contents (see ``getDocumentContents()``). 
+	/// - Returns: the number of document contents for that ``ChatRoom``. 
+	public var documentContentsSize: Int
+	{
+	
+						return Int(linphone_chat_room_get_document_contents_size(cPtr))
+
+	}
+		
 	/// Enable or disable the ephemeral message feature in the chat room. 
 	/// Works only for flexisip-based chat room. An ephemeral message will
 	/// automatically disappear from the sender and recipient's chatrooms after a
 	/// specified timeout configurable with ``setEphemeralLifetime(time:)``. The timer
 	/// starts when the message has been displayed at the recipent, which means:
+	/// -at recipient side when ``markAsRead()`` is called.
+	/// -at sender side, when the message enters the state
+	/// LinphoneChatMessageStateDisplayed (when receiving the displayed IMDN).
 	/// - Parameter enable: true if the ephemeral message feature is enabled, false
 	/// otherwise. 
 	
@@ -16162,7 +16474,7 @@ public class ChatRoom : LinphoneObject
 	/// Gets lifetime (in seconds) for all new ephemeral messages in the chat room. 
 	/// After the message is read, it will be deleted after "time" seconds. - See also:
 	/// ``ephemeralEnabled()`` 
-	/// - Returns: the ephemeral lifetime (in secoonds) 
+	/// - Returns: the ephemeral lifetime (in seconds) 
 	public var ephemeralLifetime: Int
 	{
 	
@@ -16199,11 +16511,35 @@ public class ChatRoom : LinphoneObject
 		}
 	}
 		
+	/// Sets not-read lifetime (in seconds) for all new ephemeral messages in the chat
+	/// room. 
+	/// If the message is not read, it will be deleted after "time" seconds. - See
+	/// also: ``ephemeralEnabled()`` 
+	/// - Parameter time: The ephemeral not-read lifetime, default is 0 (disabled) 
+	/// - Warning: A value of "time" equal to 0 disables the ephemeral not-read
+	/// countdowns 
+	
+	/// Gets not-read lifetime (in seconds) for all new ephemeral messages in the chat
+	/// room. 
+	/// If the message is not read, it will be deleted after "time" seconds. - See
+	/// also: ``ephemeralEnabled()`` 
+	/// - Returns: the ephemeral not-read lifetime (in seconds) 
+	public var ephemeralNotReadLifetime: Int
+	{
+	
+		get
+		{ 
+						return Int(linphone_chat_room_get_ephemeral_not_read_lifetime(cPtr))
+		}
+		set
+		{
+			linphone_chat_room_set_ephemeral_not_read_lifetime(cPtr, (newValue))
+		}
+	}
+		
 	
 	/// Gets the number of events in a chat room. 
 	/// - Returns: the number of events. 
-	/// - deprecated: 30/07/2024. Use ``getHistorySize(filters:)`` instead. 
-	@available(*, deprecated)
 	public var historyEventsSize: Int
 	{
 	
@@ -16214,7 +16550,7 @@ public class ChatRoom : LinphoneObject
 	
 	/// Gets the number of messages in a chat room. 
 	/// - Returns: the number of messages. 
-	/// - deprecated: 30/07/2024. Use ``getHistorySize(filters:)`` instead. 
+	/// - Deprecated: 30/07/2024. Use ``getHistorySize(filters:)`` instead. 
 	@available(*, deprecated)
 	public var historySize: Int
 	{
@@ -16227,7 +16563,7 @@ public class ChatRoom : LinphoneObject
 	/// Returns the chat room identifier. 
 	/// - Warning: This method returns a nil pointer if the ChatRoom is in the
 	/// Instantiated state 
-	/// - Returns: the conference identifier.   
+	/// - Returns: the conference identifier.    
 	public var identifier: String?
 	{
 	
@@ -16276,7 +16612,7 @@ public class ChatRoom : LinphoneObject
 		
 	
 	/// Gets the last chat message sent or received in this chat room. 
-	/// - Returns: the latest ``ChatMessage`` or nil if no message.   
+	/// - Returns: the latest ``ChatMessage`` or nil if no message.    
 	public var lastMessageInHistory: ChatMessage?
 	{
 	
@@ -16303,7 +16639,7 @@ public class ChatRoom : LinphoneObject
 	/// Get the local address associated to this chat room. 
 	/// - Warning: This method returns a guessed address based on the me participant if
 	/// the ChatRoom is in the Instantiated state 
-	/// - Returns: The local address.   
+	/// - Returns: The local address.    
 	public var localAddress: Address?
 	{
 	
@@ -16319,7 +16655,7 @@ public class ChatRoom : LinphoneObject
 	
 	/// Gets the participant representing myself in the chat room. 
 	/// - Returns: The participant representing myself in the conference or nil if me
-	/// is not set.   
+	/// is not set.    
 	public var me: Participant?
 	{
 	
@@ -16335,7 +16671,7 @@ public class ChatRoom : LinphoneObject
 	
 	/// Gets all contents for which content-type starts with either video/, audio/ or
 	/// image/. 
-	/// - Returns: A list of contents considered as "media".    
+	/// - Returns: A list of contents considered as "media".      
 	public var mediaContents: [Content]
 	{
 	
@@ -16349,6 +16685,16 @@ public class ChatRoom : LinphoneObject
 			}
 				bctbx_list_free_with_data(cList, belle_sip_object_unref)
 			return swiftList
+
+	}
+		
+	
+	/// Gets the number of media contents (see ``getMediaContents()``). 
+	/// - Returns: the number of media contents for that ``ChatRoom``. 
+	public var mediaContentsSize: Int
+	{
+	
+						return Int(linphone_chat_room_get_media_contents_size(cPtr))
 
 	}
 		
@@ -16383,8 +16729,27 @@ public class ChatRoom : LinphoneObject
 	}
 		
 	
+	/// Returns current parameters associated with the chat room. 
+	/// This is typically the parameters passed during the ``ChatRoom`` creation
+	/// process to ``Core/createChatRoom(params:participants:)`` or some default
+	/// parameters if no ``ChatRoomParams`` was explicitely passed during ``ChatRoom``
+	/// creation. 
+	/// - Returns: the current ``ChatRoomParams`` parameters.    
+	public var params: ConferenceParams?
+	{
+	
+						let cPointer = linphone_chat_room_get_params(cPtr)
+			if (cPointer == nil) {
+				return nil
+			}
+			let result = ConferenceParams.getSwiftObject(cObject:cPointer!)
+			return result
+
+	}
+		
+	
 	/// Gets the list of participants of a chat room. 
-	/// - Returns: A  of the participants     
+	/// - Returns: A   of the participants       
 	public var participants: [Participant]
 	{
 	
@@ -16405,7 +16770,7 @@ public class ChatRoom : LinphoneObject
 	/// Get the peer address associated to this chat room. 
 	/// - Warning: This method returns an invalid address if the ChatRoom is in the
 	/// Instantiated state 
-	/// - Returns: The peer address.   
+	/// - Returns: The peer address.    
 	public var peerAddress: Address?
 	{
 	
@@ -16414,6 +16779,23 @@ public class ChatRoom : LinphoneObject
 				return nil
 			}
 			let result = Address.getSwiftObject(cObject:cPointer!)
+			return result
+
+	}
+		
+	
+	/// Returns the content-type (if set) of what the remote is currently composing. 
+	/// - Returns: the content-type of what the remote is currently composing if set
+	/// and if it's currently composing, nil otherwise.    
+	public var remoteComposingContentType: String?
+	{
+	
+			
+			let cPointer = linphone_chat_room_get_remote_composing_content_type(cPtr)
+			if (cPointer == nil) {
+				return nil
+			}
+			let result = charArrayToString(charPointer: cPointer)
 			return result
 
 	}
@@ -16439,10 +16821,10 @@ public class ChatRoom : LinphoneObject
 	}
 		
 	/// Sets the subject of a chat room. 
-	/// - Parameter subject: The new subject to set for the chat room   
+	/// - Parameter subject: The new subject to set for the chat room    
 	
 	/// Gets the subject of a chat room. 
-	/// - Returns: The subject of the chat room.   
+	/// - Returns: The subject of the chat room.    
 	public var subject: String?
 	{
 	
@@ -16463,10 +16845,10 @@ public class ChatRoom : LinphoneObject
 	}
 		
 	/// Sets the subject of a chat room (utf-8 string). 
-	/// - Parameter subject: The new subject to set for the chat room   
+	/// - Parameter subject: The new subject to set for the chat room    
 	
 	/// Gets the subject of a chat room (as an UTF8 string) 
-	/// - Returns: The subject of the chat room.   
+	/// - Returns: The subject of the chat room.    
 	public var subjectUtf8: String?
 	{
 	
@@ -16488,7 +16870,7 @@ public class ChatRoom : LinphoneObject
 		
 	
 	/// Gets all unread messages for this chat room, sorted from oldest to most recent. 
-	/// - Returns: A list of unread chat messages.    
+	/// - Returns: A list of unread chat messages.      
 	public var unreadHistory: [ChatMessage]
 	{
 	
@@ -16516,10 +16898,10 @@ public class ChatRoom : LinphoneObject
 	}
 		
 	/// Assign a user pointer to the chat room. 
-	/// - Parameter userData: The user pointer to associate with the chat room.   
+	/// - Parameter userData: The user pointer to associate with the chat room.    
 	
 	/// Retrieve the user pointer associated with the chat room. 
-	/// - Returns: The user pointer associated with the chat room.   
+	/// - Returns: The user pointer associated with the chat room.    
 	public var userData: UnsafeMutableRawPointer?
 	{
 	
@@ -16538,7 +16920,7 @@ public class ChatRoom : LinphoneObject
 	/// Adds a participant to a chat room. 
 	/// This may fail if this type of chat room does not handle participants. Use
 	/// ``canHandleParticipants()`` to know if this chat room handles participants. 
-	/// - Parameter addr: The address of the participant to add to the chat room   
+	/// - Parameter addr: The address of the participant to add to the chat room    
 	public func addParticipant(addr:Address) 
 	{
 		linphone_chat_room_add_participant(cPtr, addr.cPtr)
@@ -16549,7 +16931,7 @@ public class ChatRoom : LinphoneObject
 	/// Adds several participants to a chat room at once. 
 	/// This may fail if this type of chat room does not handle participants. Use
 	/// ``canHandleParticipants()`` to know if this chat room handles participants. 
-	/// - Parameter addresses: The participants to add.    
+	/// - Parameter addresses: The participants to add.      
 	/// - Returns: true if everything is OK, false otherwise 
 	public func addParticipants(addresses:[Address]) -> Bool
 	{
@@ -16583,8 +16965,19 @@ public class ChatRoom : LinphoneObject
 	
 	
 	
+	/// Terminates a chat room and instruct the server to remove all participants. 
+	/// - Returns: 0 if the termination is successful, -1 otherwise. 
+	public func close() -> Int
+	{
+		return Int(linphone_chat_room_close(cPtr))
+	}
+	
+	
+	
 	/// Notifies the destination of the chat message being composed that the user is
 	/// typing a new message. 
+	/// - Deprecated: 24/06/2025 use ``composeTextMessage()`` instead. 
+	@available(*, deprecated)
 	public func compose() 
 	{
 		linphone_chat_room_compose(cPtr)
@@ -16592,8 +16985,26 @@ public class ChatRoom : LinphoneObject
 	
 	
 	
+	/// Notifies the destination of the chat message being composed that the user is
+	/// typing a message. 
+	public func composeTextMessage() 
+	{
+		linphone_chat_room_compose_text_message(cPtr)
+	}
+	
+	
+	
+	/// Notifies the destination of the chat message being composed that the user is
+	/// recording a new voice message. 
+	public func composeVoiceMessage() 
+	{
+		linphone_chat_room_compose_voice_message(cPtr)
+	}
+	
+	
+	
 	/// Creates an empty message attached to the given chat room. 
-	/// - Returns: a new ``ChatMessage``   
+	/// - Returns: a new ``ChatMessage``    
 	public func createEmptyMessage() throws -> ChatMessage
 	{
 		let cPointer = linphone_chat_room_create_empty_message(cPtr)
@@ -16609,8 +17020,8 @@ public class ChatRoom : LinphoneObject
 	
 	/// Creates a message attached to the given chat room with a particular content. 
 	/// Use ``ChatMessage/send()`` to initiate the transfer 
-	/// - Parameter initialContent: ``Content`` initial content.   
-	/// - Returns: a new ``ChatMessage``   
+	/// - Parameter initialContent: ``Content`` initial content.    
+	/// - Returns: a new ``ChatMessage``    
 	public func createFileTransferMessage(initialContent:Content) throws -> ChatMessage
 	{
 		let cPointer = linphone_chat_room_create_file_transfer_message(cPtr, initialContent.cPtr)
@@ -16626,8 +17037,8 @@ public class ChatRoom : LinphoneObject
 	
 	/// Creates a forward message attached to the given chat room with a particular
 	/// message. 
-	/// - Parameter message: ``ChatMessage`` message to be forwarded.   
-	/// - Returns: a new ``ChatMessage``   
+	/// - Parameter message: ``ChatMessage`` message to be forwarded.    
+	/// - Returns: a new ``ChatMessage``    
 	public func createForwardMessage(message:ChatMessage) throws -> ChatMessage
 	{
 		let cPointer = linphone_chat_room_create_forward_message(cPtr, message.cPtr)
@@ -16643,9 +17054,9 @@ public class ChatRoom : LinphoneObject
 	
 	/// Creates a message attached to the given chat room with a plain text content
 	/// filled with the given message. 
-	/// - Parameter message: text message, nil if absent.   
-	/// - Returns: a new ``ChatMessage``   
-	/// - deprecated: 01/07/2020. Use ``createMessageFromUtf8(message:)`` instead. 
+	/// - Parameter message: text message, nil if absent.    
+	/// - Returns: a new ``ChatMessage``    
+	/// - Deprecated: 01/07/2020. Use ``createMessageFromUtf8(message:)`` instead. 
 	@available(*, deprecated)
 	public func createMessage(message:String?) throws -> ChatMessage
 	{
@@ -16663,8 +17074,8 @@ public class ChatRoom : LinphoneObject
 	/// Creates a message attached to the given chat room with a plain text content
 	/// filled with the given message. 
 	/// Introduced in 01/07/2020 
-	/// - Parameter message: text message in UTF8, nil if absent.   
-	/// - Returns: a new ``ChatMessage``   
+	/// - Parameter message: text message in UTF8, nil if absent.    
+	/// - Returns: a new ``ChatMessage``    
 	public func createMessageFromUtf8(message:String?) throws -> ChatMessage
 	{
 		let cPointer = linphone_chat_room_create_message_from_utf8(cPtr, message)
@@ -16678,10 +17089,26 @@ public class ChatRoom : LinphoneObject
 	
 	
 	
+	/// Creates a replaces message that will edit the original message. 
+	/// - Parameter message: ``ChatMessage`` message to edit.    
+	/// - Returns: a new ``ChatMessage``    
+	public func createReplacesMessage(message:ChatMessage) throws -> ChatMessage
+	{
+		let cPointer = linphone_chat_room_create_replaces_message(cPtr, message.cPtr)
+		if (cPointer == nil) {
+			throw LinphoneError.exception(result: "create null ChatMessage value")
+		}
+		let result = ChatMessage.getSwiftObject(cObject: cPointer!)
+		belle_sip_object_unref(UnsafeMutableRawPointer(cPointer))
+		return result
+	}
+	
+	
+	
 	/// Creates a reply message attached to the given chat room with a particular
 	/// message. 
-	/// - Parameter message: ``ChatMessage`` message to reply to.   
-	/// - Returns: a new ``ChatMessage``   
+	/// - Parameter message: ``ChatMessage`` message to reply to.    
+	/// - Returns: a new ``ChatMessage``    
 	public func createReplyMessage(message:ChatMessage) throws -> ChatMessage
 	{
 		let cPointer = linphone_chat_room_create_reply_message(cPtr, message.cPtr)
@@ -16699,8 +17126,8 @@ public class ChatRoom : LinphoneObject
 	/// - Warning: If the recorder isn't in Closed state, it will return an empty
 	/// message! 
 	/// - Parameter recorder: the ``Recorder`` object used to record the voice message.
-	///   
-	/// - Returns: a new ``ChatMessage``   
+	///    
+	/// - Returns: a new ``ChatMessage``    
 	public func createVoiceRecordingMessage(recorder:Recorder) throws -> ChatMessage
 	{
 		let cPointer = linphone_chat_room_create_voice_recording_message(cPtr, recorder.cPtr)
@@ -16723,7 +17150,7 @@ public class ChatRoom : LinphoneObject
 	
 	
 	/// Delete a message from the chat room history. 
-	/// - Parameter message: The ``ChatMessage`` object to remove.   
+	/// - Parameter message: The ``ChatMessage`` object to remove.    
 	public func deleteMessage(message:ChatMessage) 
 	{
 		linphone_chat_room_delete_message(cPtr, message.cPtr)
@@ -16747,8 +17174,8 @@ public class ChatRoom : LinphoneObject
 	
 	/// Gets the event log sent or received in this chat room that matches a chat
 	/// message with the given message_id. 
-	/// - Parameter messageId: The id of the message to find   
-	/// - Returns: the ``EventLog`` if found or nil.   
+	/// - Parameter messageId: The id of the message to find    
+	/// - Returns: the ``EventLog`` if found or nil.    
 	public func findEventLog(messageId:String) -> EventLog?
 	{
 		let cPointer = linphone_chat_room_find_event_log(cPtr, messageId)
@@ -16763,8 +17190,8 @@ public class ChatRoom : LinphoneObject
 	
 	/// Gets the chat message sent or received in this chat room that matches the
 	/// message_id. 
-	/// - Parameter messageId: The id of the message to find   
-	/// - Returns: the ``ChatMessage`` if found or nil.   
+	/// - Parameter messageId: The id of the message to find    
+	/// - Returns: the ``ChatMessage`` if found or nil.    
 	public func findMessage(messageId:String) -> ChatMessage?
 	{
 		let cPointer = linphone_chat_room_find_message(cPtr, messageId)
@@ -16779,8 +17206,8 @@ public class ChatRoom : LinphoneObject
 	
 	/// Finds a participant of a chat room from its address. 
 	/// - Parameter address: The ``Address`` to search in the list of participants of
-	/// the chat room   
-	/// - Returns: The participant if found, nil otherwise.   
+	/// the chat room    
+	/// - Returns: The participant if found, nil otherwise.    
 	public func findParticipant(address:Address) -> Participant?
 	{
 		let cPointer = linphone_chat_room_find_participant(cPtr, address.cPtr)
@@ -16793,12 +17220,35 @@ public class ChatRoom : LinphoneObject
 	
 	
 	
+	/// Gets the partial list of contents for which content-type starts with either
+	/// text/ or application/. 
+	/// - Parameter begin: The first content of the range to be retrieved. Most recent
+	/// content has index 0. 
+	/// - Parameter end: The last content of the range to be retrieved. Oldest content
+	/// has index of size (use ``getDocumentContentsSize()`` to retrieve size) 
+	/// - Returns: A list of contents considered as "document".      
+	public func getDocumentContentsRange(begin:Int, end:Int) -> [Content]
+	{
+		var swiftList = [Content]()
+		let cList = linphone_chat_room_get_document_contents_range(cPtr, CInt(begin), CInt(end))
+		var listTemp = cList
+		while (listTemp != nil) {
+			let data = unsafeBitCast(listTemp?.pointee.data, to: OpaquePointer.self)
+			swiftList.append(Content.getSwiftObject(cObject: data))
+			listTemp = UnsafeMutablePointer<bctbx_list_t>(listTemp?.pointee.next)
+		}
+			bctbx_list_free_with_data(cList, belle_sip_object_unref)
+		return swiftList
+	}
+	
+	
+	
 	/// Gets nb_message most recent events from chat_room chat room, sorted from oldest
 	/// to most recent. 
 	/// - Parameter nbMessage: Number of events to retrieve. 0 means everything. 
 	/// - Parameter filters: The LinphoneChatRoomHistoryFilterMask mask to filter the
 	/// results with ``HistoryFilter`` 
-	/// - Returns: A list of    
+	/// - Returns: A list of      
 	public func getHistory(nbMessage:Int, filters:UInt) -> [EventLog]
 	{
 		var swiftList = [EventLog]()
@@ -16818,8 +17268,8 @@ public class ChatRoom : LinphoneObject
 	/// Gets nb_message most recent messages from chat_room chat room, sorted from
 	/// oldest to most recent. 
 	/// - Parameter nbMessage: Number of message to retrieve. 0 means everything. 
-	/// - Returns: A list of    
-	/// - deprecated: 30/07/2024. Use ``getHistory(nbMessage:filters:)`` instead. 
+	/// - Returns: A list of      
+	/// - Deprecated: 30/07/2024. Use ``getHistory(nbMessage:filters:)`` instead. 
 	@available(*, deprecated)
 	public func getHistory(nbMessage:Int) -> [ChatMessage]
 	{
@@ -16840,9 +17290,7 @@ public class ChatRoom : LinphoneObject
 	/// Gets nb_events most recent events from chat_room chat room, sorted from oldest
 	/// to most recent. 
 	/// - Parameter nbEvents: Number of events to retrieve. 0 means everything. 
-	/// - Returns: The list of the most recent events.    
-	/// - deprecated: 30/07/2024. Use ``getHistory(nbMessage:filters:)`` instead. 
-	@available(*, deprecated)
+	/// - Returns: The list of the most recent events.      
 	public func getHistoryEvents(nbEvents:Int) -> [EventLog]
 	{
 		var swiftList = [EventLog]()
@@ -16862,9 +17310,7 @@ public class ChatRoom : LinphoneObject
 	/// Gets nb_events most recent chat message events from chat_room chat room, sorted
 	/// from oldest to most recent. 
 	/// - Parameter nbEvents: Number of events to retrieve. 0 means everything. 
-	/// - Returns: A list    
-	/// - deprecated: 30/07/2024. Use ``getHistory(nbMessage:filters:)`` instead. 
-	@available(*, deprecated)
+	/// - Returns: A list      
 	public func getHistoryMessageEvents(nbEvents:Int) -> [EventLog]
 	{
 		var swiftList = [EventLog]()
@@ -16886,9 +17332,11 @@ public class ChatRoom : LinphoneObject
 	/// - Parameter begin: The first event of the range to be retrieved. History most
 	/// recent message has index 0. 
 	/// - Parameter end: The last event of the range to be retrieved. History oldest
-	/// message has index of history size - 1 (use ``getHistorySize(filters:)`` to
-	/// retrieve history size) 
-	/// - Returns: A list of    
+	/// message has index of history size (use ``getHistorySize(filters:)`` to retrieve
+	/// history size) 
+	/// - Parameter filters: The LinphoneChatRoomHistoryFilterMask mask to filter the
+	/// results with ``HistoryFilter`` 
+	/// - Returns: A list of      
 	public func getHistoryRange(begin:Int, end:Int, filters:UInt) -> [EventLog]
 	{
 		var swiftList = [EventLog]()
@@ -16910,10 +17358,10 @@ public class ChatRoom : LinphoneObject
 	/// - Parameter begin: The first message of the range to be retrieved. History most
 	/// recent message has index 0. 
 	/// - Parameter end: The last message of the range to be retrieved. History oldest
-	/// message has index of history size - 1 (use ``getHistorySize()`` to retrieve
-	/// history size) 
-	/// - Returns: A list of chat messages.    
-	/// - deprecated: 30/07/2024. Use ``getHistoryRange(begin:end:filters:)`` instead. 
+	/// message has index of history size (use ``getHistorySize()`` to retrieve history
+	/// size) 
+	/// - Returns: A list of chat messages.      
+	/// - Deprecated: 30/07/2024. Use ``getHistoryRange(begin:end:filters:)`` instead. 
 	@available(*, deprecated)
 	public func getHistoryRange(begin:Int, end:Int) -> [ChatMessage]
 	{
@@ -16934,11 +17382,11 @@ public class ChatRoom : LinphoneObject
 	/// Gets the partial list of messages between two given ``EventLog``, sorted from
 	/// oldest to most recent. 
 	/// If either first_event or last_event is null, then nothing is returned. 
-	/// - Parameter firstEvent: The ``EventLog`` object corresponding to the event.   
-	/// - Parameter lastEvent: The ``EventLog`` object corresponding to the event.   
+	/// - Parameter firstEvent: The ``EventLog`` object corresponding to the event.    
+	/// - Parameter lastEvent: The ``EventLog`` object corresponding to the event.    
 	/// - Parameter filters: The LinphoneChatRoomHistoryFilterMask mask to filter the
 	/// results with ``HistoryFilter`` 
-	/// - Returns: A list of  between the two provided events, if any.   
+	/// - Returns: A list of   between the two provided events, if any.    
 	public func getHistoryRangeBetween(firstEvent:EventLog?, lastEvent:EventLog?, filters:UInt) -> [EventLog]
 	{
 		var swiftList = [EventLog]()
@@ -16960,10 +17408,8 @@ public class ChatRoom : LinphoneObject
 	/// - Parameter begin: The first event of the range to be retrieved. History most
 	/// recent event has index 0. 
 	/// - Parameter end: The last event of the range to be retrieved. History oldest
-	/// event has index of history size - 1 
-	/// - Returns: The list of the found events.    
-	/// - deprecated: 30/07/2024. Use ``getHistoryRange(begin:end:filters:)`` instead. 
-	@available(*, deprecated)
+	/// event has index of history size 
+	/// - Returns: The list of the found events.      
 	public func getHistoryRangeEvents(begin:Int, end:Int) -> [EventLog]
 	{
 		var swiftList = [EventLog]()
@@ -16985,10 +17431,8 @@ public class ChatRoom : LinphoneObject
 	/// - Parameter begin: The first event of the range to be retrieved. History most
 	/// recent event has index 0. 
 	/// - Parameter end: The last event of the range to be retrieved. History oldest
-	/// event has index of history size - 1 
-	/// - Returns: The list of chat message events.    
-	/// - deprecated: 30/07/2024. Use ``getHistoryRange(begin:end:filters:)`` instead. 
-	@available(*, deprecated)
+	/// event has index of history size 
+	/// - Returns: The list of chat message events.      
 	public func getHistoryRangeMessageEvents(begin:Int, end:Int) -> [EventLog]
 	{
 		var swiftList = [EventLog]()
@@ -17011,10 +17455,10 @@ public class ChatRoom : LinphoneObject
 	/// - Parameter before: The number of messages to retrieve before the event
 	/// provided. 
 	/// - Parameter after: The number of messages to retrieve after the event provided. 
-	/// - Parameter event: The ``EventLog`` object corresponding to the event.   
+	/// - Parameter event: The ``EventLog`` object corresponding to the event.    
 	/// - Parameter filters: The LinphoneChatRoomHistoryFilterMask mask to filter the
 	/// results with ``HistoryFilter`` 
-	/// - Returns: A list of  near the event provided included.   
+	/// - Returns: A list of   near the event provided included.    
 	public func getHistoryRangeNear(before:UInt, after:UInt, event:EventLog?, filters:UInt) -> [EventLog]
 	{
 		var swiftList = [EventLog]()
@@ -17042,9 +17486,32 @@ public class ChatRoom : LinphoneObject
 	
 	
 	
+	/// Gets the partial list of contents for which content-type starts with either
+	/// video/, audio/ or image/. 
+	/// - Parameter begin: The first content of the range to be retrieved. Most recent
+	/// content has index 0. 
+	/// - Parameter end: The last content of the range to be retrieved. Oldest content
+	/// has index of size (use ``getMediaContentsSize()`` to retrieve size) 
+	/// - Returns: A list of contents considered as "media".      
+	public func getMediaContentsRange(begin:Int, end:Int) -> [Content]
+	{
+		var swiftList = [Content]()
+		let cList = linphone_chat_room_get_media_contents_range(cPtr, CInt(begin), CInt(end))
+		var listTemp = cList
+		while (listTemp != nil) {
+			let data = unsafeBitCast(listTemp?.pointee.data, to: OpaquePointer.self)
+			swiftList.append(Content.getSwiftObject(cObject: data))
+			listTemp = UnsafeMutablePointer<bctbx_list_t>(listTemp?.pointee.next)
+		}
+			bctbx_list_free_with_data(cList, belle_sip_object_unref)
+		return swiftList
+	}
+	
+	
+	
 	/// Returns whether or not the chat room has been left. 
 	/// - Returns: true if the chat room has been left, false otherwise. 
-	/// - deprecated: 16/03/2022 use ``isReadOnly()`` instead. 
+	/// - Deprecated: 16/03/2022 use ``isReadOnly()`` instead. 
 	@available(*, deprecated)
 	public func hasBeenLeft() -> Bool
 	{
@@ -17079,11 +17546,22 @@ public class ChatRoom : LinphoneObject
 	
 	
 	
+	/// Nominates a new admin and then leaves a chat room. 
+	/// - Parameter newAdmin: The ``Address`` of the new admin    
+	/// - Note: The local participant will not leave the chat room if the new admin
+	/// cannot be nominated 
+	public func nominateAdminAndLeave(newAdmin:Address) 
+	{
+		linphone_chat_room_nominate_admin_and_leave(cPtr, newAdmin.cPtr)
+	}
+	
+	
+	
 	/// Notifies the chatroom that a participant device has just registered. 
 	/// This function is meaningful only for server implementation of chatroom, and
 	/// shall not by used by client applications. 
 	/// - Parameter participantDevice: list of the participant devices to be used by
-	/// the group chat room   
+	/// the group chat room    
 	public func notifyParticipantDeviceRegistration(participantDevice:Address) 
 	{
 		linphone_chat_room_notify_participant_device_registration(cPtr, participantDevice.cPtr)
@@ -17093,7 +17571,7 @@ public class ChatRoom : LinphoneObject
 	
 	/// Used to receive a chat message when using async mechanism with IM
 	/// enchat_roomyption engine. 
-	/// - Parameter message: ``ChatMessage`` object   
+	/// - Parameter message: ``ChatMessage`` object    
 	public func receiveChatMessage(message:ChatMessage) 
 	{
 		linphone_chat_room_receive_chat_message(cPtr, message.cPtr)
@@ -17102,7 +17580,7 @@ public class ChatRoom : LinphoneObject
 	
 	
 	/// Removes a participant of a chat room. 
-	/// - Parameter participant: The participant to remove from the chat room   
+	/// - Parameter participant: The participant to remove from the chat room    
 	public func removeParticipant(participant:Participant) 
 	{
 		linphone_chat_room_remove_participant(cPtr, participant.cPtr)
@@ -17111,7 +17589,7 @@ public class ChatRoom : LinphoneObject
 	
 	
 	/// Removes several participants of a chat room at once. 
-	/// - Parameter participants: The participants to remove.    
+	/// - Parameter participants: The participants to remove.      
 	public func removeParticipants(participants:[Participant]) 
 	{
 		linphone_chat_room_remove_participants(cPtr, ObjectArrayToBctbxList(list: participants))
@@ -17119,14 +17597,25 @@ public class ChatRoom : LinphoneObject
 	
 	
 	
+	/// Deletes the content of a previously sent message for both sender and receivers. 
+	/// Message will still appear in the conversation history but will be empty. You
+	/// can still delete it from history using ``deleteMessage(message:)``. 
+	/// - Parameter message: The ``ChatMessage`` object to delete.    
+	public func retractMessage(message:ChatMessage) 
+	{
+		linphone_chat_room_retract_message(cPtr, message.cPtr)
+	}
+	
+	
+	
 	/// Searches chat messages by text. 
-	/// - Parameter text: The text to search in messages   
+	/// - Parameter text: The text to search in messages    
 	/// - Parameter from: The ``EventLog`` object corresponding to the event where to
-	/// start the search   
+	/// start the search    
 	/// - Parameter direction: The ``SearchDirection`` where to search,
 	/// LinphoneSearchDirectionUp will search older messages while
 	/// LinphoneSearchDirectionDown will search newer messages 
-	/// - Returns: the ``EventLog`` corresponding to the message if found or nil.   
+	/// - Returns: the ``EventLog`` corresponding to the message if found or nil.    
 	public func searchChatMessageByText(text:String, from:EventLog?, direction:SearchDirection) -> EventLog?
 	{
 		let cPointer = linphone_chat_room_search_chat_message_by_text(cPtr, text, from?.cPtr, LinphoneSearchDirection(rawValue: CUnsignedInt(direction.rawValue)))
@@ -17141,7 +17630,8 @@ public class ChatRoom : LinphoneObject
 	
 	/// Changes the admin status of a participant of a chat room (you need to be an
 	/// admin yourself to do this). 
-	/// - Parameter participant: The Participant for which to change the admin status   
+	/// - Parameter participant: The Participant for which to change the admin status  
+	///  
 	/// - Parameter isAdmin: A boolean value telling whether the participant should now
 	/// be an admin or not 
 	public func setParticipantAdminStatus(participant:Participant, isAdmin:Bool) 
@@ -17155,12 +17645,21 @@ public class ChatRoom : LinphoneObject
 	/// given participant. 
 	/// This function is meaningful only for server implementation of chatroom, and
 	/// shall not by used by client applications. 
-	/// - Parameter participantAddress: The participant address   
+	/// - Parameter participantAddress: The participant address    
 	/// - Parameter deviceIdentities: List of the participant devices to be used by the
-	/// group chat room     
+	/// group chat room      
 	public func setParticipantDevices(participantAddress:Address, deviceIdentities:[ParticipantDeviceIdentity]) 
 	{
 		linphone_chat_room_set_participant_devices(cPtr, participantAddress.cPtr, ObjectArrayToBctbxList(list: deviceIdentities))
+	}
+	
+	
+	
+	/// Notifies the destination of the chat message that the user is no longer
+	/// composing. 
+	public func stopComposing() 
+	{
+		linphone_chat_room_stop_composing(cPtr)
 	}
 }
 
@@ -17193,12 +17692,12 @@ public class ChatRoomParams : LinphoneObject
 	
 	/// Set the backend implementation of these chat room parameters. 
 	/// - Parameter backend: The ``ChatRoom.Backend`` enum value 
-	/// - deprecated: 20/05/2024. Use ``ChatParams/setBackend(backend:)`` instead. 
+	/// - Deprecated: 20/05/2024. Use ``ChatParams/setBackend(backend:)`` instead. 
 	
 	/// Get the backend implementation of the chat room associated with the given
 	/// parameters. 
 	/// - Returns: the ``ChatRoom.Backend`` 
-	/// - deprecated: 20/05/2024. Use ``ChatParams/getBackend()`` instead. 
+	/// - Deprecated: 20/05/2024. Use ``ChatParams/getBackend()`` instead. 
 	public var backend: ChatRoom.Backend
 	{
 	@available(*, deprecated)
@@ -17215,13 +17714,13 @@ public class ChatRoomParams : LinphoneObject
 		
 	/// Set the encryption backend implementation of these chat room parameters. 
 	/// - Parameter backend: The ``ChatRoom.EncryptionBackend`` enum value 
-	/// - deprecated: 20/05/2024. Use ``ChatParams/setEncryptionBackend(backend:)``
+	/// - Deprecated: 20/05/2024. Use ``ChatParams/setEncryptionBackend(backend:)``
 	/// instead. 
 	
 	/// Get the encryption implementation of the chat room associated with the given
 	/// parameters. 
 	/// - Returns: the ``ChatRoom.EncryptionBackend`` 
-	/// - deprecated: 20/05/2024. Use ``ChatParams/getEncryptionBackend()`` instead. 
+	/// - Deprecated: 20/05/2024. Use ``ChatParams/getEncryptionBackend()`` instead. 
 	public var encryptionBackend: ChatRoom.EncryptionBackend
 	{
 	@available(*, deprecated)
@@ -17239,13 +17738,13 @@ public class ChatRoomParams : LinphoneObject
 	/// Enables or disables encryption for the chat room associated with the given
 	/// parameters. 
 	/// - Parameter encrypted: true to enable encryption, false to disable. 
-	/// - deprecated: 20/05/2024. Use linphone_conference_params_enable_encryption()
+	/// - Deprecated: 20/05/2024. Use linphone_conference_params_enable_encryption()
 	/// instead. 
 	
 	/// Get the encryption status of the chat room associated with the given
 	/// parameters. 
 	/// - Returns: true if encryption is enabled, false otherwise 
-	/// - deprecated: 20/05/2024. Use ``ChatParams/encryptionEnabled()`` instead. 
+	/// - Deprecated: 20/05/2024. Use ``ChatParams/encryptionEnabled()`` instead. 
 	public var encryptionEnabled: Bool
 	{
 	@available(*, deprecated)
@@ -17264,14 +17763,14 @@ public class ChatRoomParams : LinphoneObject
 	/// After the message is read, it will be deleted after "time" seconds. - See also:
 	/// linphone_chat_room_params_ephemeral_enabled() 
 	/// - Parameter time: The ephemeral lifetime, default is disabled (0) 
-	/// - deprecated: 20/05/2024. Use ``ChatParams/setEphemeralLifetime(time:)``
+	/// - Deprecated: 20/05/2024. Use ``ChatParams/setEphemeralLifetime(time:)``
 	/// instead. 
 	
 	/// Get lifetime (in seconds) for all new ephemeral messages in the chat room. 
 	/// After the message is read, it will be deleted after "time" seconds. - See also:
 	/// linphone_chat_room_params_ephemeral_enabled() 
 	/// - Returns: the ephemeral lifetime (in seconds) 
-	/// - deprecated: 20/05/2024. Use ``ChatParams/getEphemeralLifetime()`` instead. 
+	/// - Deprecated: 20/05/2024. Use ``ChatParams/getEphemeralLifetime()`` instead. 
 	public var ephemeralLifetime: Int
 	{
 	@available(*, deprecated)
@@ -17289,12 +17788,12 @@ public class ChatRoomParams : LinphoneObject
 	/// Enables or disables forcing of ephemeral messages for the chat room associated
 	/// with the given parameters. 
 	/// - Parameter mode: Ephemeral message mode ``ChatRoom.EphemeralMode``. 
-	/// - deprecated: 20/05/2024. Use ``ChatParams/setEphemeralMode(mode:)`` instead. 
+	/// - Deprecated: 20/05/2024. Use ``ChatParams/setEphemeralMode(mode:)`` instead. 
 	
 	/// Get the ephemeral message mode of the chat room associated with the given
 	/// parameters. 
 	/// - Returns: the ephemeral message mode ``ChatRoom.EphemeralMode`` 
-	/// - deprecated: 20/05/2024. Use ``ChatParams/getEphemeralMode()`` instead. 
+	/// - Deprecated: 20/05/2024. Use ``ChatParams/getEphemeralMode()`` instead. 
 	public var ephemeralMode: ChatRoom.EphemeralMode
 	{
 	@available(*, deprecated)
@@ -17312,13 +17811,13 @@ public class ChatRoomParams : LinphoneObject
 	/// Enables or disables group chat for the chat room associated with the given
 	/// parameters. 
 	/// - Parameter group: true to enable group chat, false to disable (resulting in
-	/// one-to-one chat room) 
-	/// - deprecated: 20/05/2024. Use ``ConferenceParams/enableGroup(group:)`` instead. 
+	/// one-on-one chat room) 
+	/// - Deprecated: 20/05/2024. Use ``ConferenceParams/enableGroup(group:)`` instead. 
 	
 	/// Get the group chat status of the chat room associated with the given
 	/// parameters. 
-	/// - Returns: true if group chat is enabled, false if one-to-one 
-	/// - deprecated: 20/05/2024. Use ``ConferenceParams/groupEnabled()`` instead. 
+	/// - Returns: true if group chat is enabled, false if one-on-one 
+	/// - Deprecated: 20/05/2024. Use ``ConferenceParams/groupEnabled()`` instead. 
 	public var groupEnabled: Bool
 	{
 	@available(*, deprecated)
@@ -17336,7 +17835,7 @@ public class ChatRoomParams : LinphoneObject
 	
 	/// Returns whether the given parameters are valid or not. 
 	/// - Returns: true if the given parameters are valid, false otherwise 
-	/// - deprecated: 20/05/2024. Use linphone_chat_params_is_valid() instead. 
+	/// - Deprecated: 20/05/2024. Use ``ConferenceParams/isValid()`` instead. 
 	@available(*, deprecated)
 	public var isValid: Bool
 	{
@@ -17348,12 +17847,12 @@ public class ChatRoomParams : LinphoneObject
 	/// Enables or disables real time text for the chat room associated with the given
 	/// parameters. 
 	/// - Parameter rtt: true to enable real time text, false to disable. 
-	/// - deprecated: 20/05/2024. Use ``ChatParams/enableRtt(rtt:)`` instead. 
+	/// - Deprecated: 20/05/2024. Use ``ChatParams/enableRtt(rtt:)`` instead. 
 	
 	/// Get the real time text status of the chat room associated with the given
 	/// parameters. 
 	/// - Returns: true if real time text is enabled, false otherwise 
-	/// - deprecated: 20/05/2024. Use ``ChatParams/rttEnabled()`` instead. 
+	/// - Deprecated: 20/05/2024. Use ``ChatParams/rttEnabled()`` instead. 
 	public var rttEnabled: Bool
 	{
 	@available(*, deprecated)
@@ -17369,13 +17868,13 @@ public class ChatRoomParams : LinphoneObject
 	}
 		
 	/// Set the subject of the chat room. 
-	/// - Parameter subject: The subject to set.   
-	/// - deprecated: 20/05/2024. Use ``ConferenceParams/setSubject(subject:)``
+	/// - Parameter subject: The subject to set.    
+	/// - Deprecated: 20/05/2024. Use ``ConferenceParams/setSubject(subject:)``
 	/// instead. 
 	
 	/// Get the subject of the chat room. 
-	/// - Returns: The subject.   
-	/// - deprecated: 20/05/2024. Use ``ConferenceParams/getSubject()`` instead. 
+	/// - Returns: The subject.    
+	/// - Deprecated: 20/05/2024. Use ``ConferenceParams/getSubject()`` instead. 
 	public var subject: String?
 	{
 	@available(*, deprecated)
@@ -17396,6 +17895,72 @@ public class ChatRoomParams : LinphoneObject
 		}
 	}
 	}
+
+
+/// Object that represents a ``ChatRoom`` participant that is currently composing. 
+public class ComposingParticipant : LinphoneObject
+{
+
+	static public func getSwiftObject(cObject:OpaquePointer) -> ComposingParticipant {
+		let result = belle_sip_object_data_get(UnsafeMutablePointer(cObject), "swiftRef")
+		if (result != nil) {
+			return Unmanaged<ComposingParticipant>.fromOpaque(result!).takeUnretainedValue()
+		}
+		let sObject = ComposingParticipant(cPointer: cObject)
+		belle_sip_object_data_set(UnsafeMutablePointer(cObject), "swiftRef",  UnsafeMutableRawPointer(Unmanaged.passUnretained(sObject).toOpaque()), nil)
+		return sObject
+	}
+
+	public var getCobject: OpaquePointer? {
+		return cPtr
+	}
+	
+	
+	/// Gets the participant's address. 
+	/// - Returns: the ``Address`` of the participant.    
+	public var address: Address?
+	{
+	
+						let cPointer = linphone_composing_participant_get_address(cPtr)
+			if (cPointer == nil) {
+				return nil
+			}
+			let result = Address.getSwiftObject(cObject:cPointer!)
+			return result
+
+	}
+		
+	
+	/// Gets the content-type of what the participant is being composing. 
+	/// - Returns: the content-type set if any, nil otherwise.    
+	public var contentType: String?
+	{
+	
+			
+			let cPointer = linphone_composing_participant_get_content_type(cPtr)
+			if (cPointer == nil) {
+				return nil
+			}
+			let result = charArrayToString(charPointer: cPointer)
+			return result
+
+	}
+		
+	
+	
+	/// Clones a composing participant. 
+	/// - Returns: The newly created ``ComposingParticipant`` object.    
+	public func clone() -> ComposingParticipant?
+	{
+		let cPointer = linphone_composing_participant_clone(cPtr)
+		if (cPointer == nil) {
+			return nil
+		}
+		let result = ComposingParticipant.getSwiftObject(cObject: cPointer!)
+		belle_sip_object_unref(UnsafeMutableRawPointer(cPointer))
+		return result
+	}
+}
 
 
 /// A conference is the object that allow to make calls when there are 2 or more
@@ -17534,7 +18099,7 @@ public class Conference : LinphoneObject
 	
 	
 	/// Gets the ``Account`` object associated with the conference. 
-	/// - Returns: A ``Account`` object.   
+	/// - Returns: A ``Account`` object.    
 	public var account: Account?
 	{
 	
@@ -17549,7 +18114,7 @@ public class Conference : LinphoneObject
 		
 	
 	/// Get the currently active speaker participant device. 
-	/// - Returns: the ``ParticipantDevice`` currently displayed as active speaker.   
+	/// - Returns: the ``ParticipantDevice`` currently displayed as active speaker.    
 	public var activeSpeakerParticipantDevice: ParticipantDevice?
 	{
 	
@@ -17564,8 +18129,10 @@ public class Conference : LinphoneObject
 		
 	
 	/// Gets the call that is controlling a conference. 
+	/// -for the local conference, it will return nil
+	/// -for the client conference, it will return call associated to the conference
 	/// - Returns: the ``Call`` controlling the conference or nil if none or local
-	/// conference   
+	/// conference    
 	public var call: Call?
 	{
 	
@@ -17580,7 +18147,7 @@ public class Conference : LinphoneObject
 		
 	
 	/// Returns the ``ChatRoom`` linked to the ``Conference``. 
-	/// - Returns: back pointer to ``ChatRoom`` object.   
+	/// - Returns: back pointer to ``ChatRoom`` object.    
 	public var chatRoom: ChatRoom?
 	{
 	
@@ -17594,14 +18161,14 @@ public class Conference : LinphoneObject
 	}
 		
 	/// Set the conference address. 
-	/// - Parameter address: the conference address to set.   
+	/// - Parameter address: the conference address to set.    
 	/// - Warning: This is only allowed for a client conference if it is in state
 	/// CreationPending or Instantiated 
 	
 	/// Get the conference address of the conference. 
 	/// This function may be return a nil pointer if called before the conference
 	/// switches to the Created state 
-	/// - Returns: The conference address of the conference.   
+	/// - Returns: The conference address of the conference.    
 	public var conferenceAddress: Address?
 	{
 	
@@ -17622,7 +18189,7 @@ public class Conference : LinphoneObject
 		
 	
 	/// Returns core for a ``Conference``. 
-	/// - Returns: back pointer to ``Core`` object.   
+	/// - Returns: back pointer to ``Core`` object.    
 	public var core: Core?
 	{
 	
@@ -17636,10 +18203,10 @@ public class Conference : LinphoneObject
 	}
 		
 	
-	/// Sets the current LinphoneConferenceCbs. 
+	/// Sets the current ``ConferenceDelegate``. 
 	/// This is meant only to be called from a callback to be able to get the user_data
-	/// associated with the LinphoneConferenceCbs that is calling the callback. 
-	/// - Returns: The ``ConferenceDelegate`` that has called the last callback.   
+	/// associated with the ``ConferenceDelegate`` that is calling the callback. 
+	/// - Returns: The ``ConferenceDelegate`` that has called the last callback.    
 	public var currentDelegate: ConferenceDelegate?
 	{
 	
@@ -17654,7 +18221,7 @@ public class Conference : LinphoneObject
 		
 	
 	/// Get current parameters of the conference. 
-	/// - Returns: a ``ConferenceParams`` .   
+	/// - Returns: a ``ConferenceParams`` .    
 	public var currentParams: ConferenceParams?
 	{
 	
@@ -17669,7 +18236,7 @@ public class Conference : LinphoneObject
 		
 	
 	/// Get the conference duration. 
-	/// - Returns: conference duration.   
+	/// - Returns: conference duration.    
 	public var duration: Int?
 	{
 	
@@ -17681,7 +18248,7 @@ public class Conference : LinphoneObject
 	/// Returns the conference identifier. 
 	/// - Warning: This method returns a nil pointer if the Conference is in the
 	/// Instantiated state 
-	/// - Returns: the conference identifier.   
+	/// - Returns: the conference identifier.    
 	public var identifier: String?
 	{
 	
@@ -17697,7 +18264,7 @@ public class Conference : LinphoneObject
 		
 	
 	/// Gets the ``ConferenceInfo`` object associated with a conference. 
-	/// - Returns: A ``ConferenceInfo`` object.   
+	/// - Returns: A ``ConferenceInfo`` object.    
 	public var info: ConferenceInfo?
 	{
 	
@@ -17711,12 +18278,12 @@ public class Conference : LinphoneObject
 	}
 		
 	/// Sets the given ``AudioDevice`` as input for this conference only. 
-	/// - Parameter audioDevice: The ``AudioDevice``. nil does nothing.   
+	/// - Parameter audioDevice: The ``AudioDevice``. nil does nothing.    
 	
 	/// Gets the current input device for this conference. 
 	/// - Returns: the ``AudioDevice`` used by this conference as input or nil if there
 	/// is currently no soundcard configured (depending on the state of the conference)
-	///   
+	///    
 	public var inputAudioDevice: AudioDevice?
 	{
 	
@@ -17771,7 +18338,7 @@ public class Conference : LinphoneObject
 	/// For a local audio video conference, this function returns the participant
 	/// hosting the conference For a remote audio video conference, this function
 	/// returns the local participant of the conference. 
-	/// - Returns: a ``Participant`` .   
+	/// - Returns: a ``Participant`` .    
 	public var me: Participant?
 	{
 	
@@ -17805,12 +18372,12 @@ public class Conference : LinphoneObject
 	}
 		
 	/// Sets the given ``AudioDevice`` as output for this conference only. 
-	/// - Parameter audioDevice: The ``AudioDevice``. nil does nothing.   
+	/// - Parameter audioDevice: The ``AudioDevice``. nil does nothing.    
 	
 	/// Gets the current output device for this conference. 
 	/// - Returns: the ``AudioDevice`` used by this conference as output or nil if
 	/// there is currently no soundcard configured (depending on the state of the
-	/// conference)   
+	/// conference)    
 	public var outputAudioDevice: AudioDevice?
 	{
 	
@@ -17841,7 +18408,7 @@ public class Conference : LinphoneObject
 		
 	
 	/// Get list of all participant devices of a conference including me if it is in. 
-	/// - Returns: The list of participant devices of the conference.       
+	/// - Returns: The list of participant devices of the conference.         
 	public var participantDeviceList: [ParticipantDevice]
 	{
 	
@@ -17861,7 +18428,7 @@ public class Conference : LinphoneObject
 	
 	/// Get list of all participants of a conference. 
 	/// - Warning: The returned list does not include me. 
-	/// - Returns: The list of participants of the conference.      
+	/// - Returns: The list of participants of the conference.         
 	public var participantList: [Participant]
 	{
 	
@@ -17884,8 +18451,8 @@ public class Conference : LinphoneObject
 	/// That list must be freed after use and each URI must be unref with
 	/// linphone_address_unref - Warning: The returned list does not include me. 
 	/// - Returns: The list of the participants' address active in the conference.     
-	///  
-	/// - deprecated: 10/07/2020 Use ``getParticipantList()`` instead. 
+	///    
+	/// - Deprecated: 10/07/2020 Use ``getParticipantList()`` instead. 
 	@available(*, deprecated)
 	public var participants: [Address]
 	{
@@ -17906,7 +18473,7 @@ public class Conference : LinphoneObject
 	
 	/// Gets a player associated with the conference to play a local file and stream it
 	/// to the remote peers. 
-	/// - Returns: A ``Player`` object.   
+	/// - Returns: A ``Player`` object.    
 	public var player: Player?
 	{
 	
@@ -17921,7 +18488,7 @@ public class Conference : LinphoneObject
 		
 	
 	/// Get the participant that is currently screen sharing. 
-	/// - Returns: a pointer to the participant found or nullptr.   
+	/// - Returns: a pointer to the participant found or nullptr.    
 	public var screenSharingParticipant: Participant?
 	{
 	
@@ -17936,7 +18503,7 @@ public class Conference : LinphoneObject
 		
 	
 	/// Get the participant device that is currently screen sharing. 
-	/// - Returns: a pointer to the participant device found or nullptr.   
+	/// - Returns: a pointer to the participant device found or nullptr.    
 	public var screenSharingParticipantDevice: ParticipantDevice?
 	{
 	
@@ -17951,7 +18518,7 @@ public class Conference : LinphoneObject
 		
 	
 	/// Get the conference start time. 
-	/// - Returns: conference start time.   
+	/// - Returns: conference start time.    
 	public var startTime: time_t?
 	{
 	
@@ -17970,10 +18537,10 @@ public class Conference : LinphoneObject
 	}
 		
 	/// Set the conference subject. 
-	/// - Parameter subject: conference subject   
+	/// - Parameter subject: conference subject    
 	
 	/// Get the conference subject. 
-	/// - Returns: conference subject.   
+	/// - Returns: conference subject.    
 	public var subject: String?
 	{
 	
@@ -17994,10 +18561,10 @@ public class Conference : LinphoneObject
 	}
 		
 	/// Set the conference subject as an UTF-8 string. 
-	/// - Parameter subject: conference subject   
+	/// - Parameter subject: conference subject    
 	
 	/// Get the conference subject as an UTF-8 string. 
-	/// - Returns: conference subject.   
+	/// - Returns: conference subject.    
 	public var subjectUtf8: String?
 	{
 	
@@ -18019,10 +18586,10 @@ public class Conference : LinphoneObject
 		
 	/// Associate a user pointer to the linphone conference. 
 	/// - Parameter userData: The user data to associate with the ``Conference``
-	/// object.   
+	/// object.    
 	
 	/// Retrieves the user pointer that was given to ``setUserData(userData:)`` 
-	/// - Returns: The user data associated with the ``Conference`` object.   
+	/// - Returns: The user data associated with the ``Conference`` object.    
 	public var userData: UnsafeMutableRawPointer?
 	{
 	
@@ -18037,10 +18604,10 @@ public class Conference : LinphoneObject
 	}
 		
 	/// Set the conference username. 
-	/// - Parameter username: conference subject   
+	/// - Parameter username: conference subject    
 	
 	/// Get the conference username. 
-	/// - Returns: conference subject.   
+	/// - Returns: conference subject.    
 	public var username: String?
 	{
 	
@@ -18066,7 +18633,7 @@ public class Conference : LinphoneObject
 	/// If the conference is in the state LinphoneConferenceStateCreationPending, then
 	/// the conference will start on the input and output audio devices used for the
 	/// currently active call, if any 
-	/// - Parameter call: a ``Call`` that has to be added to the conference.   
+	/// - Parameter call: a ``Call`` that has to be added to the conference.    
 	/// - Warning: This function guarantees that the local endpoint is added to the
 	/// conference only if one of calls added is in state StreamsRunning. It is highly
 	/// recommended to call linphone_confererence_enter() to guarantee that the local
@@ -18082,7 +18649,7 @@ public class Conference : LinphoneObject
 	
 	
 	/// Join a participant to the conference. 
-	/// - Parameter uri: a ``Address`` that has to be added to the conference.   
+	/// - Parameter uri: a ``Address`` that has to be added to the conference.    
 	/// - Warning: This function guarantees that the local endpoint is added to the
 	/// conference only if there is a call state StreamsRunning towards one of the
 	/// addresses. It is highly recommended to call linphone_confererence_enter() to
@@ -18101,7 +18668,7 @@ public class Conference : LinphoneObject
 	/// If the conference is in the state LinphoneConferenceStateCreationPending, then
 	/// the conference will start on the input and output audio devices used for the
 	/// currently active call, if any 
-	/// - Parameter calls: A list of calls to add to the conference.    
+	/// - Parameter calls: A list of calls to add to the conference.      
 	public func addParticipants(calls:[Call]) throws 
 	{
 		let exception_result = linphone_conference_add_participants(cPtr, ObjectArrayToBctbxList(list: calls))
@@ -18113,13 +18680,24 @@ public class Conference : LinphoneObject
 	
 	
 	/// Add participants to the conference, by supplying a list of ``Address``. 
-	/// - Parameter addresses: A list of calls to add to the conference.    
+	/// - Parameter addresses: A list of calls to add to the conference.      
 	public func addParticipants(addresses:[Address]) throws 
 	{
 		let exception_result = linphone_conference_add_participants_2(cPtr, ObjectArrayToBctbxList(list: addresses))
 		guard exception_result == 0 else {
 			throw LinphoneError.exception(result: "addParticipants returned value \(exception_result)")
 		}
+	}
+	
+	
+	
+	/// Terminates a conference. 
+	/// If no media is supported, it instructs the conference server to remove all
+	/// participants 
+	/// - Returns: 0 if the termination is successful, -1 otherwise. 
+	public func close() -> Int
+	{
+		return Int(linphone_conference_close(cPtr))
 	}
 	
 	
@@ -18135,8 +18713,8 @@ public class Conference : LinphoneObject
 	
 	
 	/// Find a participant from a conference. 
-	/// - Parameter uri: SIP URI of the participant to search.   
-	/// - Returns: a pointer to the participant found or nullptr.   
+	/// - Parameter uri: SIP URI of the participant to search.    
+	/// - Returns: a pointer to the participant found or nullptr.    
 	public func findParticipant(uri:Address) -> Participant?
 	{
 		let cPointer = linphone_conference_find_participant(cPtr, uri.cPtr)
@@ -18150,7 +18728,7 @@ public class Conference : LinphoneObject
 	
 	
 	/// Retrieves the volume of a specific participant. 
-	/// - Parameter device: The Participant   
+	/// - Parameter device: The Participant    
 	/// - Returns: The volume of the participant expressed in dbm0. 
 	public func getParticipantDeviceVolume(device:ParticipantDevice) -> Int
 	{
@@ -18167,8 +18745,8 @@ public class Conference : LinphoneObject
 	/// On the other hand, if the conference is created on a server, this method will
 	/// allow to create either a chat only conference or an ad-hoc audio video
 	/// conference 
-	/// - Parameter addresses: A list of SIP addresses to invite.    
-	/// - Parameter params: ``CallParams`` to use for inviting the participants.   
+	/// - Parameter addresses: A list of SIP addresses to invite.      
+	/// - Parameter params: ``CallParams`` to use for inviting the participants.    
 	/// - Warning: The ``CallParams`` are only honored by conference servers and
 	/// devices that host the conference locally. 
 	public func inviteParticipants(addresses:[Address], params:CallParams?) throws 
@@ -18185,7 +18763,7 @@ public class Conference : LinphoneObject
 	/// as argument with that of participant hosting the conference For a remote audio
 	/// video conference, this function compares the address provided as argument with
 	/// that of the local participant of the conference. 
-	/// - Parameter uri: A ``Address`` object   
+	/// - Parameter uri: A ``Address`` object    
 	/// - Returns: true if the participant is me, false otherwise. 
 	public func isMe(uri:Address) -> Bool
 	{
@@ -18205,11 +18783,24 @@ public class Conference : LinphoneObject
 	
 	
 	
-	/// - Parameter uri: URI of the participant to remove   
+	/// Nominates a new admin and then leaves a conference. 
+	/// - Parameter newAdmin: The ``Address`` of the new admin    
+	/// - Returns: 0 if succeeded. Negative number if failed 
+	/// - Note: The local participant will not leave the chat room if the new admin
+	/// cannot be nominated 
+	/// - Warning: It is not applicable to conference servers. 
+	public func nominateAdminAndLeave(newAdmin:Address) -> Int
+	{
+		return Int(linphone_conference_nominate_admin_and_leave(cPtr, newAdmin.cPtr))
+	}
+	
+	
+	
+	/// - Parameter uri: URI of the participant to remove    
 	/// - Warning: The passed participant uri must be one of those returned by
 	/// ``getParticipants()`` 
 	/// - Returns: 0 if succeeded, -1 if failed 
-	/// - deprecated: 10/07/2020 Use ``removeParticipant(participant:)`` instead. 
+	/// - Deprecated: 10/07/2020 Use ``removeParticipant(participant:)`` instead. 
 	@available(*, deprecated)
 	public func removeParticipant(uri:Address) throws 
 	{
@@ -18221,7 +18812,7 @@ public class Conference : LinphoneObject
 	
 	
 	
-	/// - Parameter participant: participant to remove   
+	/// - Parameter participant: participant to remove    
 	/// - Warning: The passed participant must be one of those returned by
 	/// ``getParticipantList()`` 
 	/// - Warning: This method may destroy the conference if the only remaining
@@ -18238,9 +18829,9 @@ public class Conference : LinphoneObject
 	
 	
 	
-	/// - Parameter call: call to remove   
+	/// - Parameter call: call to remove    
 	/// - Returns: 0 if succeeded, -1 if failed 
-	/// - deprecated: 10/07/2020 Use ``removeParticipant(participant:)`` instead. 
+	/// - Deprecated: 10/07/2020 Use ``removeParticipant(participant:)`` instead. 
 	@available(*, deprecated)
 	public func removeParticipant(call:Call) throws 
 	{
@@ -18264,7 +18855,8 @@ public class Conference : LinphoneObject
 	
 	/// Change the admin status of a participant of a conference (you need to be an
 	/// admin yourself to do this). 
-	/// - Parameter participant: The Participant for which to change the admin status   
+	/// - Parameter participant: The Participant for which to change the admin status  
+	///  
 	/// - Parameter isAdmin: A boolean value telling whether the participant should now
 	/// be an admin or not 
 	public func setParticipantAdminStatus(participant:Participant, isAdmin:Bool) 
@@ -18275,7 +18867,7 @@ public class Conference : LinphoneObject
 	
 	
 	/// Starts recording the conference. 
-	/// - Parameter path: Where to record the conference   
+	/// - Parameter path: Where to record the conference    
 	/// - Returns: 0 if succeeded. Negative number in case of failure. 
 	public func startRecording(path:String) -> Int
 	{
@@ -18293,7 +18885,7 @@ public class Conference : LinphoneObject
 	
 	
 	
-	/// Terminates conference. 
+	/// Terminates a conference. 
 	/// - Returns: 0 if the termination is successful, -1 otherwise. 
 	public func terminate() -> Int
 	{
@@ -18304,7 +18896,7 @@ public class Conference : LinphoneObject
 	
 	/// Update parameters of the conference. 
 	/// This is typically used enable or disable the video stream in the conference. 
-	/// - Parameter params: the new parameters to apply.   
+	/// - Parameter params: the new parameters to apply.    
 	public func updateParams(params:ConferenceParams) -> Int
 	{
 		return Int(linphone_conference_update_params(cPtr, params.cPtr))
@@ -18343,11 +18935,11 @@ public class ConferenceInfo : LinphoneObject
 		case Cancelled = 2
 	}
 	
-	/// Set the CCMP URI of the conference. 
-	/// - Parameter uri: The URI of the conference in the CCMP server.   
+	/// Sets the CCMP URI of the conference. 
+	/// - Parameter uri: The URI of the conference in the CCMP server.    
 	
 	/// Retrieve the CCMP URI of the conference. 
-	/// - Returns: The URI of the conference stored in the CCMP server.   
+	/// - Returns: The URI of the conference stored in the CCMP server.    
 	public var ccmpUri: String?
 	{
 	
@@ -18367,7 +18959,7 @@ public class ConferenceInfo : LinphoneObject
 		}
 	}
 		
-	/// Set the date and time of the conference. 
+	/// Sets the date and time of the conference. 
 	/// - Parameter datetime: The date and time of the conference. 
 	
 	/// Retrieve the date and time of the conference. 
@@ -18385,11 +18977,11 @@ public class ConferenceInfo : LinphoneObject
 		}
 	}
 		
-	/// Set the description of the conference. 
-	/// - Parameter description: The description of the conference.   
+	/// Sets the description of the conference. 
+	/// - Parameter description: The description of the conference.    
 	
 	/// Retrieve the description of the conference. 
-	/// - Returns: The description of the conference.   
+	/// - Returns: The description of the conference.    
 	public var description: String?
 	{
 	
@@ -18409,11 +19001,11 @@ public class ConferenceInfo : LinphoneObject
 		}
 	}
 		
-	/// Set the description of the conference. 
-	/// - Parameter description: The description of the conference.   
+	/// Sets the description of the conference. 
+	/// - Parameter description: The description of the conference.    
 	
 	/// Retrieve the description of the conference. 
-	/// - Returns: The description of the conference.   
+	/// - Returns: The description of the conference.    
 	public var descriptionUtf8: String?
 	{
 	
@@ -18433,7 +19025,7 @@ public class ConferenceInfo : LinphoneObject
 		}
 	}
 		
-	/// Set the duration (in minutes) of the conference. 
+	/// Sets the duration (in minutes) of the conference. 
 	/// - Parameter duration: The duration of the conference. 
 	
 	/// Retrieve the duration (in minutes) of the conference. 
@@ -18454,7 +19046,7 @@ public class ConferenceInfo : LinphoneObject
 	
 	/// Retrieve the conference as an Icalendar string. 
 	/// - Returns: The conference as an Icalendar string. The returned char* must be
-	/// freed by the caller.     
+	/// freed by the caller.       
 	public var icalendarString: String?
 	{
 	
@@ -18473,10 +19065,10 @@ public class ConferenceInfo : LinphoneObject
 		
 	/// Store the ICS UID in the conference info. 
 	/// - Parameter uid: the ICS UID to be associated to the ``ConferenceInfo`` object.
-	///   
+	///    
 	
 	/// Retrieve the ICS UID linked to a conference info. 
-	/// - Returns: the ICS UID.   
+	/// - Returns: the ICS UID.    
 	public var icsUid: String?
 	{
 	
@@ -18496,11 +19088,11 @@ public class ConferenceInfo : LinphoneObject
 		}
 	}
 		
-	/// Set the organizer of the conference. 
-	/// - Parameter organizer: The ``Address`` of the conference's organizer.   
+	/// Sets the organizer of the conference. 
+	/// - Parameter organizer: The ``Address`` of the conference's organizer.    
 	
 	/// Retrieve the organizer of the conference. 
-	/// - Returns: The ``Address`` of the conference's organizer.   
+	/// - Returns: The ``Address`` of the conference's organizer.    
 	public var organizer: Address?
 	{
 	
@@ -18519,26 +19111,35 @@ public class ConferenceInfo : LinphoneObject
 		}
 	}
 		
+	/// Sets the organizer information of the conference. 
+	/// - Parameter organizer: The ``ParticipantInfo`` of the conference's organizer.  
+	///  
 	
 	/// Retrieve the organizer of the conference. 
-	/// - Returns: The ``ParticipantInfo`` of the conference's organizer.   
+	/// - Returns: The ``ParticipantInfo`` of the conference's organizer.    
 	public var organizerInfo: ParticipantInfo?
 	{
 	
+		get
+		{ 
 						let cPointer = linphone_conference_info_get_organizer_info(cPtr)
 			if (cPointer == nil) {
 				return nil
 			}
 			let result = ParticipantInfo.getSwiftObject(cObject:cPointer!)
 			return result
-
+		}
+		set
+		{
+			linphone_conference_info_set_organizer_info(cPtr, newValue?.cPtr)
+		}
 	}
 		
-	/// Set the list of participants. 
-	/// - Parameter participantInfos: The list of participant informations to set.    
+	/// Sets the list of participants. 
+	/// - Parameter participantInfos: The list of participant informations to set.      
 	
 	/// Retrieve the list of participants as list of participant infos. 
-	/// - Returns: The list of participant informations.    
+	/// - Returns: The list of participant informations.      
 	public var participantInfos: [ParticipantInfo]
 	{
 	
@@ -18566,14 +19167,14 @@ public class ConferenceInfo : LinphoneObject
 		}
 	}
 		
-	/// Set the list of participants. 
-	/// - Parameter participants: The list of participants to set.    
-	/// - deprecated: 24/08/2023 use linphone_conference_info_set_participant_infos
+	/// Sets the list of participants. 
+	/// - Parameter participants: The list of participants to set.      
+	/// - Deprecated: 24/08/2023 use linphone_conference_info_set_participant_infos
 	/// instead 
 	
 	/// Retrieve the list of participants as list of addresses. 
-	/// - Returns: The list of participants.    
-	/// - deprecated: 24/08/2023 use linphone_conference_info_get_participant_infos
+	/// - Returns: The list of participants.      
+	/// - Deprecated: 24/08/2023 use linphone_conference_info_get_participant_infos
 	/// instead 
 	public var participants: [Address]
 	{
@@ -18603,7 +19204,7 @@ public class ConferenceInfo : LinphoneObject
 		}
 	}
 		
-	/// Set the desired security level of the conference. 
+	/// Sets the desired security level of the conference. 
 	/// - Parameter securityLevel: The desired security level of the conference. 
 	
 	/// Retrieve the desired security level of the conference. 
@@ -18623,7 +19224,7 @@ public class ConferenceInfo : LinphoneObject
 		
 	
 	/// Retrieve the state of the conference info. 
-	/// - Returns: ``State`` object.   
+	/// - Returns: ``State`` object.    
 	public var state: ConferenceInfo.State?
 	{
 	
@@ -18631,11 +19232,11 @@ public class ConferenceInfo : LinphoneObject
 
 	}
 		
-	/// Set the subject of the conference. 
-	/// - Parameter subject: The subject of the conference.   
+	/// Sets the subject of the conference. 
+	/// - Parameter subject: The subject of the conference.    
 	
 	/// Retrieve the subject of the conference. 
-	/// - Returns: The subject of the conference.   
+	/// - Returns: The subject of the conference.    
 	public var subject: String?
 	{
 	
@@ -18655,11 +19256,11 @@ public class ConferenceInfo : LinphoneObject
 		}
 	}
 		
-	/// Set the subject of the conference. 
-	/// - Parameter subject: The subject of the conference.   
+	/// Sets the subject of the conference. 
+	/// - Parameter subject: The subject of the conference.    
 	
 	/// Retrieve the subject of the conference. 
-	/// - Returns: The subject of the conference.   
+	/// - Returns: The subject of the conference.    
 	public var subjectUtf8: String?
 	{
 	
@@ -18681,7 +19282,7 @@ public class ConferenceInfo : LinphoneObject
 		
 	
 	/// Retrieve the URI of the conference. 
-	/// - Returns: The URI of the conference (``Address``).   
+	/// - Returns: The URI of the conference (``Address``).    
 	public var uri: Address?
 	{
 	
@@ -18697,7 +19298,7 @@ public class ConferenceInfo : LinphoneObject
 	
 	
 	/// Add a participant to the conference. 
-	/// - Parameter participant: The participant (``Address``) to add.   
+	/// - Parameter participant: The participant (``Address``) to add.    
 	public func addParticipant(participant:Address) 
 	{
 		linphone_conference_info_add_participant(cPtr, participant.cPtr)
@@ -18708,7 +19309,7 @@ public class ConferenceInfo : LinphoneObject
 	/// Add a participant to the conference. 
 	/// - Parameter participantInfo: The participant information (``ParticipantInfo``)
 	/// to add. This method can be called to set attributes such as the role to the
-	/// organizer of the conference   
+	/// organizer of the conference    
 	public func addParticipant(participantInfo:ParticipantInfo) 
 	{
 		linphone_conference_info_add_participant_2(cPtr, participantInfo.cPtr)
@@ -18717,7 +19318,7 @@ public class ConferenceInfo : LinphoneObject
 	
 	
 	/// Add a list of participants. 
-	/// - Parameter participantInfos: The list of participant informations to add.    
+	/// - Parameter participantInfos: The list of participant informations to add.      
 	public func addParticipantInfos(participantInfos:[ParticipantInfo]?) 
 	{
 		linphone_conference_info_add_participant_infos(cPtr, ObjectArrayToBctbxList(list: participantInfos))
@@ -18726,7 +19327,7 @@ public class ConferenceInfo : LinphoneObject
 	
 	
 	/// Clone an object ``ConferenceInfo``. 
-	/// - Returns: the cloned ``ConferenceInfo`` object.   
+	/// - Returns: the cloned ``ConferenceInfo`` object.    
 	public func clone() -> ConferenceInfo?
 	{
 		let cPointer = linphone_conference_info_clone(cPtr)
@@ -18741,8 +19342,8 @@ public class ConferenceInfo : LinphoneObject
 	
 	
 	/// Find a participant information in the conference information. 
-	/// - Parameter participant: The participant (``Address``) to search.   
-	/// - Returns: The participant information (``ParticipantInfo``).   
+	/// - Parameter participant: The participant (``Address``) to search.    
+	/// - Returns: The participant information (``ParticipantInfo``).    
 	public func findParticipant(participant:Address) -> ParticipantInfo?
 	{
 		let cPointer = linphone_conference_info_find_participant(cPtr, participant.cPtr)
@@ -18757,7 +19358,7 @@ public class ConferenceInfo : LinphoneObject
 	
 	/// Get the capability of the conference. 
 	/// The capability information represents the capability for the conference linked
-	/// to the #ConferenceInfo to handle a given stream type (audio, video or text). 
+	/// to the ``ConferenceInfo`` to handle a given stream type (audio, video or text). 
 	/// - Parameter streamType: A ``StreamType`` 
 	/// - Returns: the capability of the conference linked to conference information
 	/// ``ConferenceInfo`` 
@@ -18769,7 +19370,7 @@ public class ConferenceInfo : LinphoneObject
 	
 	
 	/// Remove a participant from the conference. 
-	/// - Parameter participant: The participant (``Address``) to remove.   
+	/// - Parameter participant: The participant (``Address``) to remove.    
 	public func removeParticipant(participant:Address) 
 	{
 		linphone_conference_info_remove_participant(cPtr, participant.cPtr)
@@ -18777,9 +19378,9 @@ public class ConferenceInfo : LinphoneObject
 	
 	
 	
-	/// Set the capability of the conference. 
+	/// Sets the capability of the conference. 
 	/// The capability information represents the capability for the conference linked
-	/// to the #ConferenceInfo to handle a given stream type (audio, video or text). 
+	/// to the ``ConferenceInfo`` to handle a given stream type (audio, video or text). 
 	/// - Parameter streamType: A ``StreamType`` 
 	/// - Parameter enable: the capability of the conference linked to conference
 	/// information ``ConferenceInfo`` 
@@ -18793,7 +19394,7 @@ public class ConferenceInfo : LinphoneObject
 	/// Update the participant information in the conference informations. 
 	/// - Parameter participantInfo: The participant information (``ParticipantInfo``)
 	/// to update. This method can be called to change attributes such as the role to
-	/// the organizer of the conference   
+	/// the organizer of the conference    
 	public func updateParticipant(participantInfo:ParticipantInfo) 
 	{
 		linphone_conference_info_update_participant(cPtr, participantInfo.cPtr)
@@ -18822,12 +19423,16 @@ public class ConferenceParams : LinphoneObject
 	}
 	
 	/// Sets the account for the conference. 
-	/// - Parameter account: a pointer to the account.   
-	/// - Warning: The account can only be changed upon creation of a conference when
-	/// calling linphone_core_create_conference_with_params 
+	/// - Parameter account: a pointer to the account.    
+	/// - Warning: This account is used to configure some conference parameter field,
+	/// therefore it is recommended to set it after selecting the capabilities. For
+	/// instance capabilities will be used when defaulting the factory address. If
+	/// audio or video one is enabled, then the default factory address will be the one
+	/// associated to audio video conferencing, otherwise it will be the chat one.
+	/// linphone_core_create_conference_with_params 
 	
 	/// Returns the account for the conference. 
-	/// - Returns: a pointer to the account or nil if it is not set.   
+	/// - Returns: a pointer to the account or nil if it is not set.    
 	public var account: Account?
 	{
 	
@@ -18884,7 +19489,7 @@ public class ConferenceParams : LinphoneObject
 		
 	
 	/// Get the chat parameters. 
-	/// - Returns: the chat parameters if chat capabilities are on, nil otherwise   
+	/// - Returns: the chat parameters if chat capabilities are on, nil otherwise    
 	public var chatParams: ChatParams?
 	{
 	
@@ -18901,10 +19506,10 @@ public class ConferenceParams : LinphoneObject
 	/// By default when creating a new conference, the factory address will come from
 	/// the current proxy configuration. If nil then the conference will be local else
 	/// it will be a client conference. 
-	/// - Parameter address: the conference factory address.   
+	/// - Parameter address: the conference factory address.    
 	
 	/// Get the conference factory address of the conference that has been set. 
-	/// - Returns: the factory address conference description.   
+	/// - Returns: the factory address conference description.    
 	public var conferenceFactoryAddress: Address?
 	{
 	
@@ -18924,10 +19529,10 @@ public class ConferenceParams : LinphoneObject
 	}
 		
 	/// Set the description of the conference (utf8) 
-	/// - Parameter description: the conference description.   
+	/// - Parameter description: the conference description.    
 	
 	/// Get conference description (utf8). 
-	/// - Returns: the conference description.   
+	/// - Returns: the conference description.    
 	public var descriptionUtf8: String?
 	{
 	
@@ -18950,11 +19555,11 @@ public class ConferenceParams : LinphoneObject
 	/// Enables or disables group chat for the text capabilities of the conference
 	/// associated with the given parameters. 
 	/// - Parameter group: true to enable group chat, false to disable (resulting in
-	/// one-to-one text capabilities of the conference) 
+	/// one-on-one text capabilities of the conference) 
 	
 	/// Get the group chat status of the text capabilities of the conference associated
 	/// with the given parameters. 
-	/// - Returns: true if group chat is enabled, false if one-to-one 
+	/// - Returns: true if group chat is enabled, false if one-on-one 
 	public var groupEnabled: Bool
 	{
 	
@@ -18985,7 +19590,7 @@ public class ConferenceParams : LinphoneObject
 	
 	/// Check whether audio capabilities are enabled. 
 	/// - Returns: true if the conference supports audio capabilities, false otherwise 
-	/// - deprecated: 16/12/2021 Use ``audioEnabled()`` instead. 
+	/// - Deprecated: 16/12/2021 Use ``audioEnabled()`` instead. 
 	@available(*, deprecated)
 	public var isAudioEnabled: Bool
 	{
@@ -18997,7 +19602,7 @@ public class ConferenceParams : LinphoneObject
 	
 	/// Check whether chat capabilities are enabled. 
 	/// - Returns: true if the conference supports chat capabilities, false otherwise 
-	/// - deprecated: 16/12/2021 Use ``chatEnabled()`` instead. 
+	/// - Deprecated: 16/12/2021 Use ``chatEnabled()`` instead. 
 	@available(*, deprecated)
 	public var isChatEnabled: Bool
 	{
@@ -19020,7 +19625,7 @@ public class ConferenceParams : LinphoneObject
 	/// Returns whether local participant has to enter the conference. 
 	/// - Returns: true if local participant is by default part of the conference,
 	/// false otherwise 
-	/// - deprecated: 16/12/2021 Use ``localParticipantEnabled()`` instead. 
+	/// - Deprecated: 16/12/2021 Use ``localParticipantEnabled()`` instead. 
 	@available(*, deprecated)
 	public var isLocalParticipantEnabled: Bool
 	{
@@ -19033,7 +19638,7 @@ public class ConferenceParams : LinphoneObject
 	/// Returns whether conference can have only one participant. 
 	/// - Returns: true if the conference can have only one participant, false
 	/// otherwise 
-	/// - deprecated: 16/12/2021 Use ``oneParticipantConferenceEnabled()`` instead. 
+	/// - Deprecated: 16/12/2021 Use ``oneParticipantConferenceEnabled()`` instead. 
 	@available(*, deprecated)
 	public var isOneParticipantConferenceEnabled: Bool
 	{
@@ -19055,7 +19660,7 @@ public class ConferenceParams : LinphoneObject
 	
 	/// Check whether video capabilities are enabled. 
 	/// - Returns: true if the conference supports video capabilities, false otherwise 
-	/// - deprecated: 16/12/2021 Use ``videoEnabled()`` instead. 
+	/// - Deprecated: 16/12/2021 Use ``videoEnabled()`` instead. 
 	@available(*, deprecated)
 	public var isVideoEnabled: Bool
 	{
@@ -19129,8 +19734,8 @@ public class ConferenceParams : LinphoneObject
 		
 	
 	/// Returns the proxy configuration for the conference. 
-	/// - Returns: a pointer to the proxy configuration or nil if it is not set.   
-	/// - deprecated: 11/01/2022 Use ``getAccount()`` instead. 
+	/// - Returns: a pointer to the proxy configuration or nil if it is not set.    
+	/// - Deprecated: 11/01/2022 Use ``getAccount()`` instead. 
 	@available(*, deprecated)
 	public var proxyCfg: ProxyConfig?
 	{
@@ -19163,10 +19768,10 @@ public class ConferenceParams : LinphoneObject
 	}
 		
 	/// Set the conference subject. 
-	/// - Parameter subject: conference subject   
+	/// - Parameter subject: conference subject    
 	
 	/// Get the conference subject. 
-	/// - Returns: conference subject.   
+	/// - Returns: conference subject.    
 	public var subject: String?
 	{
 	
@@ -19187,10 +19792,10 @@ public class ConferenceParams : LinphoneObject
 	}
 		
 	/// Set the conference subject as an UTF8 string. 
-	/// - Parameter subject: conference subject   
+	/// - Parameter subject: conference subject    
 	
 	/// Get the conference subject as an UTF-8 string. 
-	/// - Returns: conference subject.   
+	/// - Returns: conference subject.    
 	public var subjectUtf8: String?
 	{
 	
@@ -19232,7 +19837,7 @@ public class ConferenceParams : LinphoneObject
 	
 	/// Clone a ``ConferenceParams``. 
 	/// - Returns: An allocated ``ConferenceParams`` with the same parameters than
-	/// params   
+	/// params    
 	public func clone() -> ConferenceParams?
 	{
 		let cPointer = linphone_conference_params_clone(cPtr)
@@ -19319,12 +19924,12 @@ public class ConferenceScheduler : LinphoneObject
 	}	
 	/// Set the ``Account`` to use for the conference scheduler. 
 	/// - Parameter account: The ``Account`` to use, or nil if none has been selected.
-	/// The LinphoneConferenceScheduler keeps a reference to it and removes the
-	/// previous one, if any.   
+	/// The ``ConferenceScheduler`` keeps a reference to it and removes the previous
+	/// one, if any.    
 	
 	/// Get the ``Account`` that is used for the conference scheduler. 
 	/// - Returns: The selected ``Account`` for the call, or nil if none has been
-	/// selected.   
+	/// selected.    
 	public var account: Account?
 	{
 	
@@ -19345,7 +19950,7 @@ public class ConferenceScheduler : LinphoneObject
 		
 	
 	/// Gets the ``Core`` from a ``ConferenceScheduler`` object. 
-	/// - Returns: the ``Core`` object.   
+	/// - Returns: the ``Core`` object.    
 	public var core: Core?
 	{
 	
@@ -19359,12 +19964,12 @@ public class ConferenceScheduler : LinphoneObject
 	}
 		
 	
-	/// Gets the current LinphoneConferenceSchedulerCbs. 
+	/// Gets the current ``ConferenceSchedulerDelegate``. 
 	/// This is meant only to be called from a callback to be able to get the user_data
 	/// associated with the ``ConferenceSchedulerDelegate`` that is calling the
 	/// callback. 
 	/// - Returns: The ``ConferenceSchedulerDelegate`` that has called the last
-	/// callback.   
+	/// callback.    
 	public var currentDelegate: ConferenceSchedulerDelegate?
 	{
 	
@@ -19383,7 +19988,8 @@ public class ConferenceScheduler : LinphoneObject
 	/// creating/updating the client conference.    
 	
 	/// Returns the ``ConferenceInfo`` currently set in this scheduler. 
-	/// - Returns: the currently configured ``ConferenceInfo`` or nil if none is set.   
+	/// - Returns: the currently configured ``ConferenceInfo`` or nil if none is set.  
+	///  
 	public var info: ConferenceInfo?
 	{
 	
@@ -19406,7 +20012,7 @@ public class ConferenceScheduler : LinphoneObject
 	
 	/// Cancel the conference linked to the ``ConferenceInfo`` provided as argument. 
 	/// - Parameter conferenceInfo: the ``ConferenceInfo`` object to linked to the
-	/// conference to cancel.   
+	/// conference to cancel.    
 	public func cancelConference(conferenceInfo:ConferenceInfo?) 
 	{
 		linphone_conference_scheduler_cancel_conference(cPtr, conferenceInfo?.cPtr)
@@ -19417,8 +20023,8 @@ public class ConferenceScheduler : LinphoneObject
 	/// Sends an invitation to the scheduled conference to each participant by chat,
 	/// using given chat rooms params to use/create the chat room in which to send it. 
 	/// - Parameter chatRoomParams: the ``ChatRoomParams`` object to use to use/create
-	/// the ``ChatRoom`` that will be used to send the invite.   
-	/// - deprecated: 28/08/2024 Use ``sendInvitations(conferenceParams:)`` instead. 
+	/// the ``ChatRoom`` that will be used to send the invite.    
+	/// - Deprecated: 28/08/2024 Use ``sendInvitations(conferenceParams:)`` instead. 
 	@available(*, deprecated)
 	public func sendInvitations(chatRoomParams:ChatRoomParams) 
 	{
@@ -19430,7 +20036,7 @@ public class ConferenceScheduler : LinphoneObject
 	/// Sends an invitation to the scheduled conference to each participant by chat,
 	/// using given conference params to use/create the chat room in which to send it. 
 	/// - Parameter conferenceParams: the ``ConferenceParams`` object to use to
-	/// use/create the ``ChatRoom`` that will be used to send the invite.   
+	/// use/create the ``ChatRoom`` that will be used to send the invite.    
 	public func sendInvitations(conferenceParams:ConferenceParams) 
 	{
 		linphone_conference_scheduler_send_invitations_2(cPtr, conferenceParams.cPtr)
@@ -19440,6 +20046,9 @@ public class ConferenceScheduler : LinphoneObject
 
 /// This object is used to manipulate a configuration file. 
 /// The format of the configuration file is a .ini like format:
+/// -sections are defined in []
+/// -each section contains a sequence of key=value pairs
+/// -each line starting by a # is a comment
 /// Various types can be used: strings and lists of strings, integers, floats,
 /// booleans (written as 0 or 1) and range of integers.
 /// Usually a ``Core`` is initialized using two ``Config``, one default (where
@@ -19476,13 +20085,13 @@ public class Config : LinphoneObject
 	/// constructor owns a reference. linphone_config_unref must be called when this
 	/// object is no longer needed.
 	/// - Parameter appGroupId: used to compute the path of the config file in the file
-	/// system shared by the shared Cores   
+	/// system shared by the shared Cores    
 	/// - Parameter configFilename: the filename of the user config file to read to
 	/// fill the instantiated ``Config``    
 	/// - Parameter factoryConfigFilename: the filename of the factory config file to
-	/// read to fill the instantiated ``Config``   
+	/// read to fill the instantiated ``Config``    
 	/// - See also: linphone_config_new 
-	/// - Returns: a ``Config`` object  
+	/// - Returns: a ``Config`` object   
 	/// The user config file is read first to fill the ``Config`` and then the factory
 	/// config file is read. Therefore the configuration parameters defined in the user
 	/// config file will be overwritten by the parameters defined in the factory config
@@ -19504,10 +20113,10 @@ public class Config : LinphoneObject
 	/// The caller of this constructor owns a reference. linphone_config_unref must be
 	/// called when this object is no longer needed.
 	/// - Parameter buffer: the buffer from which the ``Config`` will be retrieved. We
-	/// expect the buffer to be null-terminated.   
+	/// expect the buffer to be null-terminated.    
 	/// - See also: ``newWithFactory(configFilename:factoryConfigFilename:)`` 
 	/// - See also: linphone_config_new 
-	/// - Returns: a ``Config`` object   
+	/// - Returns: a ``Config`` object    
 	static public func newFromBuffer(buffer:String) -> Config?
 	{
 		let cPointer = linphone_config_new_from_buffer(buffer)
@@ -19528,9 +20137,9 @@ public class Config : LinphoneObject
 	/// - Parameter configFilename: the filename of the user config file to read to
 	/// fill the instantiated ``Config``    
 	/// - Parameter factoryConfigFilename: the filename of the factory config file to
-	/// read to fill the instantiated ``Config``   
+	/// read to fill the instantiated ``Config``    
 	/// - See also: linphone_config_new 
-	/// - Returns: a ``Config`` object  
+	/// - Returns: a ``Config`` object   
 	/// The user config file is read first to fill the ``Config`` and then the factory
 	/// config file is read. Therefore the configuration parameters defined in the user
 	/// config file will be overwritten by the parameters defined in the factory config
@@ -19547,8 +20156,8 @@ public class Config : LinphoneObject
 	}
 	
 	
-	/// Indicates whether the LinphoneConfig object is readonly, in other words it has
-	/// no file backend or file is opened without write permission. 
+	/// Indicates whether the ``Config`` object is readonly, in other words it has no
+	/// file backend or file is opened without write permission. 
 	/// - Returns: a boolean. 
 	public var isReadonly: Bool
 	{
@@ -19558,8 +20167,8 @@ public class Config : LinphoneObject
 	}
 		
 	
-	/// Returns the list of sections' names in the LinphoneConfig. 
-	/// - Returns: A list of strings.    
+	/// Returns the list of sections' names in the ``Config``. 
+	/// - Returns: A list of strings.      
 	public var sectionsNamesList: [String]
 	{
 	
@@ -19578,8 +20187,8 @@ public class Config : LinphoneObject
 	
 	
 	/// Removes entries for key,value in a section. 
-	/// - Parameter section: the section for which to clean the key entry   
-	/// - Parameter key: the key to clean   
+	/// - Parameter section: the section for which to clean the key entry    
+	/// - Parameter key: the key to clean    
 	public func cleanEntry(section:String, key:String) 
 	{
 		linphone_config_clean_entry(cPtr, section, key)
@@ -19588,7 +20197,7 @@ public class Config : LinphoneObject
 	
 	
 	/// Removes every pair of key,value in a section and remove the section. 
-	/// - Parameter section: the section to clean   
+	/// - Parameter section: the section to clean    
 	public func cleanSection(section:String) 
 	{
 		linphone_config_clean_section(cPtr, section)
@@ -19596,8 +20205,19 @@ public class Config : LinphoneObject
 	
 	
 	
+	/// Removes a suite of sections whose name is derived from section argument,
+	/// suffixed with _0, _1, _2 etc. 
+	/// This is a common representation for configuration objects that can have
+	/// multiple instances. 
+	public func cleanSectionSuite(section:String) 
+	{
+		linphone_config_clean_section_suite(cPtr, section)
+	}
+	
+	
+	
 	/// Dumps the ``Config`` as INI into a buffer. 
-	/// - Returns: The buffer that contains the config dump     
+	/// - Returns: The buffer that contains the config dump       
 	public func dump() -> String
 	{
 		let cstr = linphone_config_dump(cPtr)
@@ -19611,7 +20231,7 @@ public class Config : LinphoneObject
 	
 	
 	/// Dumps the ``Config`` as XML into a buffer. 
-	/// - Returns: The buffer that contains the XML dump     
+	/// - Returns: The buffer that contains the XML dump       
 	public func dumpAsXml() -> String
 	{
 		let cstr = linphone_config_dump_as_xml(cPtr)
@@ -19627,8 +20247,8 @@ public class Config : LinphoneObject
 	/// Retrieves a configuration item as a boolean, given its section, key, and
 	/// default value. 
 	/// The default boolean value is returned if the config item isn't found. 
-	/// - Parameter section: The section from which to retrieve a configuration item   
-	/// - Parameter key: The name of the configuration item to retrieve   
+	/// - Parameter section: The section from which to retrieve a configuration item    
+	/// - Parameter key: The name of the configuration item to retrieve    
 	/// - Parameter defaultValue: The default value to return if not found 
 	/// - Returns: the found value or default_value if not found. 
 	public func getBool(section:String, key:String, defaultValue:Bool) -> Bool
@@ -19641,8 +20261,8 @@ public class Config : LinphoneObject
 	/// Retrieves a default configuration item as a float, given its section, key, and
 	/// default value. 
 	/// The default float value is returned if the config item isn't found. 
-	/// - Parameter section: The section from which to retrieve the default value   
-	/// - Parameter key: The name of the configuration item to retrieve   
+	/// - Parameter section: The section from which to retrieve the default value    
+	/// - Parameter key: The name of the configuration item to retrieve    
 	/// - Parameter defaultValue: The default value to return if not found 
 	/// - Returns: the found default value or default_value if not found. 
 	public func getDefaultFloat(section:String, key:String, defaultValue:Float) -> Float
@@ -19655,8 +20275,8 @@ public class Config : LinphoneObject
 	/// Retrieves a default configuration item as an integer, given its section, key,
 	/// and default value. 
 	/// The default integer value is returned if the config item isn't found. 
-	/// - Parameter section: The section from which to retrieve the default value   
-	/// - Parameter key: The name of the configuration item to retrieve   
+	/// - Parameter section: The section from which to retrieve the default value    
+	/// - Parameter key: The name of the configuration item to retrieve    
 	/// - Parameter defaultValue: The default value to return if not found 
 	/// - Returns: the found default value or default_value if not found. 
 	public func getDefaultInt(section:String, key:String, defaultValue:Int) -> Int
@@ -19669,8 +20289,8 @@ public class Config : LinphoneObject
 	/// Retrieves a default configuration item as a 64 bit integer, given its section,
 	/// key, and default value. 
 	/// The default integer value is returned if the config item isn't found. 
-	/// - Parameter section: The section from which to retrieve the default value   
-	/// - Parameter key: The name of the configuration item to retrieve   
+	/// - Parameter section: The section from which to retrieve the default value    
+	/// - Parameter key: The name of the configuration item to retrieve    
 	/// - Parameter defaultValue: The default value to return if not found 
 	/// - Returns: the found default value or default_value if not found. 
 	public func getDefaultInt64(section:String, key:String, defaultValue:Int64) -> Int64
@@ -19680,27 +20300,11 @@ public class Config : LinphoneObject
 	
 	
 	
-	/// Retrieves a default configuration item as a string, given its section, key, and
-	/// default value. 
-	/// The default value string is returned if the config item isn't found. 
-	/// - Parameter section: The section from which to retrieve the default value   
-	/// - Parameter key: The name of the configuration item to retrieve   
-	/// - Parameter defaultValue: The default value to return if not found 
-	/// - Returns: the found default value or default_value if not found. 
-	public func getDefaultString(section:String, key:String, defaultValue:String) -> String
-	{
-		let cstr = linphone_config_get_default_string(cPtr, section, key, defaultValue)
-		let result = charArrayToString(charPointer: cstr)
-		return result
-	}
-	
-	
-	
 	/// Retrieves a configuration item as a float, given its section, key, and default
 	/// value. 
 	/// The default float value is returned if the config item isn't found. 
-	/// - Parameter section: The section from which to retrieve a configuration item   
-	/// - Parameter key: The name of the configuration item to retrieve   
+	/// - Parameter section: The section from which to retrieve a configuration item    
+	/// - Parameter key: The name of the configuration item to retrieve    
 	/// - Parameter defaultValue: The default value to return if not found 
 	/// - Returns: the found value or default_value if not found. 
 	public func getFloat(section:String, key:String, defaultValue:Float) -> Float
@@ -19713,8 +20317,8 @@ public class Config : LinphoneObject
 	/// Retrieves a configuration item as an integer, given its section, key, and
 	/// default value. 
 	/// The default integer value is returned if the config item isn't found. 
-	/// - Parameter section: The section from which to retrieve a configuration item   
-	/// - Parameter key: The name of the configuration item to retrieve   
+	/// - Parameter section: The section from which to retrieve a configuration item    
+	/// - Parameter key: The name of the configuration item to retrieve    
 	/// - Parameter defaultValue: The default value to return if not found 
 	/// - Returns: the found value or default_value if not found. 
 	public func getInt(section:String, key:String, defaultValue:Int) -> Int
@@ -19727,8 +20331,8 @@ public class Config : LinphoneObject
 	/// Retrieves a configuration item as a 64 bit integer, given its section, key, and
 	/// default value. 
 	/// The default integer value is returned if the config item isn't found. 
-	/// - Parameter section: The section from which to retrieve a configuration item   
-	/// - Parameter key: The name of the configuration item to retrieve   
+	/// - Parameter section: The section from which to retrieve a configuration item    
+	/// - Parameter key: The name of the configuration item to retrieve    
 	/// - Parameter defaultValue: The default value to return if not found 
 	/// - Returns: the found value or default_value if not found. 
 	public func getInt64(section:String, key:String, defaultValue:Int64) -> Int64
@@ -19738,9 +20342,9 @@ public class Config : LinphoneObject
 	
 	
 	
-	/// Returns the list of keys' names for a section in the LinphoneConfig. 
-	/// - Parameter section: The section name   
-	/// - Returns: A list of strings.    
+	/// Returns the list of keys' names for a section in the ``Config``. 
+	/// - Parameter section: The section name    
+	/// - Returns: A list of strings.      
 	public func getKeysNamesList(section:String) -> [String]
 	{
 		var swiftList = [String]()
@@ -19757,9 +20361,9 @@ public class Config : LinphoneObject
 	
 	
 	/// Retrieves the overwrite flag for a config item. 
-	/// - Parameter section: The section from which to retrieve the overwrite flag   
+	/// - Parameter section: The section from which to retrieve the overwrite flag    
 	/// - Parameter key: The name of the configuration item to retrieve the overwrite
-	/// flag from.   
+	/// flag from.    
 	/// - Returns: true if overwrite flag is set, false otherwise. 
 	public func getOverwriteFlagForEntry(section:String, key:String) -> Bool
 	{
@@ -19769,7 +20373,7 @@ public class Config : LinphoneObject
 	
 	
 	/// Retrieves the overwrite flag for a config section. 
-	/// - Parameter section: The section from which to retrieve the overwrite flag   
+	/// - Parameter section: The section from which to retrieve the overwrite flag    
 	/// - Returns: true if overwrite flag is set, false otherwise. 
 	public func getOverwriteFlagForSection(section:String) -> Bool
 	{
@@ -19780,10 +20384,10 @@ public class Config : LinphoneObject
 	
 	/// Retrieves a configuration item as a range, given its section, key, and default
 	/// min and max values. 
-	/// - Parameter section: The section from which to retrieve a configuration item   
-	/// - Parameter key: The name of the configuration item to retrieve   
-	/// - Parameter min: The min value found or default_min   
-	/// - Parameter max: The max value found or default_max   
+	/// - Parameter section: The section from which to retrieve a configuration item    
+	/// - Parameter key: The name of the configuration item to retrieve    
+	/// - Parameter min: The min value found or default_min    
+	/// - Parameter max: The max value found or default_max    
 	/// - Parameter defaultMin: the default min value to return if not found 
 	/// - Parameter defaultMax: the default max value to return if not found. 
 	/// - Returns: true if the value is successfully parsed as a range, false
@@ -19796,23 +20400,8 @@ public class Config : LinphoneObject
 	
 	
 	
-	/// Retrieves a section parameter item as a string, given its section and key. 
-	/// The default value string is returned if the config item isn't found. 
-	/// - Parameter section: The section from which to retrieve the default value   
-	/// - Parameter key: The name of the configuration item to retrieve   
-	/// - Parameter defaultValue: The default value to return if not found.   
-	/// - Returns: the found default value or default_value if not found.   
-	public func getSectionParamString(section:String, key:String, defaultValue:String?) -> String
-	{
-		let cstr = linphone_config_get_section_param_string(cPtr, section, key, defaultValue)
-		let result = charArrayToString(charPointer: cstr)
-		return result
-	}
-	
-	
-	
 	/// Retrieves the skip flag for a config item. 
-	/// - Parameter section: The section from which to retrieve the skip flag   
+	/// - Parameter section: The section from which to retrieve the skip flag    
 	/// - Parameter key: The name of the configuration item to retrieve the skip flag
 	/// from 
 	/// - Returns: true if skip flag is set, false otherwise. 
@@ -19824,7 +20413,7 @@ public class Config : LinphoneObject
 	
 	
 	/// Retrieves the skip flag for a config section. 
-	/// - Parameter section: The section from which to retrieve the skip flag   
+	/// - Parameter section: The section from which to retrieve the skip flag    
 	/// - Returns: true if skip flag is set, false otherwise. 
 	public func getSkipFlagForSection(section:String) -> Bool
 	{
@@ -19833,29 +20422,13 @@ public class Config : LinphoneObject
 	
 	
 	
-	/// Retrieves a configuration item as a string, given its section, key, and default
-	/// value. 
-	/// The default value string is returned if the config item isn't found. 
-	/// - Parameter section: The section from which to retrieve a configuration item   
-	/// - Parameter key: The name of the configuration item to retrieve   
-	/// - Parameter defaultString: The default value to return if not found.   
-	/// - Returns: the found value or the default one if not found.   
-	public func getString(section:String, key:String, defaultString:String?) -> String
-	{
-		let cstr = linphone_config_get_string(cPtr, section, key, defaultString)
-		let result = charArrayToString(charPointer: cstr)
-		return result
-	}
-	
-	
-	
 	/// Retrieves a configuration item as a list of strings, given its section, key,
 	/// and default value. 
 	/// The default value is returned if the config item is not found. 
-	/// - Parameter section: The section from which to retrieve a configuration item   
-	/// - Parameter key: The name of the configuration item to retrieve   
-	/// - Parameter defaultList: The list to return when the key doesn't exist.    
-	/// - Returns: A list of strings.    
+	/// - Parameter section: The section from which to retrieve a configuration item    
+	/// - Parameter key: The name of the configuration item to retrieve    
+	/// - Parameter defaultList: The list to return when the key doesn't exist.      
+	/// - Returns: A list of strings.      
 	public func getStringList(section:String, key:String, defaultList:[String]?) -> [String]
 	{
 		var swiftList = [String]()
@@ -19872,8 +20445,8 @@ public class Config : LinphoneObject
 	
 	
 	/// Returns if a given section with a given key is present in the configuration. 
-	/// - Parameter section: to check if the given entry exists   
-	/// - Parameter key: to check if it exists   
+	/// - Parameter section: to check if the given entry exists    
+	/// - Parameter key: to check if it exists    
 	/// - Returns: 1 if it exists, 0 otherwise 
 	public func hasEntry(section:String, key:String) -> Int
 	{
@@ -19883,7 +20456,7 @@ public class Config : LinphoneObject
 	
 	
 	/// Returns if a given section is present in the configuration. 
-	/// - Parameter section: the section to check if exists   
+	/// - Parameter section: the section to check if exists    
 	/// - Returns: 1 if it exists, 0 otherwise 
 	public func hasSection(section:String) -> Int
 	{
@@ -19895,7 +20468,7 @@ public class Config : LinphoneObject
 	/// Reads a xml config file and fill the ``Config`` with the read config dynamic
 	/// values. 
 	/// - Parameter filename: The filename of the config file to read to fill the
-	/// ``Config``   
+	/// ``Config``    
 	public func loadFromXmlFile(filename:String) -> String
 	{
 		let cstr = linphone_config_load_from_xml_file(cPtr, filename)
@@ -19907,7 +20480,7 @@ public class Config : LinphoneObject
 	
 	/// Reads a xml config string and fill the ``Config`` with the read config dynamic
 	/// values. 
-	/// - Parameter buffer: The string of the config file to fill the ``Config``   
+	/// - Parameter buffer: The string of the config file to fill the ``Config``    
 	/// - Returns: 0 in case of success 
 	public func loadFromXmlString(buffer:String) throws 
 	{
@@ -19921,7 +20494,7 @@ public class Config : LinphoneObject
 	
 	/// Reads a user config file and fill the ``Config`` with the read config values. 
 	/// - Parameter filename: The filename of the config file to read to fill the
-	/// ``Config``   
+	/// ``Config``    
 	public func readFile(filename:String) throws 
 	{
 		let exception_result = linphone_config_read_file(cPtr, filename)
@@ -19933,7 +20506,7 @@ public class Config : LinphoneObject
 	
 	
 	/// Check if given file name exists relatively to the current location. 
-	/// - Parameter filename: The file name to check if exists   
+	/// - Parameter filename: The file name to check if exists    
 	/// - Returns: true if file exists relative to the to the current location 
 	public func relativeFileExists(filename:String) -> Bool
 	{
@@ -19951,8 +20524,8 @@ public class Config : LinphoneObject
 	
 	
 	/// Sets a boolean config item. 
-	/// - Parameter section: The section from which to retrieve a configuration item   
-	/// - Parameter key: The name of the configuration item to retrieve   
+	/// - Parameter section: The section from which to retrieve a configuration item    
+	/// - Parameter key: The name of the configuration item to retrieve    
 	/// - Parameter value: the value to set 
 	public func setBool(section:String, key:String, value:Bool) 
 	{
@@ -19962,8 +20535,8 @@ public class Config : LinphoneObject
 	
 	
 	/// Sets a float config item. 
-	/// - Parameter section: The section from which to retrieve a configuration item   
-	/// - Parameter key: The name of the configuration item to retrieve   
+	/// - Parameter section: The section from which to retrieve a configuration item    
+	/// - Parameter key: The name of the configuration item to retrieve    
 	/// - Parameter value: the value to set 
 	public func setFloat(section:String, key:String, value:Float) 
 	{
@@ -19973,8 +20546,8 @@ public class Config : LinphoneObject
 	
 	
 	/// Sets an integer config item. 
-	/// - Parameter section: The section from which to retrieve a configuration item   
-	/// - Parameter key: The name of the configuration item to retrieve   
+	/// - Parameter section: The section from which to retrieve a configuration item    
+	/// - Parameter key: The name of the configuration item to retrieve    
 	/// - Parameter value: the value to set 
 	public func setInt(section:String, key:String, value:Int) 
 	{
@@ -19984,8 +20557,8 @@ public class Config : LinphoneObject
 	
 	
 	/// Sets a 64 bits integer config item. 
-	/// - Parameter section: The section from which to retrieve a configuration item   
-	/// - Parameter key: The name of the configuration item to retrieve   
+	/// - Parameter section: The section from which to retrieve a configuration item    
+	/// - Parameter key: The name of the configuration item to retrieve    
 	/// - Parameter value: the value to set 
 	public func setInt64(section:String, key:String, value:Int64) 
 	{
@@ -19995,8 +20568,8 @@ public class Config : LinphoneObject
 	
 	
 	/// Sets an integer config item, but store it as hexadecimal. 
-	/// - Parameter section: The section from which to retrieve a configuration item   
-	/// - Parameter key: The name of the configuration item to retrieve   
+	/// - Parameter section: The section from which to retrieve a configuration item    
+	/// - Parameter key: The name of the configuration item to retrieve    
 	/// - Parameter value: the value to set 
 	public func setIntHex(section:String, key:String, value:Int) 
 	{
@@ -20006,9 +20579,9 @@ public class Config : LinphoneObject
 	
 	
 	/// Sets the overwrite flag for a config item (used when dumping config as xml) 
-	/// - Parameter section: The section from which to set the overwrite flag   
+	/// - Parameter section: The section from which to set the overwrite flag    
 	/// - Parameter key: The name of the configuration item to set the overwrite flag
-	/// from   
+	/// from    
 	/// - Parameter value: The overwrite flag value to set 
 	public func setOverwriteFlagForEntry(section:String, key:String, value:Bool) 
 	{
@@ -20018,7 +20591,7 @@ public class Config : LinphoneObject
 	
 	
 	/// Sets the overwrite flag for a config section (used when dumping config as xml) 
-	/// - Parameter section: The section from which to set the overwrite flag   
+	/// - Parameter section: The section from which to set the overwrite flag    
 	/// - Parameter value: The overwrite flag value to set 
 	public func setOverwriteFlagForSection(section:String, value:Bool) 
 	{
@@ -20028,8 +20601,8 @@ public class Config : LinphoneObject
 	
 	
 	/// Sets a range config item. 
-	/// - Parameter section: The section from which to retrieve a configuration item   
-	/// - Parameter key: The name of the configuration item to retrieve   
+	/// - Parameter section: The section from which to retrieve a configuration item    
+	/// - Parameter key: The name of the configuration item to retrieve    
 	/// - Parameter minValue: the min value to set 
 	/// - Parameter maxValue: the max value to set 
 	public func setRange(section:String, key:String, minValue:Int, maxValue:Int) 
@@ -20040,8 +20613,9 @@ public class Config : LinphoneObject
 	
 	
 	/// Sets the skip flag for a config item (used when dumping config as xml) 
-	/// - Parameter section: The section from which to set the skip flag   
-	/// - Parameter key: The name of the configuration item to set the skip flag from   
+	/// - Parameter section: The section from which to set the skip flag    
+	/// - Parameter key: The name of the configuration item to set the skip flag from  
+	///  
 	/// - Parameter value: The skip flag value to set 
 	public func setSkipFlagForEntry(section:String, key:String, value:Bool) 
 	{
@@ -20051,7 +20625,7 @@ public class Config : LinphoneObject
 	
 	
 	/// Sets the skip flag for a config section (used when dumping config as xml) 
-	/// - Parameter section: The section from which to set the skip flag   
+	/// - Parameter section: The section from which to set the skip flag    
 	/// - Parameter value: The skip flag value to set 
 	public func setSkipFlagForSection(section:String, value:Bool) 
 	{
@@ -20061,9 +20635,9 @@ public class Config : LinphoneObject
 	
 	
 	/// Sets a string config item. 
-	/// - Parameter section: The section from which to retrieve a configuration item   
-	/// - Parameter key: The name of the configuration item to retrieve   
-	/// - Parameter value: The value to set   
+	/// - Parameter section: The section from which to retrieve a configuration item    
+	/// - Parameter key: The name of the configuration item to retrieve    
+	/// - Parameter value: The value to set    
 	public func setString(section:String, key:String, value:String?) 
 	{
 		linphone_config_set_string(cPtr, section, key, value)
@@ -20073,9 +20647,9 @@ public class Config : LinphoneObject
 	
 	/// Sets a string list config item. 
 	/// - Parameter section: The name of the section to put the configuration item into
-	///   
-	/// - Parameter key: The name of the configuration item to set   
-	/// - Parameter value: The value to set.    
+	///    
+	/// - Parameter key: The name of the configuration item to set    
+	/// - Parameter value: The value to set.      
 	public func setStringList(section:String, key:String, value:[String]?) 
 	{
 		linphone_config_set_string_list(cPtr, section, key, StringArrayToBctbxList(list:value))
@@ -20098,8 +20672,8 @@ public class Config : LinphoneObject
 	/// Write a string in a file placed relatively with the Linphone configuration
 	/// file. 
 	/// - Parameter filename: Name of the file where to write data. The name is
-	/// relative to the place of the config file   
-	/// - Parameter data: String to write   
+	/// relative to the place of the config file    
+	/// - Parameter data: String to write    
 	public func writeRelativeFile(filename:String, data:String) 
 	{
 		linphone_config_write_relative_file(cPtr, filename, data)
@@ -20132,7 +20706,7 @@ public class Content : LinphoneObject
 	
 	
 	/// Get the content data buffer, usually a string. 
-	/// - Returns: The content data buffer.   
+	/// - Returns: The content data buffer.    
 	public var buffer: UnsafePointer<UInt8>
 	{
 	
@@ -20153,10 +20727,10 @@ public class Content : LinphoneObject
 	}
 		
 	/// Set the disposition of the Content, for example "recipient-list". 
-	/// - Parameter disposition: The disposition of the Content.   
+	/// - Parameter disposition: The disposition of the Content.    
 	
 	/// Get the disposition of the Content, for example "recipient-list". 
-	/// - Returns: The disposition of the Content.   
+	/// - Returns: The disposition of the Content.    
 	public var disposition: String?
 	{
 	
@@ -20177,10 +20751,10 @@ public class Content : LinphoneObject
 	}
 		
 	/// Set the encoding of the data buffer, for example "gzip". 
-	/// - Parameter encoding: The encoding of the data buffer.   
+	/// - Parameter encoding: The encoding of the data buffer.    
 	
 	/// Get the encoding of the data buffer, for example "gzip". 
-	/// - Returns: The encoding of the data buffer.   
+	/// - Returns: The encoding of the data buffer.    
 	public var encoding: String?
 	{
 	
@@ -20200,6 +20774,8 @@ public class Content : LinphoneObject
 		}
 	}
 		
+	/// Sets the file duration in seconds (useful for media files for example). 
+	/// - Parameter duration: the duration of the file, in milliseconds. 
 	
 	/// Gets the file duration in seconds, if information is available. 
 	/// - Returns: The duration of the file in milliseconds or -1 if information isn't
@@ -20207,18 +20783,24 @@ public class Content : LinphoneObject
 	public var fileDuration: Int
 	{
 	
+		get
+		{ 
 						return Int(linphone_content_get_file_duration(cPtr))
-
+		}
+		set
+		{
+			linphone_content_set_file_duration(cPtr, CInt(newValue))
+		}
 	}
 		
 	/// Set the file transfer filepath for this content (replace
 	/// linphone_chat_message_set_file_transfer_filepath). 
-	/// - Parameter filePath: the file transfer filepath.   
+	/// - Parameter filePath: the file transfer filepath.    
 	
 	/// Get the file transfer filepath set for this content (replace
 	/// linphone_chat_message_get_file_transfer_filepath). 
 	/// - Returns: The file path set for this content if it has been set, nil
-	/// otherwise.   
+	/// otherwise.    
 	public var filePath: String?
 	{
 	
@@ -20325,7 +20907,7 @@ public class Content : LinphoneObject
 		
 	
 	/// Get the key associated with a RCS file transfer message if encrypted. 
-	/// - Returns: The key to encrypt/decrypt the file associated to this content.   
+	/// - Returns: The key to encrypt/decrypt the file associated to this content.    
 	public var key: String?
 	{
 	
@@ -20352,12 +20934,12 @@ public class Content : LinphoneObject
 	/// Set the name associated with a RCS file transfer message. 
 	/// It is used to store the original filename of the file to be downloaded from
 	/// server. 
-	/// - Parameter name: The name of the content.   
+	/// - Parameter name: The name of the content.    
 	
 	/// Get the name associated with a RCS file transfer message. 
 	/// It is used to store the original filename of the file to be downloaded from
 	/// server. 
-	/// - Returns: The name of the content.   
+	/// - Returns: The name of the content.    
 	public var name: String?
 	{
 	
@@ -20379,7 +20961,7 @@ public class Content : LinphoneObject
 		
 	
 	/// Get all the parts from a multipart content. 
-	/// - Returns: A  object holding the part if found, nil otherwise.     
+	/// - Returns: A   object holding the part if found, nil otherwise.       
 	public var parts: [Content]
 	{
 	
@@ -20400,8 +20982,8 @@ public class Content : LinphoneObject
 	/// Generates a temporary plain copy of the file and returns its paths The caller
 	/// is responsible to then delete this temporary copy and the returned string. 
 	/// - Returns: The file path set for this content if it has been set, nil
-	/// otherwise.   
-	/// - deprecated: 2022-01-07. Use ``exportPlainFile()`` instead. 
+	/// otherwise.    
+	/// - Deprecated: 2022-01-07. Use ``exportPlainFile()`` instead. 
 	@available(*, deprecated)
 	public var plainFilePath: String
 	{
@@ -20419,7 +21001,7 @@ public class Content : LinphoneObject
 	
 	/// Returns the chat message id for which this content is related to, if any. 
 	/// - Returns: The chat message ID if this content is related to a chat message,
-	/// nil otherwise.   
+	/// nil otherwise.    
 	public var relatedChatMessageId: String?
 	{
 	
@@ -20454,12 +21036,12 @@ public class Content : LinphoneObject
 	}
 		
 	/// Set the string content data buffer. 
-	/// - Parameter buffer: The string content data buffer in UTF8.   
-	/// - deprecated: 2020-07-01. Use ``setUtf8Text(buffer:)`` instead. 
+	/// - Parameter buffer: The string content data buffer in UTF8.    
+	/// - Deprecated: 2020-07-01. Use ``setUtf8Text(buffer:)`` instead. 
 	
 	/// Get the string content data buffer. 
-	/// - Returns: The string content data buffer.   
-	/// - deprecated: 2020-07-01. Use ``getUtf8Text()`` instead. 
+	/// - Returns: The string content data buffer.    
+	/// - Deprecated: 2020-07-01. Use ``getUtf8Text()`` instead. 
 	public var stringBuffer: String
 	{
 	@available(*, deprecated)
@@ -20479,10 +21061,10 @@ public class Content : LinphoneObject
 		
 	/// Set the mime subtype of the content data. 
 	/// - Parameter subtype: The mime subtype of the content data, for example "html". 
-	///  
+	///   
 	
 	/// Get the mime subtype of the content data. 
-	/// - Returns: The mime subtype of the content data, for example "html".   
+	/// - Returns: The mime subtype of the content data, for example "html".    
 	public var subtype: String
 	{
 	
@@ -20501,10 +21083,10 @@ public class Content : LinphoneObject
 		
 	/// Set the mime type of the content data. 
 	/// - Parameter type: The mime type of the content data, for example "application".
-	///   
+	///    
 	
 	/// Get the mime type of the content data. 
-	/// - Returns: The mime type of the content data, for example "application".   
+	/// - Returns: The mime type of the content data, for example "application".    
 	public var type: String
 	{
 	
@@ -20522,10 +21104,10 @@ public class Content : LinphoneObject
 	}
 		
 	/// Assign a user pointer to the content. 
-	/// - Parameter userData: The user pointer to associate with the content.   
+	/// - Parameter userData: The user pointer to associate with the content.    
 	
 	/// Retrieve the user pointer associated with the content. 
-	/// - Returns: The user pointer associated with the content.   
+	/// - Returns: The user pointer associated with the content.    
 	public var userData: UnsafeMutableRawPointer?
 	{
 	
@@ -20541,11 +21123,11 @@ public class Content : LinphoneObject
 		
 	/// Get the string content data buffer. 
 	/// Introduced in 01/07/2020 
-	/// - Parameter buffer: The string content data buffer in UTF8.   
+	/// - Parameter buffer: The string content data buffer in UTF8.    
 	
 	/// Get the string content data buffer. 
 	/// Introduced in 01/07/2020 
-	/// - Returns: The string content data buffer in UTF8.   
+	/// - Returns: The string content data buffer in UTF8.    
 	public var utf8Text: String?
 	{
 	
@@ -20568,8 +21150,8 @@ public class Content : LinphoneObject
 	
 	
 	/// Adds a parameter to the ContentType header. 
-	/// - Parameter name: the name of the parameter to add.   
-	/// - Parameter value: the value of the parameter to add.   
+	/// - Parameter name: the name of the parameter to add.    
+	/// - Parameter value: the value of the parameter to add.    
 	public func addContentTypeParameter(name:String, value:String?) 
 	{
 		linphone_content_add_content_type_parameter(cPtr, name, value)
@@ -20578,8 +21160,8 @@ public class Content : LinphoneObject
 	
 	
 	/// Adds a custom header in a content. 
-	/// - Parameter headerName: The name of the header to add.   
-	/// - Parameter headerValue: The value of the header to add.   
+	/// - Parameter headerName: The name of the header to add.    
+	/// - Parameter headerValue: The value of the header to add.    
 	public func addCustomHeader(headerName:String, headerValue:String) 
 	{
 		linphone_content_add_custom_header(cPtr, headerName, headerValue)
@@ -20590,7 +21172,7 @@ public class Content : LinphoneObject
 	/// Generates a temporary plain copy of the file and returns its paths The caller
 	/// is responsible to then delete this temporary copy and the returned string. 
 	/// - Returns: The file path set for this content if it has been set, nil
-	/// otherwise.   
+	/// otherwise.    
 	public func exportPlainFile() -> String
 	{
 		let cstr = linphone_content_export_plain_file(cPtr)
@@ -20605,9 +21187,9 @@ public class Content : LinphoneObject
 	
 	/// Find a part from a multipart content looking for a part header with a specified
 	/// value. 
-	/// - Parameter headerName: The name of the header to look for.   
-	/// - Parameter headerValue: The value of the header to look for.   
-	/// - Returns: A ``Content`` object object the part if found, nil otherwise.   
+	/// - Parameter headerName: The name of the header to look for.    
+	/// - Parameter headerValue: The value of the header to look for.    
+	/// - Returns: A ``Content`` object object the part if found, nil otherwise.    
 	public func findPartByHeader(headerName:String, headerValue:String) -> Content?
 	{
 		let cPointer = linphone_content_find_part_by_header(cPtr, headerName, headerValue)
@@ -20621,8 +21203,8 @@ public class Content : LinphoneObject
 	
 	
 	/// Get a custom header value of a content. 
-	/// - Parameter headerName: The name of the header to get the value from.   
-	/// - Returns: The value of the header if found, nil otherwise.   
+	/// - Parameter headerName: The name of the header to get the value from.    
+	/// - Returns: The value of the header if found, nil otherwise.    
 	public func getCustomHeader(headerName:String) -> String
 	{
 		let cstr = linphone_content_get_custom_header(cPtr, headerName)
@@ -20634,7 +21216,7 @@ public class Content : LinphoneObject
 	
 	/// Get a part from a multipart content according to its index. 
 	/// - Parameter index: The index of the part to get. 
-	/// - Returns: A ``Content`` object holding the part if found, nil otherwise.   
+	/// - Returns: A ``Content`` object holding the part if found, nil otherwise.    
 	public func getPart(index:Int) -> Content?
 	{
 		let cPointer = linphone_content_get_part(cPtr, CInt(index))
@@ -20648,7 +21230,7 @@ public class Content : LinphoneObject
 	
 	
 	/// Set the content data buffer, usually a string. 
-	/// - Parameter buffer: The content data buffer.   
+	/// - Parameter buffer: The content data buffer.    
 	/// - Parameter size: The size of the content data buffer. 
 	public func setBuffer(buffer:UnsafePointer<UInt8>, size:Int) 
 	{
@@ -20659,7 +21241,7 @@ public class Content : LinphoneObject
 	
 	/// Set the key associated with a RCS file transfer message if encrypted. 
 	/// - Parameter key: The key to be used to encrypt/decrypt file associated to this
-	/// content.   
+	/// content.    
 	/// - Parameter keyLength: The lengh of the key. 
 	public func setKey(key:String, keyLength:Int) 
 	{
@@ -20817,7 +21399,7 @@ public class Core : LinphoneObject
 	
 	
 	/// Compresses the log collection in a single file. 
-	/// - Returns: The path of the compressed log collection file.     
+	/// - Returns: The path of the compressed log collection file.       
 	static public func compressLogCollection() -> String
 	{
 		let cstr = linphone_core_compress_log_collection()
@@ -20840,7 +21422,7 @@ public class Core : LinphoneObject
 	
 	
 	/// Gets the max file size in bytes of the files used for log collection. 
-	/// - Returns: The max file size in bytes of the files used for log collection.   
+	/// - Returns: The max file size in bytes of the files used for log collection.    
 	static public var getLogCollectionMaxFileSize: Int
 	{
 	
@@ -20850,7 +21432,7 @@ public class Core : LinphoneObject
 		
 	
 	/// Gets the path where the log files will be written for log collection. 
-	/// - Returns: The path where the log files will be written.   
+	/// - Returns: The path where the log files will be written.    
 	static public var getLogCollectionPath: String
 	{
 	
@@ -20863,7 +21445,7 @@ public class Core : LinphoneObject
 		
 	
 	/// Gets the prefix of the filenames that will be used for log collection. 
-	/// - Returns: The prefix of the filenames used for log collection.   
+	/// - Returns: The prefix of the filenames used for log collection.    
 	static public var getLogCollectionPrefix: String
 	{
 	
@@ -20886,7 +21468,7 @@ public class Core : LinphoneObject
 		
 	
 	/// Returns liblinphone's version as a string. 
-	/// - Returns: the current version of the ``Core``   
+	/// - Returns: the current version of the ``Core``    
 	static public var getVersion: String
 	{
 	
@@ -20946,7 +21528,7 @@ public class Core : LinphoneObject
 	/// prefix in the new path. If you need to change the path and the file at the same
 	/// time, then you should deactivate log collection with
 	/// ``enableLogCollection(state:)`` before doing modifications. 
-	/// - Parameter path: The path where the log files will be written.   
+	/// - Parameter path: The path where the log files will be written.    
 	static public func setLogCollectionPath(path:String) 
 	{
 		linphone_core_set_log_collection_path(path)
@@ -20959,7 +21541,7 @@ public class Core : LinphoneObject
 	/// will open the new one in the current path. If you need to change the path and
 	/// the file at the same time, then you should deactivate log collection with
 	/// ``enableLogCollection(state:)`` before doing modifications. 
-	/// - Parameter prefix: The prefix to use for the filenames for log collection.   
+	/// - Parameter prefix: The prefix to use for the filenames for log collection.    
 	static public func setLogCollectionPrefix(prefix:String) 
 	{
 		linphone_core_set_log_collection_prefix(prefix)
@@ -21012,10 +21594,10 @@ public class Core : LinphoneObject
 	}
 		
 	/// Sets the ``AccountCreator`` url on the ``Core``. 
-	/// - Parameter url: The URL to reach   
+	/// - Parameter url: The URL to reach    
 	
 	/// Gets the ``AccountCreator`` url on the ``Core``. 
-	/// - Returns: url The URL to reach.   
+	/// - Returns: url The URL to reach.    
 	public var accountCreatorUrl: String?
 	{
 	
@@ -21037,7 +21619,7 @@ public class Core : LinphoneObject
 		
 	
 	/// Returns an unmodifiable list of entered accounts. 
-	/// - Returns:     
+	/// - Returns:      
 	public var accountList: [Account]
 	{
 	
@@ -21057,12 +21639,12 @@ public class Core : LinphoneObject
 	/// It will be used for each new calls starting from now. Calls already started
 	/// will not be updated. 
 	/// - Parameter algorithm: the adaptive rate control algorithm. Currently two
-	/// values are supported: 'advanced', which is the default value, or 'basic'.   
+	/// values are supported: 'advanced', which is the default value, or 'basic'.    
 	
 	/// Returns which adaptive rate algorithm is currently configured for future calls. 
 	/// - See also: ``setAdaptiveRateAlgorithm(algorithm:)`` 
 	/// - Returns: the adaptive rate algorithm. Currently two values are supported:
-	/// 'advanced', which is the default value, or 'basic'.   
+	/// 'advanced', which is the default value, or 'basic'.    
 	public var adaptiveRateAlgorithm: String
 	{
 	
@@ -21170,7 +21752,7 @@ public class Core : LinphoneObject
 	
 	/// Returns a list of audio devices, with only the first device for each type To
 	/// have the list of all audio devices, use ``getExtendedAudioDevices()`` 
-	/// - Returns:   A list with the first ``AudioDevice`` of each type      
+	/// - Returns:   A list with the first ``AudioDevice`` of each type       
 	public var audioDevices: [AudioDevice]
 	{
 	
@@ -21232,11 +21814,11 @@ public class Core : LinphoneObject
 	}
 		
 	/// Use to set multicast address to be used for audio stream. 
-	/// - Parameter ip: an ipv4/6 multicast address.   
+	/// - Parameter ip: an ipv4/6 multicast address.    
 	/// - Returns: 0 in case of success 
 	
 	/// Use to get multicast address to be used for audio stream. 
-	/// - Returns: an ipv4/6 multicast address or default value.   
+	/// - Returns: an ipv4/6 multicast address or default value.    
 	public var audioMulticastAddr: String?
 	{
 	
@@ -21249,7 +21831,7 @@ public class Core : LinphoneObject
 			return result
 
 	}
-	public func setAudiomulticastaddr(newValue: String) throws
+	public func setAudiomulticastaddr(newValue: String?) throws
 	{
 		let exception_result = linphone_core_set_audio_multicast_addr(cPtr, newValue)
 		guard exception_result == 0 else {
@@ -21301,11 +21883,20 @@ public class Core : LinphoneObject
 		}
 	}
 		
-	/// Redefines the list of the available payload types (codecs). 
-	/// - Parameter payloadTypes: The new list of payload types.    
+	/// Redefines the list of the available payload types (codecs), in their order of
+	/// preference. 
+	/// The payload type are listed from higher priority to lowest priority. It is
+	/// worth to note that the set of ``PayloadType`` objects assigned here need to be
+	/// the same as the one returned by ``getAudioPayloadTypes()``. The purpose of the
+	/// setter is to let application modify their order of preference. In particular,
+	/// including in the provided list a payload type not supported has no effect.
+	/// Removing specific payload types from the original list has no effect too:
+	/// missing payload types will be automatically added. In order to disable a
+	/// specific codec, applications shall use ``PayloadType/enable(enabled:)`` instead.
+	/// - Parameter payloadTypes: The new list of payload types.      
 	
 	/// Returns the list of the available audio payload types. 
-	/// - Returns: A freshly allocated list of the available payload types.       
+	/// - Returns: A freshly allocated list of the available payload types.         
 	public var audioPayloadTypes: [PayloadType]
 	{
 	
@@ -21357,7 +21948,7 @@ public class Core : LinphoneObject
 	
 	/// Get the audio port range from which is randomly chosen the UDP port used for
 	/// audio streaming. 
-	/// - Returns: a ``Range`` object     
+	/// - Returns: a ``Range`` object       
 	public var audioPortsRange: Range?
 	{
 	
@@ -21373,7 +21964,7 @@ public class Core : LinphoneObject
 		
 	
 	/// Returns an unmodifiable list of currently entered ``AuthInfo``. 
-	/// - Returns: A list of ``AuthInfo``.    
+	/// - Returns: A list of ``AuthInfo``.      
 	public var authInfoList: [AuthInfo]
 	{
 	
@@ -21602,7 +22193,7 @@ public class Core : LinphoneObject
 		
 	
 	/// Get the list of call logs (past calls). 
-	/// - Returns: A list of ``CallLog``.    
+	/// - Returns: A list of ``CallLog``.      
 	public var callLogs: [CallLog]
 	{
 	
@@ -21620,12 +22211,12 @@ public class Core : LinphoneObject
 		
 	/// Sets the database filename where call logs will be stored. 
 	/// If the file does not exist, it will be created.
-	/// - Parameter path: filesystem path   
-	/// - deprecated: 07/12/2021: Use only for migration purposes 
+	/// - Parameter path: filesystem path    
+	/// - Deprecated: 07/12/2021: Use only for migration purposes 
 	
 	/// Gets the database filename where call logs will be stored. 
-	/// - Returns: filesystem path.   
-	/// - deprecated: 07/12/2021: Use only for migration purposes 
+	/// - Returns: filesystem path.    
+	/// - Deprecated: 07/12/2021: Use only for migration purposes 
 	public var callLogsDatabasePath: String?
 	{
 	@available(*, deprecated)
@@ -21643,6 +22234,34 @@ public class Core : LinphoneObject
 		set
 		{
 			linphone_core_set_call_logs_database_path(cPtr, newValue)
+		}
+	}
+		
+	/// Sets a wav file to be played when putting somebody on hold (see
+	/// ``setUseFiles(yesno:)``). 
+	/// The file must be a 16 bit linear wav file. 
+	/// - Parameter file: The path to the file to be played when putting somebody on
+	/// hold.    
+	
+	/// Get the wav file played when putting a call on hold with ``Call/pause()`` 
+	/// The file is a 16 bit linear file. 
+	/// - Returns: The path to the file that is played when putting a call on hold.    
+	public var callOnHoldMusicFile: String?
+	{
+	
+		get
+		{ 
+			
+			let cPointer = linphone_core_get_call_on_hold_music_file(cPtr)
+			if (cPointer == nil) {
+				return nil
+			}
+			let result = charArrayToString(charPointer: cPointer)
+			return result
+		}
+		set
+		{
+			linphone_core_set_call_on_hold_music_file(cPtr, newValue)
 		}
 	}
 		
@@ -21690,7 +22309,7 @@ public class Core : LinphoneObject
 	/// function call to ``iterate()``. Similarly the ``Call`` objects inside it might
 	/// be destroyed without prior notice. To hold references to ``Call`` object into
 	/// your program, you must use linphone_call_ref. 
-	/// - Returns: A list of ``Call``    
+	/// - Returns: A list of ``Call``      
 	public var calls: [Call]
 	{
 	
@@ -21787,14 +22406,14 @@ public class Core : LinphoneObject
 		
 	/// Sets the sound device used for capture. 
 	/// - Parameter devid: The device name as returned by
-	/// linphone_core_get_sound_devices   
+	/// linphone_core_get_sound_devices    
 	/// - Returns: 0 
-	/// - deprecated: 11/09/2024 use ``setInputAudioDevice(audioDevice:)`` or
+	/// - Deprecated: 11/09/2024 use ``setInputAudioDevice(audioDevice:)`` or
 	/// ``setDefaultInputAudioDevice(audioDevice:)`` instead.
 	
 	/// Gets the name of the currently assigned sound device for capture. 
-	/// - Returns: The name of the currently assigned sound device for capture.   
-	/// - deprecated: 11/09/2024 use ``getInputAudioDevice()`` or
+	/// - Returns: The name of the currently assigned sound device for capture.    
+	/// - Deprecated: 11/09/2024 use ``getInputAudioDevice()`` or
 	/// ``getDefaultInputAudioDevice()`` instead.
 	@available(*, deprecated)
 	public var captureDevice: String?
@@ -21810,7 +22429,7 @@ public class Core : LinphoneObject
 
 	}
 	@available(*, deprecated)
-	public func setCapturedevice(newValue: String) throws
+	public func setCapturedevice(newValue: String?) throws
 	{
 		let exception_result = linphone_core_set_capture_device(cPtr, newValue)
 		guard exception_result == 0 else {
@@ -21877,7 +22496,7 @@ public class Core : LinphoneObject
 		
 	
 	/// Returns a list of chat rooms. 
-	/// - Returns: List of chat rooms.    
+	/// - Returns: List of chat rooms.      
 	public var chatRooms: [ChatRoom]
 	{
 	
@@ -21893,6 +22512,29 @@ public class Core : LinphoneObject
 
 	}
 		
+	/// Set the conference availability before start. 
+	/// It is the number of seconds clients can join the conference before its actual
+	/// start time. 
+	/// - Parameter seconds: number of seconds the conference can be joined early. A
+	/// negative value means always
+	/// - Warning: This setting is only applicable to conference servers 
+	
+	/// Gets the conference availability before start. 
+	/// - Returns: the number of seconds the conference can be joined early
+	/// - Warning: This setting is only applicable to conference servers 
+	public var conferenceAvailabilityBeforeStart: Int
+	{
+	
+		get
+		{ 
+						return Int(linphone_core_get_conference_availability_before_start(cPtr))
+		}
+		set
+		{
+			linphone_core_set_conference_availability_before_start(cPtr, (newValue))
+		}
+	}
+		
 	/// Set the conference cleanup timer period. 
 	/// This timer helps managing the automatic deletion of ended conferences. In fact,
 	/// under normal circumstances a conference is deleted only if it transition from
@@ -21903,7 +22545,7 @@ public class Core : LinphoneObject
 	/// - Parameter seconds: period of the timer. A 0 or negative value stops the timer 
 	
 	/// Gets the conference cleanup timer period. 
-	/// - Returns: the period of the conference cleanup timer period 
+	/// - Returns: the period of the conference cleanup timer 
 	public var conferenceCleanupPeriod: Int
 	{
 	
@@ -21914,6 +22556,29 @@ public class Core : LinphoneObject
 		set
 		{
 			linphone_core_set_conference_cleanup_period(cPtr, (newValue))
+		}
+	}
+		
+	/// Set the conference expire period. 
+	/// It is the number of seconds after the end time or the last participant joined -
+	/// whichever is later - the conference cannot be joined anymore 
+	/// - Parameter seconds: number of seconds before the conference expires. A 0 or
+	/// negative value means immediately after the end
+	/// - Warning: This setting is only applicable to conference servers 
+	
+	/// Gets the conference expire period. 
+	/// - Returns: the number of second after which the conference cannot be joined
+	/// - Warning: This setting is only applicable to conference servers 
+	public var conferenceExpirePeriod: Int
+	{
+	
+		get
+		{ 
+						return Int(linphone_core_get_conference_expire_period(cPtr))
+		}
+		set
+		{
+			linphone_core_set_conference_expire_period(cPtr, (newValue))
 		}
 	}
 		
@@ -21941,7 +22606,7 @@ public class Core : LinphoneObject
 		
 	
 	/// Retrieve the list of conference information on DB. 
-	/// - Returns: The list of conference infos .     
+	/// - Returns: The list of conference infos  .       
 	public var conferenceInformationList: [ConferenceInfo]
 	{
 	
@@ -21961,7 +22626,7 @@ public class Core : LinphoneObject
 	
 	/// Returns the input volume of the local participant. 
 	/// - Returns: A value inside [0.0 ; 1.0] 
-	/// - deprecated: 23/01/2025 Use ``Conference/getInputVolume()`` instead. 
+	/// - Deprecated: 23/01/2025 Use ``Conference/getInputVolume()`` instead. 
 	@available(*, deprecated)
 	public var conferenceLocalInputVolume: Float
 	{
@@ -22036,7 +22701,7 @@ public class Core : LinphoneObject
 		
 	
 	/// Returns the config object used to manage the storage (config) file. 
-	/// - Returns: a ``Config`` object.   
+	/// - Returns: a ``Config`` object.    
 	public var config: Config?
 	{
 	
@@ -22072,7 +22737,7 @@ public class Core : LinphoneObject
 	/// The current call is defined as follows: If multiple concurrent calls exist, it
 	/// is the only one that currelty uses the microphone or speaker, otherwise it is
 	/// the unique call that exists unless this call is in ``Paused`` state. 
-	/// - Returns: The current call or nil if no call is running.   
+	/// - Returns: The current call or nil if no call is running.    
 	public var currentCall: Call?
 	{
 	
@@ -22088,7 +22753,7 @@ public class Core : LinphoneObject
 	
 	/// Gets the remote address of the current call. 
 	/// - Returns: The remote address of the current call or nil if there is no current
-	/// call.   
+	/// call.    
 	public var currentCallRemoteAddress: Address?
 	{
 	
@@ -22105,7 +22770,7 @@ public class Core : LinphoneObject
 	/// Gets the current ``CoreDelegate`` being invoked, if any. 
 	/// This is meant only to be called from a callback to be able to get the user_data
 	/// associated with the ``CoreDelegate`` that is calling the callback. 
-	/// - Returns: the ``CoreDelegate`` that has called the last callback   
+	/// - Returns: the ``CoreDelegate`` that has called the last callback    
 	public var currentDelegate: CoreDelegate?
 	{
 	
@@ -22123,7 +22788,7 @@ public class Core : LinphoneObject
 	/// video. 
 	/// When preview is disabled or not yet started this function returns a 0x0 video
 	/// definition. 
-	/// - Returns: The captured ``VideoDefinition``.  
+	/// - Returns: The captured ``VideoDefinition``.   
 	/// - See also: ``setPreviewVideoDefinition(videoDefinition:)`` 
 	public var currentPreviewVideoDefinition: VideoDefinition?
 	{
@@ -22157,15 +22822,15 @@ public class Core : LinphoneObject
 	}
 		
 	/// Sets the default account. 
-	/// This default account must be part of the list of already entered
-	/// LinphoneAccount. Toggling it as default will make ``Core`` default to the
-	/// identity associated with the account in all incoming and outgoing calls if the
-	/// destination SIP uri does not explicitely match any other accounts. 
-	/// - Parameter account: The account to use as the default one.   
+	/// This default account must be part of the list of already entered ``Account``.
+	/// Toggling it as default will make ``Core`` default to the identity associated
+	/// with the account in all incoming and outgoing calls if the destination SIP uri
+	/// does not explicitely match any other accounts. 
+	/// - Parameter account: The account to use as the default one.    
 	
 	/// Returns the default account, that is the one used to determine the current
 	/// identity. 
-	/// - Returns: The default account.   
+	/// - Returns: The default account.    
 	public var defaultAccount: Account?
 	{
 	
@@ -22202,11 +22867,11 @@ public class Core : LinphoneObject
 		}
 	}
 		
-	/// Set the default ephemeral lifetime in seconds. 
-	/// - Parameter value: lifetime of ephemeral messages in seconds 
+	/// Set the default ephemeral lifetime in seconds once read. 
+	/// - Parameter value: lifetime of ephemeral messages in seconds once read 
 	
-	/// Gets the default lifetime of ephemeral messages in seconds. 
-	/// - Returns: lifetime of ephemeral messages in seconds 
+	/// Gets the default lifetime of ephemeral messages in seconds once they are read. 
+	/// - Returns: lifetime of ephemeral messages in seconds once read 
 	public var defaultEphemeralLifetime: Int
 	{
 	
@@ -22220,9 +22885,46 @@ public class Core : LinphoneObject
 		}
 	}
 		
+	/// Sets the default ephemeral message mode. 
+	/// - Parameter mode: default ephemeral message mode ``ChatRoom.EphemeralMode`` 
+	
+	/// Gets the default ephemeral message mode. 
+	/// - Returns: the default ephemeral message mode ``ChatRoom.EphemeralMode`` 
+	public var defaultEphemeralMode: ChatRoom.EphemeralMode
+	{
+	
+		get
+		{ 
+						return ChatRoom.EphemeralMode(rawValue: Int(linphone_core_get_default_ephemeral_mode(cPtr).rawValue))!
+		}
+		set
+		{
+			linphone_core_set_default_ephemeral_mode(cPtr, LinphoneChatRoomEphemeralMode(rawValue: CUnsignedInt(newValue.rawValue)))
+		}
+	}
+		
+	/// Set the default ephemeral lifetime in seconds when not read. 
+	/// - Parameter value: lifetime of ephemeral messages in seconds when not read 
+	
+	/// Gets the default lifetime of ephemeral messages in seconds when they are not
+	/// read. 
+	/// - Returns: lifetime of ephemeral messages in seconds when not read 
+	public var defaultEphemeralNotReadLifetime: Int
+	{
+	
+		get
+		{ 
+						return Int(linphone_core_get_default_ephemeral_not_read_lifetime(cPtr))
+		}
+		set
+		{
+			linphone_core_set_default_ephemeral_not_read_lifetime(cPtr, (newValue))
+		}
+	}
+		
 	
 	/// Retrieves the first list of ``Friend`` from the core. 
-	/// - Returns: the first ``FriendList`` object or nil.   
+	/// - Returns: the first ``FriendList`` object or nil.    
 	public var defaultFriendList: FriendList?
 	{
 	
@@ -22236,10 +22938,10 @@ public class Core : LinphoneObject
 	}
 		
 	/// Sets the given ``AudioDevice`` as default input for next calls. 
-	/// - Parameter audioDevice: The ``AudioDevice``   
+	/// - Parameter audioDevice: The ``AudioDevice``    
 	
 	/// Gets the default input audio device. 
-	/// - Returns: The default input audio device   
+	/// - Returns: The default input audio device    
 	public var defaultInputAudioDevice: AudioDevice?
 	{
 	
@@ -22259,10 +22961,10 @@ public class Core : LinphoneObject
 	}
 		
 	/// Sets the given ``AudioDevice`` as default output for next calls. 
-	/// - Parameter audioDevice: The ``AudioDevice``   
+	/// - Parameter audioDevice: The ``AudioDevice``    
 	
 	/// Gets the default output audio device. 
-	/// - Returns: The default output audio device   
+	/// - Returns: The default output audio device    
 	public var defaultOutputAudioDevice: AudioDevice?
 	{
 	
@@ -22282,16 +22984,16 @@ public class Core : LinphoneObject
 	}
 		
 	/// Sets the default proxy. 
-	/// This default proxy must be part of the list of already entered
-	/// LinphoneProxyConfig. Toggling it as default will make ``Core`` use the identity
-	/// associated with the proxy configuration in all incoming and outgoing calls. 
-	/// - Parameter config: The proxy configuration to use as the default one.   
-	/// - deprecated: 04/09/2024 Use ``setDefaultAccount(account:)`` 
+	/// This default proxy must be part of the list of already entered ``ProxyConfig``.
+	/// Toggling it as default will make ``Core`` use the identity associated with the
+	/// proxy configuration in all incoming and outgoing calls. 
+	/// - Parameter config: The proxy configuration to use as the default one.    
+	/// - Deprecated: 04/09/2024 Use ``setDefaultAccount(account:)`` 
 	
 	/// Returns the default proxy configuration, that is the one used to determine the
 	/// current identity. 
-	/// - Returns: The default proxy configuration.   
-	/// - deprecated: 04/09/2024 Use ``getDefaultAccount()`` 
+	/// - Returns: The default proxy configuration.    
+	/// - Deprecated: 04/09/2024 Use ``getDefaultAccount()`` 
 	public var defaultProxyConfig: ProxyConfig?
 	{
 	@available(*, deprecated)
@@ -22316,7 +23018,7 @@ public class Core : LinphoneObject
 	/// the current platform. 
 	/// This is for advanced users of the library, mainly to expose mediastreamer video
 	/// filter name and status. 
-	/// - Returns: The default video display filter.   
+	/// - Returns: The default video display filter.    
 	public var defaultVideoDisplayFilter: String
 	{
 	
@@ -22331,11 +23033,11 @@ public class Core : LinphoneObject
 	/// After this timeout period, a delayed call (internal call initialisation or
 	/// resolution) is resumed. 
 	/// - Parameter seconds: The new delayed timeout
-	/// - deprecated: 04/09/2024 Obscure. 
+	/// - Deprecated: 04/09/2024 Obscure. 
 	
 	/// Gets the delayed timeout See ``setDelayedTimeout(seconds:)`` for details. 
 	/// - Returns: The current delayed timeout in seconds
-	/// - deprecated: 04/09/2024 Obscure. 
+	/// - Deprecated: 04/09/2024 Obscure. 
 	public var delayedTimeout: Int
 	{
 	@available(*, deprecated)
@@ -22375,11 +23077,11 @@ public class Core : LinphoneObject
 	}
 		
 	/// Setup a new digest authentication policy applicable for SIP and HTTP. 
-	/// - Parameter policy: a ``DigestAuthenticationPolicy``   
+	/// - Parameter policy: a ``DigestAuthenticationPolicy``    
 	/// - See also: ``Factory/createDigestAuthenticationPolicy()`` 
 	
 	/// Get the current digest authentication policy applicable for SIP and HTTP. 
-	/// - Returns: The current digest authentication policy.   
+	/// - Returns: The current digest authentication policy.    
 	public var digestAuthenticationPolicy: DigestAuthenticationPolicy?
 	{
 	
@@ -22448,8 +23150,9 @@ public class Core : LinphoneObject
 	/// Forces liblinphone to use the supplied list of dns servers, instead of system's
 	/// ones. 
 	/// - Parameter servers: A list of strings containing the IP addresses of DNS
-	/// servers to be used.  Setting to nil restores default behaviour, which is to use
-	/// the DNS server list provided by the system. The list is copied internally.   
+	/// servers to be used.   Setting to nil restores default behaviour, which is to
+	/// use the DNS server list provided by the system. The list is copied internally. 
+	///   
 	
 	public var dnsServers: [String] = []
 	{
@@ -22470,8 +23173,9 @@ public class Core : LinphoneObject
 	/// list. 
 	/// - See also: ``getDnsSetByApp()`` 
 	/// - Parameter servers: A list of strings containing the IP addresses of DNS
-	/// servers to be used.  Setting to nil restores default behaviour, which is to use
-	/// the DNS server list provided by the system. The list is copied internally.   
+	/// servers to be used.   Setting to nil restores default behaviour, which is to
+	/// use the DNS server list provided by the system. The list is copied internally. 
+	///   
 	
 	public var dnsServersApp: [String] = []
 	{
@@ -22579,6 +23283,9 @@ public class Core : LinphoneObject
 	/// cancellation is disabled, but hardware one, if available, remains activated.
 	/// When set to true, software echo cancellation is activated in either of these
 	/// two conditions:
+	/// -hardware echo cancellation is not available
+	/// -an echo calibration procedure was run successfully, which implicitly cause the
+	/// software echo canceller to be preferred over hardware one. 
 	
 	/// Returns true if echo cancellation is enabled. 
 	/// - Returns: A boolean value telling whether echo cancellation is enabled or
@@ -22598,10 +23305,10 @@ public class Core : LinphoneObject
 		
 	/// Sets the name of the mediastreamer2 filter to be used for echo cancelling. 
 	/// - Parameter filtername: The name of the mediastreamer2 filter to be used for
-	/// echo cancellation.   
+	/// echo cancellation.    
 	
 	/// Gets the name of the mediastreamer2 filter used for echo cancelling. 
-	/// - Returns: The name of the mediastreamer2 filter used for echo cancellation.   
+	/// - Returns: The name of the mediastreamer2 filter used for echo cancellation.    
 	public var echoCancellerFilterName: String?
 	{
 	
@@ -22693,9 +23400,29 @@ public class Core : LinphoneObject
 		}
 	}
 		
+	/// Sets the policy for ephemeral chat messages. 
+	/// See ``EphemeralChatMessagePolicy`` for more details. 
+	/// - Parameter policy: the ``EphemeralChatMessagePolicy`` to use. 
+	
+	/// Gets the current policy for ephemeral chat messages. 
+	/// See ``EphemeralChatMessagePolicy`` for more details. 
+	/// - Returns: the current ``EphemeralChatMessagePolicy``. 
+	public var ephemeralChatMessagePolicy: EphemeralChatMessagePolicy
+	{
+	
+		get
+		{ 
+						return EphemeralChatMessagePolicy(rawValue: Int(linphone_core_get_ephemeral_chat_message_policy(cPtr).rawValue))!
+		}
+		set
+		{
+			linphone_core_set_ephemeral_chat_message_policy(cPtr, LinphoneEphemeralChatMessagePolicy(rawValue: CUnsignedInt(newValue.rawValue)))
+		}
+	}
+		
 	/// Do not use, this function does nothing. 
 	/// - Parameter bandwidth: the bandwidth in kbits/s, 0 for infinite
-	/// - deprecated: 04/09/2024 this function does nothing. 
+	/// - Deprecated: 04/09/2024 this function does nothing. 
 	
 	public var expectedBandwidth: Int = 0
 	{
@@ -22709,7 +23436,7 @@ public class Core : LinphoneObject
 		
 	
 	/// Returns the list of all audio devices. 
-	/// - Returns:   A list of all ``AudioDevice``     
+	/// - Returns:   A list of all ``AudioDevice``       
 	public var extendedAudioDevices: [AudioDevice]
 	{
 	
@@ -22748,17 +23475,17 @@ public class Core : LinphoneObject
 		}
 	}
 		
-	/// Globaly sets an http file transfer server to be used for content type
+	/// Globally sets an http file transfer server to be used for content type
 	/// application/vnd.gsma.rcs-ft-http+xml. 
 	/// Url may be like: "https://file.linphone.org/upload.php". This value can also be
 	/// set for a dedicated account using
 	/// linphone_account_params_set_file_transfer_server. 
-	/// - Parameter serverUrl: URL of the file server.   
+	/// - Parameter serverUrl: URL of the file server.    
 	
 	/// Gets the globaly set http file transfer server to be used for content type
 	/// application/vnd.gsma.rcs-ft-http+xml. 
 	/// Url may be like: "https://file.linphone.org/upload.php". 
-	/// - Returns: URL of the file server.   
+	/// - Returns: URL of the file server.    
 	public var fileTransferServer: String?
 	{
 	
@@ -22822,12 +23549,12 @@ public class Core : LinphoneObject
 		
 	/// Sets the database filename where friends will be stored. 
 	/// If the file does not exist, it will be created.
-	/// - Parameter path: filesystem path.   
-	/// - deprecated: 27/10/2023 Friends are now stored in the main db 
+	/// - Parameter path: filesystem path.    
+	/// - Deprecated: 27/10/2023 Friends are now stored in the main db 
 	
 	/// Gets the database filename where friends will be stored. 
-	/// - Returns: filesystem path.   
-	/// - deprecated: 27/10/2023 Friends are now stored in the main db 
+	/// - Returns: filesystem path.    
+	/// - Deprecated: 27/10/2023 Friends are now stored in the main db 
 	public var friendsDatabasePath: String?
 	{
 	@available(*, deprecated)
@@ -22850,7 +23577,7 @@ public class Core : LinphoneObject
 		
 	
 	/// Retrieves the list of ``FriendList`` from the core. 
-	/// - Returns: A list of ``FriendList``.    
+	/// - Returns: A list of ``FriendList``.      
 	public var friendsLists: [FriendList]
 	{
 	
@@ -22868,7 +23595,7 @@ public class Core : LinphoneObject
 		
 	
 	/// Retrieve the list of future conference information on DB. 
-	/// - Returns: The list of future conference infos .     
+	/// - Returns: The list of future conference infos  .       
 	public var futureConferenceInformationList: [ConferenceInfo]
 	{
 	
@@ -22910,12 +23637,36 @@ public class Core : LinphoneObject
 		
 	
 	/// Returns the global state of core. 
-	/// - Returns: a ``GlobalState`` enum.   
+	/// - Returns: a ``GlobalState`` enum.    
 	public var globalState: GlobalState
 	{
 	
 						return GlobalState(rawValue: Int(linphone_core_get_global_state(cPtr).rawValue))!
 
+	}
+		
+	/// Sets whether to keep GRUU parameter in the conference addresses. 
+	/// - Parameter enabled: true if enabled, false otherwise. 
+	/// - Warning: This setting will also remove the GRUU parameter from all conference
+	/// and chat room addresses stored in the database at startup. Setting it to false
+	/// after it being set to true earlier on does not restore the previous state of
+	/// the database 
+	
+	/// Returns whether the gr parameter is kept in the conference address. 
+	/// - Returns: true if the "gr" parameter is kept in the conference address, false
+	/// otherwise. 
+	/// - See also: ``enableGruuInConferenceAddress(enabled:)`` for more informations 
+	public var gruuInConferenceAddressEnabled: Bool
+	{
+	
+		get
+		{ 
+						return linphone_core_gruu_in_conference_address_enabled(cPtr) != 0
+		}
+		set
+		{
+			linphone_core_enable_gruu_in_conference_address(cPtr, newValue==true ? 1:0)
+		}
 	}
 		
 	/// Tells ``Core`` to guess local hostname automatically in primary contact. 
@@ -22940,10 +23691,10 @@ public class Core : LinphoneObject
 	/// connection. 
 	/// Use ``setNetworkReachable(reachable:)`` FASLE/true to force channel restart. 
 	/// - Parameter host: Hostname of IP adress of the http proxy (can be nil to
-	/// disable).   
+	/// disable).    
 	
 	/// Gets http proxy address to be used for signaling. 
-	/// - Returns: hostname of IP adress of the http proxy (can be nil to disable).   
+	/// - Returns: hostname of IP adress of the http proxy (can be nil to disable).    
 	public var httpProxyHost: String?
 	{
 	
@@ -22986,7 +23737,7 @@ public class Core : LinphoneObject
 	/// This is an helper function. If no default proxy is set, this will return the
 	/// primary contact ( see ``getPrimaryContact()`` ). If a default proxy is set it
 	/// returns the registered identity on the proxy. 
-	/// - Returns: The default identity SIP address.   
+	/// - Returns: The default identity SIP address.    
 	public var identity: String
 	{
 	
@@ -23000,7 +23751,7 @@ public class Core : LinphoneObject
 	
 	/// Gets the ``ImNotifPolicy`` object controlling the instant messaging delivery
 	/// and displayed service notifications. 
-	/// - Returns: A ``ImNotifPolicy`` object.   
+	/// - Returns: A ``ImNotifPolicy`` object.    
 	public var imNotifPolicy: ImNotifPolicy?
 	{
 	
@@ -23011,6 +23762,28 @@ public class Core : LinphoneObject
 			let result = ImNotifPolicy.getSwiftObject(cObject:cPointer!)
 			return result
 
+	}
+		
+	/// Set the IMDN resend period. 
+	/// It is the number of seconds after the first attempt to send, an IMDN message is
+	/// sent again on startup if failed earlier on 
+	/// - Parameter seconds: number of seconds after the first attempt to send an IMDN,
+	/// it is retried at startup. A negative value means all IMDNs are resent at
+	/// startup. 
+	
+	/// Gets the IMDN resend period. 
+	/// - Returns: the number of second to resend an failed IMDN message 
+	public var imdnResendPeriod: Int
+	{
+	
+		get
+		{ 
+						return Int(linphone_core_get_imdn_resend_period(cPtr))
+		}
+		set
+		{
+			linphone_core_set_imdn_resend_period(cPtr, (newValue))
+		}
 	}
 		
 	/// Sets the threshold for sending IMDN to all participants to a ``ChatRoom``. 
@@ -23075,11 +23848,11 @@ public class Core : LinphoneObject
 	}
 		
 	/// Sets the given ``AudioDevice`` as input for all active calls. 
-	/// - Parameter audioDevice: The ``AudioDevice``. nil does nothing.   
+	/// - Parameter audioDevice: The ``AudioDevice``. nil does nothing.    
 	
 	/// Gets the input audio device for the current call. 
 	/// - Returns: The input audio device for the current or first call, nil if there
-	/// is no call.   
+	/// is no call.    
 	public var inputAudioDevice: AudioDevice?
 	{
 	
@@ -23119,7 +23892,7 @@ public class Core : LinphoneObject
 	
 	/// Gets if the automatic download of incoming icalendars is enabled or not. 
 	/// - Returns: true if icalendars will be automatically downloaded, false otherwise.
-	/// - deprecated: 16/12/2021 Use ``autoDownloadIcalendarsEnabled()`` instead. 
+	/// - Deprecated: 16/12/2021 Use ``autoDownloadIcalendarsEnabled()`` instead. 
 	@available(*, deprecated)
 	public var isAutoDownloadIcalendarsEnabled: Bool
 	{
@@ -23132,7 +23905,7 @@ public class Core : LinphoneObject
 	/// Gets if the auto download for incoming voice recordings is enabled or not. 
 	/// - Returns: true if voice recordings will be automatically downloaded, false
 	/// otherwise.
-	/// - deprecated: 16/12/2021 Use ``autoDownloadVoiceRecordingsEnabled()`` instead. 
+	/// - Deprecated: 16/12/2021 Use ``autoDownloadVoiceRecordingsEnabled()`` instead. 
 	@available(*, deprecated)
 	public var isAutoDownloadVoiceRecordingsEnabled: Bool
 	{
@@ -23144,7 +23917,7 @@ public class Core : LinphoneObject
 	
 	/// Gets whether auto iterate is enabled or not (Android & iOS only). 
 	/// - Returns: true if ``iterate()`` is scheduled automatically, false otherwise
-	/// - deprecated: 16/12/2021 Use ``autoIterateEnabled()`` instead. 
+	/// - Deprecated: 16/12/2021 Use ``autoIterateEnabled()`` instead. 
 	@available(*, deprecated)
 	public var isAutoIterateEnabled: Bool
 	{
@@ -23176,7 +23949,7 @@ public class Core : LinphoneObject
 	
 	/// Returns whether or not friend lists subscription are enabled. 
 	/// - Returns: whether or not the feature is enabled 
-	/// - deprecated: 16/12/2021 Use ``friendListSubscriptionEnabled()`` instead. 
+	/// - Deprecated: 16/12/2021 Use ``friendListSubscriptionEnabled()`` instead. 
 	@available(*, deprecated)
 	public var isFriendListSubscriptionEnabled: Bool
 	{
@@ -23203,7 +23976,7 @@ public class Core : LinphoneObject
 	/// conferencet server (focus). If you use such a conference, you should use
 	/// ``Conference/removeParticipant(uri:)`` instead. 
 	/// - Returns: true if the local participant is in a conference, false otherwise. 
-	/// - deprecated: 09/03/2021 Use ``Conference/isIn()`` instead. 
+	/// - Deprecated: 09/03/2021 Use ``Conference/isIn()`` instead. 
 	@available(*, deprecated)
 	public var isInConference: Bool
 	{
@@ -23235,7 +24008,7 @@ public class Core : LinphoneObject
 	
 	/// Returns whether the native ringing is enabled or not. 
 	/// - Returns: True if we use the native ringing, false otherwise
-	/// - deprecated: 16/12/2021 Use ``nativeRingingEnabled()`` instead. 
+	/// - Deprecated: 16/12/2021 Use ``nativeRingingEnabled()`` instead. 
 	@available(*, deprecated)
 	public var isNativeRingingEnabled: Bool
 	{
@@ -23270,7 +24043,7 @@ public class Core : LinphoneObject
 	/// If not, the app will have to handle all the push-related settings for each
 	/// accounts 
 	/// - Returns: true if push notifications are enabled, false otherwise
-	/// - deprecated: 16/12/2021 Use ``pushNotificationEnabled()`` instead. 
+	/// - Deprecated: 16/12/2021 Use ``pushNotificationEnabled()`` instead. 
 	@available(*, deprecated)
 	public var isPushNotificationEnabled: Bool
 	{
@@ -23282,7 +24055,7 @@ public class Core : LinphoneObject
 	
 	/// Gets if the record aware feature is enabled or not. 
 	/// - Returns: true if the record aware feature is enabled, false otherwise. 
-	/// - deprecated: 16/12/2021 Use ``recordAwareEnabled()`` instead. 
+	/// - Deprecated: 16/12/2021 Use ``recordAwareEnabled()`` instead. 
 	@available(*, deprecated)
 	public var isRecordAwareEnabled: Bool
 	{
@@ -23327,7 +24100,7 @@ public class Core : LinphoneObject
 	/// Gets whether the device will vibrate while an incoming call is ringing (Android
 	/// only). 
 	/// - Returns: true if the device will vibrate (if possible), false otherwise
-	/// - deprecated: 16/12/2021 Use ``vibrationOnIncomingCallEnabled()`` instead. 
+	/// - Deprecated: 16/12/2021 Use ``vibrationOnIncomingCallEnabled()`` instead. 
 	@available(*, deprecated)
 	public var isVibrationOnIncomingCallEnabled: Bool
 	{
@@ -23360,9 +24133,9 @@ public class Core : LinphoneObject
 	/// This label is used by the logger to give context. When running an application
 	/// with several ``Core`` objects, (such as a test), it is useful to enhance the
 	/// log's readability'. 
-	/// - Parameter label: a developper-friendly label. 
+	/// - Parameter label: a developer-friendly label. 
 	
-	/// Get the label assigned to the LinphoneCore. 
+	/// Get the label assigned to the ``Core``. 
 	/// The default value is nil (no label). 
 	/// - Returns: the assigned label. 
 	public var label: String
@@ -23385,7 +24158,7 @@ public class Core : LinphoneObject
 	/// Gets the latest outgoing call log. 
 	/// Conference calls are not returned by this function! Requires ENABLE_DB_STORAGE
 	/// to work. 
-	/// - Returns: The last outgoing call log if any.   
+	/// - Returns: The last outgoing call log if any.    
 	public var lastOutgoingCallLog: CallLog?
 	{
 	
@@ -23401,8 +24174,8 @@ public class Core : LinphoneObject
 	
 	/// Returns a list of entered LDAPs. 
 	/// Items must be freed with linphone_ldap_unref 
-	/// - Returns:       
-	/// - deprecated: 18/11/2024 use ``getRemoteContactDirectories()`` instead. 
+	/// - Returns:         
+	/// - Deprecated: 18/11/2024 use ``getRemoteContactDirectories()`` instead. 
 	@available(*, deprecated)
 	public var ldapList: [Ldap]
 	{
@@ -23420,7 +24193,7 @@ public class Core : LinphoneObject
 
 	}
 		
-	/// Tells to LinphoneCore to use LIME X3DH. 
+	/// Tells to ``Core`` to use LIME X3DH. 
 	/// - Parameter enable: A boolean value telling whether to enable or disable LIME
 	/// X3DH 
 	
@@ -23443,12 +24216,12 @@ public class Core : LinphoneObject
 	/// If empty, this function will disable LIME X3DH from core. Otherwise, or if
 	/// different from the existing value, this will (re-)initialize the LIME X3DH
 	/// engine. 
-	/// - Parameter url: The x3dh server url.  
-	/// - deprecated: 26/08/2022 Use ``AccountParams/setLimeServerUrl(url:)`` instead. 
+	/// - Parameter url: The x3dh server url.   
+	/// - Deprecated: 26/08/2022 Use ``AccountParams/setLimeServerUrl(url:)`` instead. 
 	
 	/// Get the x3dh server url. 
-	/// - Returns: The x3dh server url.  
-	/// - deprecated: 26/08/2022 Use ``AccountParams/getLimeServerUrl()`` instead. 
+	/// - Returns: The x3dh server url.   
+	/// - Deprecated: 26/08/2022 Use ``AccountParams/getLimeServerUrl()`` instead. 
 	public var limeX3DhServerUrl: String?
 	{
 	@available(*, deprecated)
@@ -23476,13 +24249,13 @@ public class Core : LinphoneObject
 	/// does not need to set this information, that is automatically assigned at
 	/// ``Core`` start. Setting this is mainly for internal tests of backward
 	/// compatibility. 
-	/// - Parameter specs: The list of string specs to set.    
+	/// - Parameter specs: The list of string specs to set.      
 	
 	/// Get the list of linphone specs string values representing what functionalities
 	/// the linphone client supports. 
 	/// - See also: ``setLinphoneSpecsList(specs:)`` 
 	/// - Returns: A list of supported specs. The list must be freed with
-	/// bctbx_list_free() after usage.       
+	/// bctbx_list_free() after usage.         
 	public var linphoneSpecsList: [String]
 	{
 	
@@ -23511,7 +24284,7 @@ public class Core : LinphoneObject
 		
 	
 	/// Return the list of loaded plugins. 
-	/// - Returns: the list of loaded plugins    
+	/// - Returns: the list of loaded plugins      
 	public var loadedPlugins: [String]
 	{
 	
@@ -23542,10 +24315,10 @@ public class Core : LinphoneObject
 		
 	/// Sets the url of the server where to upload the collected log files. 
 	/// - Parameter serverUrl: The url of the server where to upload the collected log
-	/// files.   
+	/// files.    
 	
 	/// Gets the url of the server where to upload the collected log files. 
-	/// - Returns: The url of the server where to upload the collected log files.   
+	/// - Returns: The url of the server where to upload the collected log files.    
 	public var logCollectionUploadServerUrl: String?
 	{
 	
@@ -23632,11 +24405,11 @@ public class Core : LinphoneObject
 		
 	/// Sets the sound device used for media. 
 	/// - Parameter devid: The device name as returned by
-	/// linphone_core_get_sound_devices   
+	/// linphone_core_get_sound_devices    
 	/// - Returns: 0 
 	
 	/// Gets the name of the currently assigned sound device for media. 
-	/// - Returns: The name of the currently assigned sound device for capture.   
+	/// - Returns: The name of the currently assigned sound device for capture.    
 	public var mediaDevice: String?
 	{
 	
@@ -23649,7 +24422,7 @@ public class Core : LinphoneObject
 			return result
 
 	}
-	public func setMediadevice(newValue: String) throws
+	public func setMediadevice(newValue: String?) throws
 	{
 		let exception_result = linphone_core_set_media_device(cPtr, newValue)
 		guard exception_result == 0 else {
@@ -23733,6 +24506,50 @@ public class Core : LinphoneObject
 		}
 	}
 		
+	/// It sets the duration of the timer to resend a message when the channel is
+	/// broken (i.e. 
+	/// the core gets an NoResponse or IOError response)
+	/// - Parameter duration: the duration of the timer in seconds. A 0 or negative
+	/// number means that the feature is deactivated. 
+	
+	/// Returns the duration of the timer that delays the automatic resending of chat
+	/// messages. 
+	/// - Returns: the duration of the timer in seconds 
+	public var messageAutomaticResendingDelay: Int
+	{
+	
+		get
+		{ 
+						return Int(linphone_core_get_message_automatic_resending_delay(cPtr))
+		}
+		set
+		{
+			linphone_core_set_message_automatic_resending_delay(cPtr, CInt(newValue))
+		}
+	}
+		
+	/// It sets the duration of the timer that starts just after the SUBSCRIBE is sent
+	/// to delay the sending of chat messages in group chats. 
+	/// - Parameter duration: the duration of the timer in seconds. A 0 or negative
+	/// number deactivates the feature. 
+	/// - Warning: it is only useful to set this property if
+	/// linphone_core_send_message_after_notify_enabled returns false 
+	
+	/// Returns the duration of the timer that delays the sending of chat messages. 
+	/// - Returns: the duration of the timer in seconds 
+	public var messageSendingDelay: Int
+	{
+	
+		get
+		{ 
+						return Int(linphone_core_get_message_sending_delay(cPtr))
+		}
+		set
+		{
+			linphone_core_set_message_sending_delay(cPtr, CInt(newValue))
+		}
+	}
+		
 	/// Enables or disables the microphone. 
 	/// This effectively enable or disable microphone (mute) for currently the running
 	/// call or conference if any, as well as it applies to future currently running
@@ -23805,13 +24622,16 @@ public class Core : LinphoneObject
 	/// This function was used to force a given IP address to appear in SDP.
 	/// Unfortunately, this cannot work as explained by
 	/// https://www.rfc-editor.org/rfc/rfc5389#section-2 . 
-	/// - Parameter addr: The public IP address of NAT to use.   
-	/// - deprecated: 12/10/2022 Use ``setNatPolicy(policy:)``
+	/// This function was used to force a given IP address to appear in SDP.
+	/// Unfortunately, this cannot work as explained by
+	/// https://www.rfc-editor.org/rfc/rfc5389#section-2 . 
+	/// - Parameter addr: The public IP address of NAT to use.    
+	/// - Deprecated: 12/10/2022 Use ``setNatPolicy(policy:)``
 	
 	/// Deprecated. 
 	/// Get the public IP address of NAT being used. 
-	/// - Returns: The public IP address of NAT being used.   
-	/// - deprecated: 12/10/2022 Use ``getNatPolicy()``
+	/// - Returns: The public IP address of NAT being used.    
+	/// - Deprecated: 12/10/2022 Use ``getNatPolicy()``
 	public var natAddress: String?
 	{
 	@available(*, deprecated)
@@ -23834,12 +24654,12 @@ public class Core : LinphoneObject
 		
 	/// Set the policy to use to pass through NATs/firewalls. 
 	/// It may be overridden by a NAT policy for a specific proxy config. 
-	/// - Parameter policy: ``NatPolicy`` object  
+	/// - Parameter policy: ``NatPolicy`` object   
 	/// - See also: ``AccountParams/setNatPolicy(policy:)`` 
 	
 	/// Get The policy that is used to pass through NATs/firewalls. 
 	/// It may be overridden by a NAT policy for a specific proxy config. 
-	/// - Returns: ``NatPolicy`` object in use.  
+	/// - Returns: ``NatPolicy`` object in use.   
 	/// - See also: ``AccountParams/getNatPolicy()`` 
 	public var natPolicy: NatPolicy?
 	{
@@ -23861,21 +24681,41 @@ public class Core : LinphoneObject
 		
 	/// Set the native window id where the preview video (local camera) is to be
 	/// displayed. 
-	/// This has to be used in conjonction with ``usePreviewWindow(yesno:)``. see
-	/// ``setNativeVideoWindowId(windowId:)`` for general details about window_id
-	/// On Android : #org.linphone.mediastream.video.capture.CaptureTextureView is used
-	/// for ``setNativePreviewWindowId(windowId:)``. It is inherited from #TextureView
+	/// This has to be used in conjunction with ``usePreviewWindow(yesno:)``. see
+	/// ``setNativeVideoWindowId(windowId:)`` for details about window_id. If the
+	/// window ID has been set to LINPHONE_VIDEO_DISPLAY_AUTO, it will return the
+	/// window in use. In automatic mode, when no call is in progress, a preview will
+	/// be activated before the identifier is sent back.
+	/// This has to be used in conjunction with ``usePreviewWindow(yesno:)``. see
+	/// ``setNativeVideoWindowId(windowId:)`` for details about window_id. If the
+	/// window ID has been set to LINPHONE_VIDEO_DISPLAY_AUTO, it will return the
+	/// window in use. In automatic mode, when no call is in progress, a preview will
+	/// be activated before the identifier is sent back.
+	/// On Android : org.linphone.mediastream.video.capture.CaptureTextureView is used
+	/// for ``setNativePreviewWindowId(windowId:)``. It is inherited from TextureView
+	/// and takes care of rotating the captured image from the camera and scale it to
+	/// keep it's ratio.
+	/// On Android : org.linphone.mediastream.video.capture.CaptureTextureView is used
+	/// for ``setNativePreviewWindowId(windowId:)``. It is inherited from TextureView
+	/// and takes care of rotating the captured image from the camera and scale it to
+	/// keep it's ratio.
+	/// On Android : org.linphone.mediastream.video.capture.CaptureTextureView is used
+	/// for ``setNativePreviewWindowId(windowId:)``. It is inherited from TextureView
 	/// and takes care of rotating the captured image from the camera and scale it to
 	/// keep it's ratio.
 	/// - Parameter windowId: The native window id where the preview video is to be
-	/// displayed.   
+	/// displayed.    
 	
 	/// Get the native window handle of the video preview window. 
 	/// see ``setNativeVideoWindowId(windowId:)`` for details about window_id
+	/// see ``setNativeVideoWindowId(windowId:)`` for details about window_id
 	/// There is a special case for Qt : ``getNativePreviewWindowId()`` returns a
-	/// #QQuickFramebufferObject::Renderer. Note : Qt blocks GUI thread when calling
+	/// QQuickFramebufferObject::Renderer. Note : Qt blocks GUI thread when calling
 	/// createRenderer(), so it is safe to call linphone functions there if needed.
-	/// - Returns: The native window handle of the video preview window.   
+	/// There is a special case for Qt : ``getNativePreviewWindowId()`` returns a
+	/// QQuickFramebufferObject::Renderer. Note : Qt blocks GUI thread when calling
+	/// createRenderer(), so it is safe to call linphone functions there if needed.
+	/// - Returns: The native window handle of the video preview window.    
 	public var nativePreviewWindowId: UnsafeMutableRawPointer?
 	{
 	
@@ -23889,10 +24729,20 @@ public class Core : LinphoneObject
 		}
 	}
 		
-	/// Sets whether to use the native ringing (Android only). 
+	/// Sets whether to use the platform-dependent ringing. 
+	/// This property is meaningful for Android platform only. When set to true, the
+	/// incoming call's ring tone is played by a Android MediaPlayer object playing the
+	/// phone's default ringtone, and manages vibrator as well. When set to false, the
+	/// incoming call's ring tone is played using liblinphone's internal ring tone
+	/// player, that is generic for all platforms.
 	/// - Parameter enable: True to enable native ringing, false otherwise 
 	
 	/// Returns whether the native ringing is enabled or not. 
+	/// This property is meaningful for Android platform only. When set to true, the
+	/// incoming call's ring tone is played by a Android MediaPlayer object playing the
+	/// phone's default ringtone, and manages vibrator as well. When set to false, the
+	/// incoming call's ring tone is played using liblinphone's internal ring tone
+	/// player, that is generic for all platforms. 
 	/// - Returns: True if we use the native ringing, false otherwise 
 	public var nativeRingingEnabled: Bool
 	{
@@ -23908,33 +24758,83 @@ public class Core : LinphoneObject
 	}
 		
 	/// Set the native video window id where the video is to be displayed. 
-	/// On Desktop platforms(MacOS, Linux, Windows), the display filter is "MSOGL" by
-	/// default. That means : If window_id is not set or set to
-	/// LINPHONE_VIDEO_DISPLAY_NONE, then the core will not create its own window,
-	/// unless the special id LINPHONE_VIDEO_DISPLAY_AUTO is given. This is currently
-	/// only supported for Linux X11 (Window type), Windows UWP (SwapChainPanel type)
-	/// and Windows Win32 (HWND type).
-	/// The C# Wrapper on Windows for UWP takes directly a #SwapChainPanel without
-	/// Marshalling. On other platforms, window_id is a #MSOglContextInfo defined in
+	/// On Desktop platforms(MacOS, Linux, Windows):
+	/// -By default, the value of window_id is set to LINPHONE_VIDEO_DISPLAY_AUTO for
+	/// historical reasons.
+	/// -By default, the display filter is "MSOGL". That means : If window_id is nil or
+	/// set to LINPHONE_VIDEO_DISPLAY_NONE, then the core will not create its own
+	/// window, unless the special id LINPHONE_VIDEO_DISPLAY_AUTO is given. This is
+	/// currently only supported for Linux X11 (Window type), Windows UWP
+	/// (SwapChainPanel type) and Windows Win32 (HWND type).
+	/// The C# Wrapper on Windows for UWP takes directly a SwapChainPane without
+	/// Marshalling. On other platforms, window_id is a MSOglContextInfo defined in
 	/// msogl.h of mediastreamer2 There is a special case for Qt : The "MSQOGL" filter
-	/// must be selected by using ``setVideoDisplayFilter(filterName:)``. Setting
-	/// window id is only used to stop rendering by passing
-	/// LINPHONE_VIDEO_DISPLAY_NONE. ``getNativeVideoWindowId()`` returns a
-	/// #QQuickFramebufferObject::Renderer and ``createNativeVideoWindowId()`` creates
-	/// one. After a creation, ``setNativeVideoWindowId(windowId:)`` must be called
-	/// with the new object.
+	/// must be selected by using ``setVideoDisplayFilter(filterName:)``. Rendering is
+	/// stopped by passing LINPHONE_VIDEO_DISPLAY_NONE or LINPHONE_VIDEO_DISPLAY_AUTO.
+	/// ``getNativeVideoWindowId()`` returns a QQuickFramebufferObject::Renderer and
+	/// ``createNativeVideoWindowId(context:)`` creates one. After a creation,
+	/// ``setNativeVideoWindowId(windowId:)`` must be called with the new object.
+	/// The C# Wrapper on Windows for UWP takes directly a SwapChainPane without
+	/// Marshalling. On other platforms, window_id is a MSOglContextInfo defined in
+	/// msogl.h of mediastreamer2 There is a special case for Qt : The "MSQOGL" filter
+	/// must be selected by using ``setVideoDisplayFilter(filterName:)``. Rendering is
+	/// stopped by passing LINPHONE_VIDEO_DISPLAY_NONE or LINPHONE_VIDEO_DISPLAY_AUTO.
+	/// ``getNativeVideoWindowId()`` returns a QQuickFramebufferObject::Renderer and
+	/// ``createNativeVideoWindowId(context:)`` creates one. After a creation,
+	/// ``setNativeVideoWindowId(windowId:)`` must be called with the new object.
+	/// The C# Wrapper on Windows for UWP takes directly a SwapChainPane without
+	/// Marshalling. On other platforms, window_id is a MSOglContextInfo defined in
+	/// msogl.h of mediastreamer2 There is a special case for Qt : The "MSQOGL" filter
+	/// must be selected by using ``setVideoDisplayFilter(filterName:)``. Rendering is
+	/// stopped by passing LINPHONE_VIDEO_DISPLAY_NONE or LINPHONE_VIDEO_DISPLAY_AUTO.
+	/// ``getNativeVideoWindowId()`` returns a QQuickFramebufferObject::Renderer and
+	/// ``createNativeVideoWindowId(context:)`` creates one. After a creation,
+	/// ``setNativeVideoWindowId(windowId:)`` must be called with the new object.
+	/// The C# Wrapper on Windows for UWP takes directly a SwapChainPane without
+	/// Marshalling. On other platforms, window_id is a MSOglContextInfo defined in
+	/// msogl.h of mediastreamer2 There is a special case for Qt : The "MSQOGL" filter
+	/// must be selected by using ``setVideoDisplayFilter(filterName:)``. Rendering is
+	/// stopped by passing LINPHONE_VIDEO_DISPLAY_NONE or LINPHONE_VIDEO_DISPLAY_AUTO.
+	/// ``getNativeVideoWindowId()`` returns a QQuickFramebufferObject::Renderer and
+	/// ``createNativeVideoWindowId(context:)`` creates one. After a creation,
+	/// ``setNativeVideoWindowId(windowId:)`` must be called with the new object.
+	/// The C# Wrapper on Windows for UWP takes directly a SwapChainPane without
+	/// Marshalling. On other platforms, window_id is a MSOglContextInfo defined in
+	/// msogl.h of mediastreamer2 There is a special case for Qt : The "MSQOGL" filter
+	/// must be selected by using ``setVideoDisplayFilter(filterName:)``. Rendering is
+	/// stopped by passing LINPHONE_VIDEO_DISPLAY_NONE or LINPHONE_VIDEO_DISPLAY_AUTO.
+	/// ``getNativeVideoWindowId()`` returns a QQuickFramebufferObject::Renderer and
+	/// ``createNativeVideoWindowId(context:)`` creates one. After a creation,
+	/// ``setNativeVideoWindowId(windowId:)`` must be called with the new object.
+	/// On mobile operating systems, LINPHONE_VIDEO_DISPLAY_AUTO is not supported and
+	/// window_id depends of the platform : iOS : It is a UIView. Android : It is a
+	/// TextureView.
 	/// On mobile operating systems, LINPHONE_VIDEO_DISPLAY_AUTO is not supported and
 	/// window_id depends of the platform : iOS : It is a UIView. Android : It is a
 	/// TextureView.
 	/// - Parameter windowId: The native window id where the remote video is to be
-	/// displayed.   
+	/// displayed.    
 	
 	/// Get the native window handle of the video window. 
-	/// see linphone_core_set_native_video_window_id for details about window_id
-	/// There is a special case for Qt : ``getNativeVideoWindowId()`` returns a
-	/// #QQuickFramebufferObject::Renderer. Note : Qt blocks GUI thread when calling
-	/// createRenderer(), so it is safe to call linphone functions there if needed.
-	/// - Returns: The native window handle of the video window.   
+	/// see linphone_core_set_native_video_window_id for details about window_id If the
+	/// window ID has been set to LINPHONE_VIDEO_DISPLAY_AUTO and a call is in
+	/// progress, it will return the window in use. There is a special case for Qt :
+	/// ``getNativeVideoWindowId()`` returns a QQuickFramebufferObject::Renderer. Note
+	/// : Qt blocks GUI thread when calling createRenderer(), so it is safe to call
+	/// linphone functions there if needed.
+	/// see linphone_core_set_native_video_window_id for details about window_id If the
+	/// window ID has been set to LINPHONE_VIDEO_DISPLAY_AUTO and a call is in
+	/// progress, it will return the window in use. There is a special case for Qt :
+	/// ``getNativeVideoWindowId()`` returns a QQuickFramebufferObject::Renderer. Note
+	/// : Qt blocks GUI thread when calling createRenderer(), so it is safe to call
+	/// linphone functions there if needed.
+	/// see linphone_core_set_native_video_window_id for details about window_id If the
+	/// window ID has been set to LINPHONE_VIDEO_DISPLAY_AUTO and a call is in
+	/// progress, it will return the window in use. There is a special case for Qt :
+	/// ``getNativeVideoWindowId()`` returns a QQuickFramebufferObject::Renderer. Note
+	/// : Qt blocks GUI thread when calling createRenderer(), so it is safe to call
+	/// linphone functions there if needed.
+	/// - Returns: The native window handle of the video window.    
 	public var nativeVideoWindowId: UnsafeMutableRawPointer?
 	{
 	
@@ -23962,6 +24862,32 @@ public class Core : LinphoneObject
 		willSet
 		{
 			linphone_core_set_network_reachable(cPtr, newValue==true ? 1:0)
+		}
+	}
+		
+	/// Enables or disables the noise suppression, if a noise suppression filter can be
+	/// used. 
+	/// This actually controls software noise suppression only. When 'enable' is set to
+	/// false, software noise suppression is disabled, but hardware one, if available,
+	/// remains activated. When set to true, software noise suppression is enabled and
+	/// hardware one, if available, remains activated. The software noise suppression
+	/// cannot be enabled on iOS nor Android devices. 
+	/// - Parameter enable: true to enable the noise suppression, false to disable it. 
+	
+	/// Indicates whether software noise suppression is enabled. 
+	/// This does not provide information about hardware noise suppression. 
+	/// - Returns: true if the software noise suppression is enabled, false if
+	/// disabled. 
+	public var noiseSuppressionEnabled: Bool
+	{
+	
+		get
+		{ 
+						return linphone_core_noise_suppression_enabled(cPtr) != 0
+		}
+		set
+		{
+			linphone_core_enable_noise_suppression(cPtr, newValue==true ? 1:0)
 		}
 	}
 		
@@ -24013,11 +24939,11 @@ public class Core : LinphoneObject
 	}
 		
 	/// Sets the given ``AudioDevice`` as output for all active calls. 
-	/// - Parameter audioDevice: The ``AudioDevice``. nil does nothing.   
+	/// - Parameter audioDevice: The ``AudioDevice``. nil does nothing.    
 	
 	/// Gets the output audio device for the current call. 
 	/// - Returns: The output audio device for the current or first call, nil if there
-	/// is no call.   
+	/// is no call.    
 	public var outputAudioDevice: AudioDevice?
 	{
 	
@@ -24036,16 +24962,17 @@ public class Core : LinphoneObject
 		}
 	}
 		
-	/// Sets a wav file to be played when putting somebody on hold, or when files are
-	/// used instead of soundcards (see ``setUseFiles(yesno:)``). 
+	/// Sets a wav file to be played when files are used instead of soundcards (see
+	/// ``setUseFiles(yesno:)``). 
 	/// The file must be a 16 bit linear wav file. 
-	/// - Parameter file: The path to the file to be played when putting somebody on
-	/// hold.   
+	/// - Parameter file: The path to the file to be played when files are used instead
+	/// of soundcards.    
 	
-	/// Get the wav file that is played when putting somebody on hold, or when files
-	/// are used instead of soundcards (see ``setUseFiles(yesno:)``). 
+	/// Get the wav file that is played when files are used instead of soundcards (see
+	/// ``setUseFiles(yesno:)``). 
 	/// The file is a 16 bit linear wav file. 
-	/// - Returns: The path to the file that is played when putting somebody on hold.   
+	/// - Returns: The path to the file that is played when files are used instead of
+	/// soundcards.    
 	public var playFile: String?
 	{
 	
@@ -24067,14 +24994,14 @@ public class Core : LinphoneObject
 		
 	/// Sets the sound device used for playback. 
 	/// - Parameter devid: The device name as returned by
-	/// linphone_core_get_sound_devices   
+	/// linphone_core_get_sound_devices    
 	/// - Returns: 0 
-	/// - deprecated: 11/09/2024 use ``setOutputAudioDevice(audioDevice:)`` or
+	/// - Deprecated: 11/09/2024 use ``setOutputAudioDevice(audioDevice:)`` or
 	/// ``setDefaultOutputAudioDevice(audioDevice:)`` instead.
 	
 	/// Gets the name of the currently assigned sound device for playback. 
-	/// - Returns: The name of the currently assigned sound device for playback.   
-	/// - deprecated: 11/09/2024 use ``getOutputAudioDevice()`` or
+	/// - Returns: The name of the currently assigned sound device for playback.    
+	/// - Deprecated: 11/09/2024 use ``getOutputAudioDevice()`` or
 	/// ``getDefaultOutputAudioDevice()`` instead.
 	@available(*, deprecated)
 	public var playbackDevice: String?
@@ -24090,7 +25017,7 @@ public class Core : LinphoneObject
 
 	}
 	@available(*, deprecated)
-	public func setPlaybackdevice(newValue: String) throws
+	public func setPlaybackdevice(newValue: String?) throws
 	{
 		let exception_result = linphone_core_set_playback_device(cPtr, newValue)
 		guard exception_result == 0 else {
@@ -24101,7 +25028,7 @@ public class Core : LinphoneObject
 	/// Allow to control play level before entering sound card: gain in db. 
 	/// - Parameter level: The new play level 
 	
-	/// Get playback gain in db before entering sound card. 
+	/// Gets playback gain in db (before entering sound card). 
 	/// - Returns: The current playback gain 
 	public var playbackGainDb: Float
 	{
@@ -24142,11 +25069,11 @@ public class Core : LinphoneObject
 	/// Set the preferred video definition for the stream that is captured and sent to
 	/// the remote party. 
 	/// All standard video definitions are accepted on the receive path. 
-	/// - Parameter videoDefinition: ``VideoDefinition`` object   
+	/// - Parameter videoDefinition: ``VideoDefinition`` object    
 	
 	/// Get the preferred video definition for the stream that is captured and sent to
 	/// the remote party. 
-	/// - Returns: The preferred ``VideoDefinition``   
+	/// - Returns: The preferred ``VideoDefinition``    
 	public var preferredVideoDefinition: VideoDefinition?
 	{
 	
@@ -24168,7 +25095,7 @@ public class Core : LinphoneObject
 	/// Sets the preferred video definition by its name. 
 	/// Call ``Factory/getSupportedVideoDefinitions()`` to have a list of supported
 	/// video definitions.
-	/// - Parameter name: The name of the definition to set   
+	/// - Parameter name: The name of the definition to set    
 	
 	public var preferredVideoDefinitionByName: String = ""
 	{
@@ -24180,11 +25107,11 @@ public class Core : LinphoneObject
 	}
 		
 	/// Sets my presence model. 
-	/// - Parameter presence: ``PresenceModel``   
+	/// - Parameter presence: ``PresenceModel``    
 	
 	/// Gets my presence model. 
 	/// - Returns: A ``PresenceModel`` object, or nil if no presence model has been
-	/// set.   
+	/// set.    
 	public var presenceModel: PresenceModel?
 	{
 	
@@ -24210,12 +25137,12 @@ public class Core : LinphoneObject
 	/// due to bandwidth constraint the sent video definition is small. Using this
 	/// feature increases the CPU consumption, since a rescaling will be done
 	/// internally. 
-	/// - Parameter videoDefinition: ``VideoDefinition`` object   
+	/// - Parameter videoDefinition: ``VideoDefinition`` object    
 	
 	/// Get the definition of the captured video. 
 	/// - Returns: The captured ``VideoDefinition`` if it was previously set by
 	/// ``setPreviewVideoDefinition(videoDefinition:)``, otherwise a 0x0
-	/// LinphoneVideoDefinition.   
+	/// ``VideoDefinition``.    
 	/// - See also: ``setPreviewVideoDefinition(videoDefinition:)`` 
 	public var previewVideoDefinition: VideoDefinition?
 	{
@@ -24235,7 +25162,10 @@ public class Core : LinphoneObject
 		}
 	}
 		
-	/// - Parameter name: The name of the definition to set   
+	/// -Set the video definition for the captured (preview) video by its name. Call
+	/// ``Factory/getSupportedVideoDefinitions()`` to have a list of supported video
+	/// definitions. Video resolution names are: qcif, svga, cif, vga, 4cif, svga ...
+	/// - Parameter name: The name of the definition to set    
 	
 	public var previewVideoDefinitionByName: String = ""
 	{
@@ -24251,11 +25181,13 @@ public class Core : LinphoneObject
 	/// Not using a SIP account is not recommended.
 	/// This data is used in absence of any proxy configuration or when no account
 	/// configuration is set. See ``Account`` 
-	/// - Parameter contact: the contact to set   
+	/// - Parameter contact: the contact to set    
 	/// - Returns: 0 if successful, -1 otherwise 
 	
 	/// Returns the default identity when no account is used. 
-	/// - Returns: the primary contact identity   
+	/// This SIP address usually contains a private ip address, and may not be routable
+	/// globally.
+	/// - Returns: the primary contact identity    
 	public var primaryContact: String
 	{
 	
@@ -24275,9 +25207,26 @@ public class Core : LinphoneObject
 		
 	
 	/// Same as ``getPrimaryContact()`` but the result is a ``Address`` object instead
+	/// of a string. 
+	/// - Returns: a ``Address`` object.       
+	public var primaryContactAddress: Address?
+	{
+	
+						let cPointer = linphone_core_get_primary_contact_address(cPtr)
+			if (cPointer == nil) {
+				return nil
+			}
+			let result = Address.getSwiftObject(cObject:cPointer!)
+			belle_sip_object_unref(UnsafeMutableRawPointer(cPointer))
+			return result
+
+	}
+		
+	
+	/// Same as ``getPrimaryContact()`` but the result is a ``Address`` object instead
 	/// of const char *. 
-	/// - Returns: a ``Address`` object.    
-	/// - deprecated: 22/10/2018 Use ``createPrimaryContactParsed()`` instead. 
+	/// - Returns: a ``Address`` object.      
+	/// - Deprecated: 22/10/2018 Use ``createPrimaryContactParsed()`` instead. 
 	@available(*, deprecated)
 	public var primaryContactParsed: Address?
 	{
@@ -24300,13 +25249,41 @@ public class Core : LinphoneObject
 	/// place during next ``start()`` invocation. The format the xml file is briefly
 	/// documented here:
 	/// https://wiki.linphone.org/xwiki/wiki/public/view/Lib/Features/Remote%20Provisioning/ 
+	/// http://, https:// and file:// uris are supported. This can also be set from
+	/// configuration file or factory config file, from [misc] section, item
+	/// "config-uri". Calling this function does not load the configuration. It will
+	/// write the value into configuration so that configuration from URI will take
+	/// place during next ``start()`` invocation. The format the xml file is briefly
+	/// documented here:
+	/// https://wiki.linphone.org/xwiki/wiki/public/view/Lib/Features/Remote%20Provisioning/ 
+	/// http://, https:// and file:// uris are supported. This can also be set from
+	/// configuration file or factory config file, from [misc] section, item
+	/// "config-uri". Calling this function does not load the configuration. It will
+	/// write the value into configuration so that configuration from URI will take
+	/// place during next ``start()`` invocation. The format the xml file is briefly
+	/// documented here:
+	/// https://wiki.linphone.org/xwiki/wiki/public/view/Lib/Features/Remote%20Provisioning/ 
+	/// http://, https:// and file:// uris are supported. This can also be set from
+	/// configuration file or factory config file, from [misc] section, item
+	/// "config-uri". Calling this function does not load the configuration. It will
+	/// write the value into configuration so that configuration from URI will take
+	/// place during next ``start()`` invocation. The format the xml file is briefly
+	/// documented here:
+	/// https://wiki.linphone.org/xwiki/wiki/public/view/Lib/Features/Remote%20Provisioning/ 
+	/// http://, https:// and file:// uris are supported. This can also be set from
+	/// configuration file or factory config file, from [misc] section, item
+	/// "config-uri". Calling this function does not load the configuration. It will
+	/// write the value into configuration so that configuration from URI will take
+	/// place during next ``start()`` invocation. The format the xml file is briefly
+	/// documented here:
+	/// https://wiki.linphone.org/xwiki/wiki/public/view/Lib/Features/Remote%20Provisioning/ 
 	/// - Parameter uri: the uri to use in order to obtain the configuration. Passing
-	/// nil will disable remote provisioning.   
+	/// nil will disable remote provisioning.    
 	/// - Returns: -1 if uri could not be parsed, 0 otherwise. Note that this does not
 	/// check validity of URI endpoint nor scheme and download may still fail. 
 	
 	/// Get provisioning URI. 
-	/// - Returns: the provisioning URI.   
+	/// - Returns: the provisioning URI.    
 	public var provisioningUri: String?
 	{
 	
@@ -24319,7 +25296,7 @@ public class Core : LinphoneObject
 			return result
 
 	}
-	public func setProvisioninguri(newValue: String) throws
+	public func setProvisioninguri(newValue: String?) throws
 	{
 		let exception_result = linphone_core_set_provisioning_uri(cPtr, newValue)
 		guard exception_result == 0 else {
@@ -24329,8 +25306,8 @@ public class Core : LinphoneObject
 		
 	
 	/// Returns an unmodifiable list of entered proxy configurations. 
-	/// - Returns: A list of ``ProxyConfig``.    
-	/// - deprecated: 04/09/2024 Use ``getAccountList()`` 
+	/// - Returns: A list of ``ProxyConfig``.      
+	/// - Deprecated: 04/09/2024 Use ``getAccountList()`` 
 	@available(*, deprecated)
 	public var proxyConfigList: [ProxyConfig]
 	{
@@ -24371,7 +25348,7 @@ public class Core : LinphoneObject
 		
 	
 	/// Gets the push notification configuration object if it exists. 
-	/// - Returns: the ``PushNotificationConfig`` if it exists, nil otherwise.   
+	/// - Returns: the ``PushNotificationConfig`` if it exists, nil otherwise.    
 	public var pushNotificationConfig: PushNotificationConfig?
 	{
 	
@@ -24410,7 +25387,7 @@ public class Core : LinphoneObject
 		
 	/// Controls QRCode scanning enablement. 
 	/// When enabled, several QRCodes can be decoded. The recognized QR code are
-	/// notified through the LinphoneCoreCbs interface (see
+	/// notified through the ``CoreDelegate`` interface (see
 	/// linphone_core_cbs_set_qrcode_found) 
 	/// - Parameter enable: A boolean value telling whether to enable QRCode in the
 	/// preview. 
@@ -24427,6 +25404,26 @@ public class Core : LinphoneObject
 		set
 		{
 			linphone_core_enable_qrcode_video_preview(cPtr, newValue==true ? 1:0)
+		}
+	}
+		
+	/// Set the queued message resend period. 
+	/// It is the number of seconds after the first attempt to send the message. 
+	/// - Parameter seconds: number of seconds after the first attempt to send a
+	/// message. A negative value means all queued messages are resent at startup. 
+	
+	/// Gets the queued message resend period. 
+	/// - Returns: the number of second to resend a queued message 
+	public var queuedMessageResendPeriod: Int
+	{
+	
+		get
+		{ 
+						return Int(linphone_core_get_queued_message_resend_period(cPtr))
+		}
+		set
+		{
+			linphone_core_set_queued_message_resend_period(cPtr, (newValue))
 		}
 	}
 		
@@ -24461,7 +25458,7 @@ public class Core : LinphoneObject
 		
 	/// Enables the record-aware feature that will warn other users when doing
 	/// recording during a call. 
-	/// See @LinphoneCallCbs for being notified when a call is being recorded. 
+	/// See ``CallDelegate`` for being notified when a call is being recorded. 
 	/// - Parameter enable: true to activate the record aware feature, false to disable
 	/// it. 
 	
@@ -24486,13 +25483,13 @@ public class Core : LinphoneObject
 	/// (``CallParams/setRecordFile(path:)``) The file will be a 16 bit linear wav
 	/// file. 
 	/// - Parameter file: The path to the file where incoming stream is to be recorded.
-	///   
+	///    
 	
 	/// Get the wav file where incoming stream is recorded, when files are used instead
 	/// of soundcards (see ``setUseFiles(yesno:)``). 
 	/// This feature is different from call recording
 	/// (``CallParams/setRecordFile(path:)``) The file is a 16 bit linear wav file. 
-	/// - Returns: The path to the file where incoming stream is recorded.   
+	/// - Returns: The path to the file where incoming stream is recorded.    
 	public var recordFile: String?
 	{
 	
@@ -24559,7 +25556,7 @@ public class Core : LinphoneObject
 	/// Gets the list of currently configured LDAP or CardDAV remote servers used by
 	/// ``MagicSearch``. 
 	/// - Returns: the list of ``RemoteContactDirectory`` currently configured, if any.
-	///       
+	///         
 	public var remoteContactDirectories: [RemoteContactDirectory]
 	{
 	
@@ -24577,10 +25574,10 @@ public class Core : LinphoneObject
 	}
 		
 	/// Specify a ring back tone to be played to far end during incoming calls. 
-	/// - Parameter ring: The path to the remote ring back tone to be played.   
+	/// - Parameter ring: The path to the remote ring back tone to be played.    
 	
 	/// Get the ring back tone played to far end during incoming calls. 
-	/// - Returns: the path to the remote ring back tone to be played.   
+	/// - Returns: the path to the remote ring back tone to be played.    
 	public var remoteRingbackTone: String?
 	{
 	
@@ -24627,15 +25624,15 @@ public class Core : LinphoneObject
 	}
 		
 	/// Sets the path to a wav file used for ringing. 
-	/// The file must be a wav 16bit linear. If null, ringing is disable unless
-	/// #linphone_core_get_use_native_ringing() is enabled, in which case we use the
-	/// device ringtone. 
+	/// The file must be a wav 16bit linear. If null, ringing is disable unless [sound]
+	/// use_native_ringing is enabled, in which case we use the device ringtone. 
+	/// The file must be a wav 16bit linear. If null, ringing is disable unless [sound]
+	/// use_native_ringing is enabled, in which case we use the device ringtone. 
 	/// - Parameter path: The path to a wav file to be used for ringing, null to
-	/// disable or use device ringing depending on
-	/// #linphone_core_get_use_native_ringing().   
+	/// disable or use device ringing depending on [sound] use_native_ringing.    
 	
 	/// Returns the path to the wav file used for ringing. 
-	/// - Returns: The path to the wav file used for ringing.   
+	/// - Returns: The path to the wav file used for ringing.    
 	public var ring: String?
 	{
 	
@@ -24676,10 +25673,10 @@ public class Core : LinphoneObject
 	/// Sets the path to a wav file used for ringing back. 
 	/// Ringback means the ring that is heard when it's ringing at the remote party.
 	/// The file must be a wav 16bit linear. 
-	/// - Parameter path: The path to a wav file to be used for ringing back.   
+	/// - Parameter path: The path to a wav file to be used for ringing back.    
 	
 	/// Returns the path to the wav file used for ringing back. 
-	/// - Returns: The path to the wav file used for ringing back.   
+	/// - Returns: The path to the wav file used for ringing back.    
 	public var ringback: String?
 	{
 	
@@ -24701,11 +25698,16 @@ public class Core : LinphoneObject
 		
 	/// Sets the sound device used for ringing. 
 	/// - Parameter devid: The device name as returned by
-	/// linphone_core_get_sound_devices   
-	/// - Returns: 0 
+	/// linphone_core_get_sound_devices    
+	/// - Returns: 0
+	/// - Deprecated: 29/08/2025 Use a combination of ``getExtendedAudioDevices()`` and
+	/// ``AudioDevice/setUseForRinging(useForRinging:)`` instead. 
 	
 	/// Gets the name of the currently assigned sound device for ringing. 
 	/// - Returns: The name of the currently assigned sound device for ringing.   
+	/// - Deprecated: 29/08/2025 Use a combination of ``getExtendedAudioDevices()`` and
+	/// ``AudioDevice/getUseForRinging()`` instead. 
+	@available(*, deprecated)
 	public var ringerDevice: String?
 	{
 	
@@ -24718,7 +25720,8 @@ public class Core : LinphoneObject
 			return result
 
 	}
-	public func setRingerdevice(newValue: String) throws
+	@available(*, deprecated)
+	public func setRingerdevice(newValue: String?) throws
 	{
 		let exception_result = linphone_core_set_ringer_device(cPtr, newValue)
 		guard exception_result == 0 else {
@@ -24727,10 +25730,10 @@ public class Core : LinphoneObject
 	}
 		
 	/// Sets the path to a file or folder containing trusted root CAs (PEM format) 
-	/// - Parameter path: The path to a file or folder containing trusted root CAs.   
+	/// - Parameter path: The path to a file or folder containing trusted root CAs.    
 	
 	/// Gets the path to a file or folder containing the trusted root CAs (PEM format) 
-	/// - Returns: The path to a file or folder containing the trusted root CAs.   
+	/// - Returns: The path to a file or folder containing the trusted root CAs.    
 	public var rootCa: String?
 	{
 	
@@ -24751,7 +25754,7 @@ public class Core : LinphoneObject
 	}
 		
 	/// Sets the trusted root CAs (PEM format) 
-	/// - Parameter data: The trusted root CAs as a string   
+	/// - Parameter data: The trusted root CAs as a string    
 	
 	public var rootCaData: String = ""
 	{
@@ -24768,9 +25771,15 @@ public class Core : LinphoneObject
 	/// single port for all streams when doing an outgoing call. It automatically
 	/// enables rtcp-mux. This feature can also be enabled per-call using
 	/// ``CallParams``. RTP Bundle mode is required for video conferencing. 
+	/// See https://datatracker.ietf.org/doc/html/rfc8843 for more information about
+	/// the feature. When enabled, liblinphone will try to negociate the use of a
+	/// single port for all streams when doing an outgoing call. It automatically
+	/// enables rtcp-mux. This feature can also be enabled per-call using
+	/// ``CallParams``. RTP Bundle mode is required for video conferencing. 
 	/// - Parameter value: a boolean to indicate whether the feature is to be enabled. 
 	
 	/// Returns whether RTP bundle mode (also known as Media Multiplexing) is enabled. 
+	/// See https://datatracker.ietf.org/doc/html/rfc8843 for more information. 
 	/// See https://datatracker.ietf.org/doc/html/rfc8843 for more information. 
 	/// - Returns: a boolean indicating the enablement of rtp bundle mode. 
 	public var rtpBundleEnabled: Bool
@@ -24810,7 +25819,7 @@ public class Core : LinphoneObject
 	/// - Parameter enable: A boolean value telling whether to enable self view
 	/// Self-view refers to having local webcam image inserted in corner of the video
 	/// window during calls. This function works at any time, including during calls.
-	/// - deprecated: 04/09/2024 Prefer using ``setNativePreviewWindowId(windowId:)``
+	/// - Deprecated: 04/09/2024 Prefer using ``setNativePreviewWindowId(windowId:)``
 	/// to assign a view to render the local image. 
 	
 	/// Tells whether video self view during call is enabled or not. 
@@ -24827,6 +25836,31 @@ public class Core : LinphoneObject
 		set
 		{
 			linphone_core_enable_self_view(cPtr, newValue==true ? 1:0)
+		}
+	}
+		
+	/// Enable sending of chat message on group chats only after receiving the NOTIFY
+	/// full state If it is disabled, as it is the default value, message will be sent
+	/// after the delay set by linphone_core_get_message_sending_delay 
+	/// Enable sending of chat message on group chats only after receiving the NOTIFY
+	/// full state If it is disabled, as it is the default value, message will be sent
+	/// after the delay set by linphone_core_get_message_sending_delay 
+	/// - Parameter enabled: true if enabled, false otherwise. 
+	
+	/// Returns enablement of sending chat messages on group chats after receiving the
+	/// NOTIFY full state. 
+	/// - Returns: true if the core waits for the NOTIFY full statet before sending
+	/// messages to group chats, false otherwise. 
+	public var sendMessageAfterNotifyEnabled: Bool
+	{
+	
+		get
+		{ 
+						return linphone_core_send_message_after_notify_enabled(cPtr) != 0
+		}
+		set
+		{
+			linphone_core_enable_send_message_after_notify(cPtr, newValue==true ? 1:0)
 		}
 	}
 		
@@ -24977,8 +26011,8 @@ public class Core : LinphoneObject
 	
 	/// Gets the list of the available sound devices. 
 	/// - Returns: An unmodifiable array of strings contanining the names of the
-	/// available sound devices that is nil terminated.      
-	/// - deprecated: 10/04/2021 Use ``getAudioDevices()`` instead.
+	/// available sound devices that is nil terminated.         
+	/// - Deprecated: 10/04/2021 Use ``getAudioDevices()`` instead.
 	@available(*, deprecated)
 	public var soundDevicesList: [String]
 	{
@@ -24996,10 +26030,10 @@ public class Core : LinphoneObject
 	}
 		
 	/// Sets the crypto suites available to the core. 
-	/// - Parameter suites: comma separated list of supported suites   
+	/// - Parameter suites: comma separated list of supported suites    
 	
 	/// Gets the crypto suites available to the core. 
-	/// - Returns: a comma separated list of supported suites   
+	/// - Returns: a comma separated list of supported suites    
 	public var srtpCryptoSuites: String
 	{
 	
@@ -25018,12 +26052,12 @@ public class Core : LinphoneObject
 		
 	/// Set the path to the image file to stream when "Static picture" is set as the
 	/// video device. 
-	/// - Parameter path: The path to the image file to use.   
+	/// - Parameter path: The path to the image file to use.    
 	
 	/// Get the path to the image file streamed when "Static picture" is set as the
 	/// video device. 
 	/// - Returns: The path to the image file streamed when "Static picture" is set as
-	/// the video device.   
+	/// the video device.    
 	public var staticPicture: String?
 	{
 	
@@ -25036,7 +26070,7 @@ public class Core : LinphoneObject
 			return result
 
 	}
-	public func setStaticpicture(newValue: String) throws
+	public func setStaticpicture(newValue: String?) throws
 	{
 		let exception_result = linphone_core_set_static_picture(cPtr, newValue)
 		guard exception_result == 0 else {
@@ -25064,13 +26098,13 @@ public class Core : LinphoneObject
 	}
 		
 	/// Set the STUN server address to use when the firewall policy is set to STUN. 
-	/// - Parameter server: The STUN server address to use.   
-	/// - deprecated: 04/09/2024 use ``setNatPolicy(policy:)`` or
+	/// - Parameter server: The STUN server address to use.    
+	/// - Deprecated: 04/09/2024 use ``setNatPolicy(policy:)`` or
 	/// ``AccountParams/setNatPolicy(policy:)``.
 	
 	/// Get the STUN server address being used. 
-	/// - Returns: The STUN server address being used.   
-	/// - deprecated: 04/09/2024 use ``getNatPolicy()`` or
+	/// - Returns: The STUN server address being used.    
+	/// - Deprecated: 04/09/2024 use ``getNatPolicy()`` or
 	/// ``AccountParams/getNatPolicy()``.
 	public var stunServer: String?
 	{
@@ -25095,7 +26129,8 @@ public class Core : LinphoneObject
 	
 	/// Returns a list of strings containing the file format types supported for call
 	/// recording. 
-	/// - Returns: The supported formats, typically 'wav', 'mka', 'mkv', 'smff'.      
+	/// - Returns: The supported formats, typically 'wav', 'mka', 'mkv', 'smff'.       
+	///  
 	public var supportedFileFormatsList: [String]
 	{
 	
@@ -25112,7 +26147,7 @@ public class Core : LinphoneObject
 	}
 		
 	/// Set the SIP supported tags. 
-	/// - Parameter tags: The SIP feature tags to set   
+	/// - Parameter tags: The SIP feature tags to set    
 	
 	public var supportedTag: String = ""
 	{
@@ -25167,11 +26202,11 @@ public class Core : LinphoneObject
 
 	}
 		
-	/// Redefines the list of the available payload types. 
-	/// - Parameter payloadTypes: The new list of payload types.    
+	/// Redefines the list of the available payload types for real-time text. 
+	/// - Parameter payloadTypes: The new list of payload types.      
 	
-	/// Returns the list of the available text payload types. 
-	/// - Returns: A freshly allocated list of the available payload types.       
+	/// Returns the list of the available real-time text payload types. 
+	/// - Returns: A freshly allocated list of the available payload types.         
 	public var textPayloadTypes: [PayloadType]
 	{
 	
@@ -25223,7 +26258,7 @@ public class Core : LinphoneObject
 	
 	/// Get the text port range from which is randomly chosen the UDP port used for
 	/// text streaming. 
-	/// - Returns: a ``Range`` object     
+	/// - Returns: a ``Range`` object       
 	public var textPortsRange: Range?
 	{
 	
@@ -25239,10 +26274,10 @@ public class Core : LinphoneObject
 		
 	/// Sets a TLS certificate used for TLS authentication The certificate won't be
 	/// stored, you have to set it after each ``Core`` startup. 
-	/// - Parameter tlsCert: the TLS certificate.   
+	/// - Parameter tlsCert: the TLS certificate.    
 	
 	/// Gets the TLS certificate. 
-	/// - Returns: the TLS certificate or nil if not set yet.   
+	/// - Returns: the TLS certificate or nil if not set yet.    
 	public var tlsCert: String?
 	{
 	
@@ -25264,10 +26299,10 @@ public class Core : LinphoneObject
 		
 	/// Sets a TLS certificate path used for TLS authentication The path will be stored
 	/// in the rc file and automatically restored on startup. 
-	/// - Parameter tlsCertPath: path to the TLS certificate.   
+	/// - Parameter tlsCertPath: path to the TLS certificate.    
 	
 	/// Gets the path to the TLS certificate file. 
-	/// - Returns: the TLS certificate path or nil if not set yet.   
+	/// - Returns: the TLS certificate path or nil if not set yet.    
 	public var tlsCertPath: String?
 	{
 	
@@ -25289,10 +26324,10 @@ public class Core : LinphoneObject
 		
 	/// Sets a TLS key used for TLS authentication The key won't be stored, you have to
 	/// set it after each ``Core`` startup. 
-	/// - Parameter tlsKey: the TLS key.   
+	/// - Parameter tlsKey: the TLS key.    
 	
 	/// Gets the TLS key. 
-	/// - Returns: the TLS key or nil if not set yet.   
+	/// - Returns: the TLS key or nil if not set yet.    
 	public var tlsKey: String?
 	{
 	
@@ -25314,10 +26349,10 @@ public class Core : LinphoneObject
 		
 	/// Sets a TLS key path used for TLS authentication The path will be stored in the
 	/// rc file and automatically restored on startup. 
-	/// - Parameter tlsKeyPath: path to the TLS key.   
+	/// - Parameter tlsKeyPath: path to the TLS key.    
 	
 	/// Gets the path to the TLS key file. 
-	/// - Returns: the TLS key path or nil if not set yet.   
+	/// - Returns: the TLS key path or nil if not set yet.    
 	public var tlsKeyPath: String?
 	{
 	
@@ -25339,13 +26374,13 @@ public class Core : LinphoneObject
 		
 	/// Sets the ports to be used for each of transport (UDP or TCP) A zero value port
 	/// for a given transport means the transport is not used. 
-	/// A value of LC_SIP_TRANSPORT_RANDOM (-1) means the port is to be choosen
-	/// randomly by the system. A value of LC_SIP_TRANSPORT_DONTBIND (-2) means that
-	/// the socket will not be bound explicitely, in other words liblinphone won't
-	/// listen for incoming connections at all. This mode is suitable for a pure client
+	/// A value of LC_SIP_TRANSPORT_RANDOM (-1) means the port is to be chosen randomly
+	/// by the system. A value of LC_SIP_TRANSPORT_DONTBIND (-2) means that the socket
+	/// will not be bound explicitly, in other words liblinphone won't listen for
+	/// incoming connections at all. This mode is suitable for a pure client
 	/// application (ex: a mobile application). 
-	/// - Parameter transports: A #LinphoneSipTransports structure giving the ports to
-	/// use   
+	/// - Parameter transports: A LinphoneSipTransports structure giving the ports to
+	/// use    
 	/// - Returns: 0 
 	
 	/// Retrieves the port configuration used for each transport (udp, tcp, tls). 
@@ -25355,7 +26390,7 @@ public class Core : LinphoneObject
 	/// will not be bound explicitely, in other words liblinphone won't listen for
 	/// incoming connections at all. This mode is suitable for a pure client
 	/// application (ex: a mobile application). 
-	/// - Returns: A ``Transports`` structure with the configured ports     
+	/// - Returns: A ``Transports`` structure with the configured ports       
 	public var transports: Transports?
 	{
 	
@@ -25381,7 +26416,7 @@ public class Core : LinphoneObject
 	/// A zero value means that the transport is not activated. If
 	/// LC_SIP_TRANSPORT_RANDOM was passed to linphone_core_set_sip_transports, the
 	/// random port choosed by the system is returned. 
-	/// - Returns: A ``Transports`` structure with the ports being used     
+	/// - Returns: A ``Transports`` structure with the ports being used       
 	public var transportsUsed: Transports?
 	{
 	
@@ -25397,7 +26432,7 @@ public class Core : LinphoneObject
 		
 	
 	/// Gets tunnel instance if available. 
-	/// - Returns: ``Tunnel`` or nil if not available.   
+	/// - Returns: ``Tunnel`` or nil if not available.    
 	public var tunnel: Tunnel?
 	{
 	
@@ -25483,7 +26518,7 @@ public class Core : LinphoneObject
 	/// In some cases the uPnP can have an external ip address but not a usable uPnP
 	/// (state different of Ok).
 	/// - Returns: a null terminated string containing the external ip address. If the
-	/// the external ip address is not available return null.   
+	/// the external ip address is not available return null.    
 	public var upnpExternalIpaddress: String?
 	{
 	
@@ -25499,7 +26534,7 @@ public class Core : LinphoneObject
 		
 	
 	/// Return the internal state of uPnP. 
-	/// - Returns: an LinphoneUpnpState. 
+	/// - Returns: an ``UpnpState``. 
 	public var upnpState: UpnpState
 	{
 	
@@ -25552,6 +26587,12 @@ public class Core : LinphoneObject
 	/// This is preferred method to reliabily transmit DTMFs codes. There are two
 	/// settings relevant to dtmf sending: ``setUseRfc2833ForDtmf(useRfc2833:)`` and
 	/// ``setUseInfoForDtmf(useInfo:)``; Resulting in 4 cases:
+	/// -If neither are enabled, don't send anything.
+	/// -If one is enabled but not the other, then send the DTMF using the one the that
+	/// is enabled.
+	/// -If both are enabled, use RFC2833, then SIP INFO as fallback only if the media
+	/// does not support telephone-events. In that last sub-case, note that the DTMF
+	/// will also be sent modulated into the audio signal.
 	/// - Parameter useRfc2833: A boolean value telling whether to use RFC2833 to send
 	/// digits 
 	
@@ -25572,7 +26613,7 @@ public class Core : LinphoneObject
 		
 	
 	/// Gets the user-agent as a string. 
-	/// - Returns: liblinphone's user agent as a string.   
+	/// - Returns: liblinphone's user agent as a string.    
 	public var userAgent: String
 	{
 	
@@ -25586,10 +26627,10 @@ public class Core : LinphoneObject
 	/// Set the path to the directory storing the user's x509 certificates (used by
 	/// dtls) 
 	/// - Parameter path: The path to the directory to use to store the user's
-	/// certificates.   
+	/// certificates.    
 	
 	/// Get the path to the directory storing the user's certificates. 
-	/// - Returns: The path to the directory storing the user's certificates.   
+	/// - Returns: The path to the directory storing the user's certificates.    
 	public var userCertificatesPath: String?
 	{
 	
@@ -25610,10 +26651,10 @@ public class Core : LinphoneObject
 	}
 		
 	/// Associate a user pointer to the linphone core. 
-	/// - Parameter userData: The user data to associate with the ``Core`` object.   
+	/// - Parameter userData: The user data to associate with the ``Core`` object.    
 	
 	/// Retrieves the user pointer that was given to linphone_core_new 
-	/// - Returns: The user data associated with the ``Core`` object.   
+	/// - Returns: The user data associated with the ``Core`` object.    
 	public var userData: UnsafeMutableRawPointer?
 	{
 	
@@ -25649,11 +26690,15 @@ public class Core : LinphoneObject
 		
 	/// Sets the default policy for video. 
 	/// This policy defines whether:
-	/// - Parameter policy: The ``VideoActivationPolicy`` to use   
+	/// -video shall be initiated by default for outgoing calls
+	/// -video shall be accepted by default for incoming calls
+	/// -if video shall be accepted by default, what direction do we want
+	/// (send/receive, receive only, etc...)
+	/// - Parameter policy: The ``VideoActivationPolicy`` to use    
 	
 	/// Get the default policy for video. 
 	/// See ``setVideoActivationPolicy(policy:)`` for more details. 
-	/// - Returns: The currently used video policy   
+	/// - Returns: The currently used video policy    
 	public var videoActivationPolicy: VideoActivationPolicy?
 	{
 	
@@ -25737,10 +26782,10 @@ public class Core : LinphoneObject
 		
 	/// Sets the active video device. 
 	/// - Parameter id: The name of the video device to use as returned by
-	/// linphone_core_get_video_devices   
+	/// linphone_core_get_video_devices    
 	
 	/// Returns the name of the currently active video device. 
-	/// - Returns: The name of the currently active video device.   
+	/// - Returns: The name of the currently active video device.    
 	public var videoDevice: String?
 	{
 	
@@ -25753,7 +26798,7 @@ public class Core : LinphoneObject
 			return result
 
 	}
-	public func setVideodevice(newValue: String) throws
+	public func setVideodevice(newValue: String?) throws
 	{
 		let exception_result = linphone_core_set_video_device(cPtr, newValue)
 		guard exception_result == 0 else {
@@ -25764,7 +26809,7 @@ public class Core : LinphoneObject
 	
 	/// Gets the list of the available video capture devices. 
 	/// - Returns: An unmodifiable array of strings contanining the names of the
-	/// available video capture devices that is nil terminated.      
+	/// available video capture devices that is nil terminated.         
 	public var videoDevicesList: [String]
 	{
 	
@@ -25802,10 +26847,10 @@ public class Core : LinphoneObject
 		
 	/// Sets the name of the mediastreamer2 engine (filter) to be used for rendering
 	/// video. 
-	/// - Parameter filterName: the filter name to use or nil to use default.   
+	/// - Parameter filterName: the filter name to use or nil to use default.    
 	
 	/// Gets the name of the mediastreamer2 engine (filter) used for rendering video. 
-	/// - Returns: The currently selected video display filter.   
+	/// - Returns: The currently selected video display filter.    
 	public var videoDisplayFilter: String?
 	{
 	
@@ -25826,9 +26871,11 @@ public class Core : LinphoneObject
 	}
 		
 	/// Sets the DSCP field for outgoing video streams. 
-	/// The DSCP defines the quality of service in IP packets. - Note: It is usually
-	/// useless or a bad idea to try to play with DSCP bits unless having full control
-	/// on the network. 
+	/// The DSCP defines the quality of service in IP packets. When RTP bundling is
+	/// negociated during the call (see ``enableRtpBundle(value:)``), the video packets
+	/// are sent through the audio RTP/UDP connection, which leaves the video dscp
+	/// setting wihtout effect. - Note: It is usually useless or a bad idea to try to
+	/// play with DSCP bits unless having full control on the network. 
 	/// - Warning: Setting the DSCP bits is more or less well supported by operating
 	/// systems and sometimes requires to disable IPv6. 
 	/// - Parameter dscp: The DSCP value to set 
@@ -25881,11 +26928,11 @@ public class Core : LinphoneObject
 	}
 		
 	/// Use to set multicast address to be used for video stream. 
-	/// - Parameter ip: an ipv4/6 multicast address.   
+	/// - Parameter ip: an ipv4/6 multicast address.    
 	/// - Returns: 0 in case of success 
 	
 	/// Use to get multicast address to be used for video stream. 
-	/// - Returns: an ipv4/6 multicast address, or default value.   
+	/// - Returns: an ipv4/6 multicast address, or default value.    
 	public var videoMulticastAddr: String?
 	{
 	
@@ -25898,7 +26945,7 @@ public class Core : LinphoneObject
 			return result
 
 	}
-	public func setVideomulticastaddr(newValue: String) throws
+	public func setVideomulticastaddr(newValue: String?) throws
 	{
 		let exception_result = linphone_core_set_video_multicast_addr(cPtr, newValue)
 		guard exception_result == 0 else {
@@ -25951,16 +26998,25 @@ public class Core : LinphoneObject
 	}
 		
 	/// Redefines the list of the available video payload types (codecs). 
+	/// The payload type are listed from higher priority to lowest priority. It is
+	/// worth to note that the set of ``PayloadType`` objects assigned here need to be
+	/// the same as the one returned by ``getVideoPayloadTypes()``. The purpose of the
+	/// setter is to let application modify their order of preference. In particular,
+	/// including in the provided list a payload type not supported has no effect.
+	/// Removing specific payload types from the original list has no effect too:
+	/// missing payload types will be automatically added. In order to disable a
+	/// specific codec, applications shall use ``PayloadType/enable(enabled:)`` instead.
 	/// Calling this function if the video codec priority policy is
 	/// LinphoneCodecPriorityPolicyAuto turns video codec priority policy to basic
 	/// scheme, since application is not supposed to control the order of video codecs
-	/// when LinphoneCodecPriorityPolicyAuto is selected, by definition. - See also:
-	/// ``setVideoCodecPriorityPolicy(policy:)`` 
+	/// when LinphoneCodecPriorityPolicyAuto is selected, by definition.
+	/// - See also: ``setVideoCodecPriorityPolicy(policy:)`` 
 	/// - Parameter payloadTypes: The new list of codecs. The core does not take
-	/// ownership on it.    
+	/// ownership on it.      
 	
-	/// Returns the list of the available video payload types (codecs). 
-	/// - Returns: A freshly allocated list of the available payload types.       
+	/// Returns the list of the available video payload types (codecs), in their order
+	/// of preference. 
+	/// - Returns: A freshly allocated list of the available payload types.         
 	public var videoPayloadTypes: [PayloadType]
 	{
 	
@@ -26012,7 +27068,7 @@ public class Core : LinphoneObject
 	
 	/// Get the video port range from which is randomly chosen the UDP port used for
 	/// video streaming. 
-	/// - Returns: a ``Range`` object     
+	/// - Returns: a ``Range`` object       
 	public var videoPortsRange: Range?
 	{
 	
@@ -26028,7 +27084,7 @@ public class Core : LinphoneObject
 		
 	/// Set the video preset to be used for video calls. 
 	/// - Parameter preset: The name of the video preset to be used (can be nil to use
-	/// the default video preset).   
+	/// the default video preset).    
 	
 	/// Get the video preset used for video calls. 
 	/// - Returns: The name of the video preset used for video calls (can be nil if the
@@ -26153,10 +27209,10 @@ public class Core : LinphoneObject
 		
 	/// Sets the path to the file storing the zrtp secrets cache. 
 	/// - Parameter file: The path to the file to use to store the zrtp secrets cache. 
-	///  
+	///   
 	
 	/// Gets the path to the file storing the zrtp secrets cache. 
-	/// - Returns: The path to the file storing the zrtp secrets cache.   
+	/// - Returns: The path to the file storing the zrtp secrets cache.    
 	public var zrtpSecretsFile: String?
 	{
 	
@@ -26182,7 +27238,7 @@ public class Core : LinphoneObject
 	/// ``Core`` from the authentication_requested callback of ``CoreDelegate``. 
 	/// - Note: this function currently does not take into account the 'info'
 	/// parameter. All pending authentication requests are aborted. 
-	/// - Parameter info: the ``AuthInfo`` for which to abort authentication   
+	/// - Parameter info: the ``AuthInfo`` for which to abort authentication    
 	public func abortAuthentication(info:AuthInfo?) 
 	{
 		linphone_core_abort_authentication(cPtr, info?.cPtr)
@@ -26203,7 +27259,7 @@ public class Core : LinphoneObject
 	
 	/// Adds an account. 
 	/// This will start registration on the proxy, if registration is enabled. 
-	/// - Parameter account: the ``Account`` to add   
+	/// - Parameter account: the ``Account`` to add    
 	/// - Returns: 0 if successful, -1 otherwise 
 	public func addAccount(account:Account) throws 
 	{
@@ -26221,7 +27277,7 @@ public class Core : LinphoneObject
 	/// - Returns: 0 if succeeded. Negative number if failed 
 	/// - Warning: This function guarantees that the local endpoint is added to the
 	/// conference. 
-	/// - deprecated: 23/01/2025 Use
+	/// - Deprecated: 23/01/2025 Use
 	/// ``Conference/inviteParticipants(addresses:params:)`` instead. 
 	@available(*, deprecated)
 	public func addAllToConference() throws 
@@ -26235,9 +27291,9 @@ public class Core : LinphoneObject
 	
 	
 	/// Adds authentication information to the ``Core``. 
-	/// That piece of information will be used during all SIP transactions that require
+	/// These nformation will be used during all SIP or HTTP transactions that require
 	/// authentication. 
-	/// - Parameter info: The ``AuthInfo`` to add.   
+	/// - Parameter info: The ``AuthInfo`` to add.    
 	public func addAuthInfo(info:AuthInfo) 
 	{
 		linphone_core_add_auth_info(cPtr, info.cPtr)
@@ -26247,7 +27303,7 @@ public class Core : LinphoneObject
 	
 	/// Add support for the specified content type. 
 	/// It is the application responsibility to handle it correctly afterwards. 
-	/// - Parameter contentType: The content type to add support for   
+	/// - Parameter contentType: The content type to add support for    
 	public func addContentTypeSupport(contentType:String) 
 	{
 		linphone_core_add_content_type_support(cPtr, contentType)
@@ -26256,7 +27312,7 @@ public class Core : LinphoneObject
 	
 	
 	/// Add a friend list. 
-	/// - Parameter list: ``FriendList`` object   
+	/// - Parameter list: ``FriendList`` object    
 	public func addFriendList(list:FriendList) 
 	{
 		linphone_core_add_friend_list(cPtr, list.cPtr)
@@ -26265,8 +27321,8 @@ public class Core : LinphoneObject
 	
 	
 	/// Add or update a LDAP server and save it to the configuration. 
-	/// - Parameter ldap: The LDAP to add/update.   
-	/// - deprecated: 18/11/2024 use
+	/// - Parameter ldap: The ``Ldap`` object to add/update.    
+	/// - Deprecated: 18/11/2024 use
 	/// ``addRemoteContactDirectory(remoteContactDirectory:)`` instead. 
 	@available(*, deprecated)
 	public func addLdap(ldap:Ldap) 
@@ -26279,7 +27335,7 @@ public class Core : LinphoneObject
 	/// Add the given linphone specs to the list of functionalities the linphone client
 	/// supports. 
 	/// - See also: ``setLinphoneSpecsList(specs:)`` 
-	/// - Parameter spec: The spec to add   
+	/// - Parameter spec: The spec to add    
 	public func addLinphoneSpec(spec:String) 
 	{
 		linphone_core_add_linphone_spec(cPtr, spec)
@@ -26292,8 +27348,9 @@ public class Core : LinphoneObject
 	/// This can also be set from configuration file or factory config file, from[misc]
 	/// section, item "config-uri-headers_X" where X is the index of the header
 	/// starting by 0. 
-	/// - Parameter headerName: the header to use when downloading the configuration.   
-	/// - Parameter value: the value to use when downloading the configuration.   
+	/// - Parameter headerName: the header to use when downloading the configuration.  
+	///  
+	/// - Parameter value: the value to use when downloading the configuration.    
 	public func addProvisioningHeader(headerName:String, value:String) 
 	{
 		linphone_core_add_provisioning_header(cPtr, headerName, value)
@@ -26303,9 +27360,9 @@ public class Core : LinphoneObject
 	
 	/// Add a proxy configuration. 
 	/// This will start registration on the proxy, if registration is enabled. 
-	/// - Parameter config: the ``ProxyConfig`` to add   
+	/// - Parameter config: the ``ProxyConfig`` to add    
 	/// - Returns: 0 if successful, -1 otherwise 
-	/// - deprecated: 04/09/2024 Use ``addAccount(account:)`` 
+	/// - Deprecated: 04/09/2024 Use ``addAccount(account:)`` 
 	@available(*, deprecated)
 	public func addProxyConfig(config:ProxyConfig) throws 
 	{
@@ -26320,7 +27377,7 @@ public class Core : LinphoneObject
 	/// Adds a ``RemoteContactDirectory`` object previously created to the Core, to be
 	/// used later by ``MagicSearch`` to query contacts using either LDAP or CardDAV. 
 	/// - Parameter remoteContactDirectory: the newly created
-	/// ``RemoteContactDirectory`` to add.   
+	/// ``RemoteContactDirectory`` to add.    
 	public func addRemoteContactDirectory(remoteContactDirectory:RemoteContactDirectory) 
 	{
 		linphone_core_add_remote_contact_directory(cPtr, remoteContactDirectory.cPtr)
@@ -26330,7 +27387,7 @@ public class Core : LinphoneObject
 	
 	/// This function controls signaling features supported by the core. 
 	/// They are typically included in a SIP Supported header. 
-	/// - Parameter tag: The feature tag name   
+	/// - Parameter tag: The feature tag name    
 	public func addSupportedTag(tag:String) 
 	{
 		linphone_core_add_supported_tag(cPtr, tag)
@@ -26341,9 +27398,9 @@ public class Core : LinphoneObject
 	/// Adds a participant to the conference. 
 	/// If no conference is going on a new internal conference context is created and
 	/// the participant is added to it. 
-	/// - Parameter call: The current call with the participant to add   
+	/// - Parameter call: The current call with the participant to add    
 	/// - Returns: 0 if succeeded. Negative number if failed 
-	/// - deprecated: 23/01/2025 Use ``Conference/addParticipant(call:)`` instead. 
+	/// - Deprecated: 23/01/2025 Use ``Conference/addParticipant(call:)`` instead. 
 	@available(*, deprecated)
 	public func addToConference(call:Call) throws 
 	{
@@ -26357,7 +27414,7 @@ public class Core : LinphoneObject
 	
 	/// Special function to indicate if the audio route is changed. 
 	/// Must be called in the callback of AVAudioSessionRouteChangeNotification. 
-	/// - deprecated: 07/01/2020 now handled in the linphone SDK directly 
+	/// - Deprecated: 07/01/2020 now handled in the linphone SDK directly 
 	@available(*, deprecated)
 	public func audioRouteChanged() 
 	{
@@ -26376,7 +27433,9 @@ public class Core : LinphoneObject
 	
 	
 	/// Gets the default ephemeral message mode. 
-	/// - Returns: the default ephemeral message mode ``ChatRoom.EphemeralMode`` 
+	/// - Returns: the default ephemeral message mode ``ChatRoom.EphemeralMode``
+	/// - Deprecated: 21/11/2025 use ``getDefaultEphemeralMode()``. 
+	@available(*, deprecated)
 	public func chatRoomGetDefaultEphemeralMode() -> ChatRoom.EphemeralMode
 	{
 		return ChatRoom.EphemeralMode(rawValue: Int(linphone_core_chat_room_get_default_ephemeral_mode(cPtr).rawValue))!
@@ -26385,7 +27444,9 @@ public class Core : LinphoneObject
 	
 	
 	/// Sets the default ephemeral message mode. 
-	/// - Parameter mode: default ephemeral message mode ``ChatRoom.EphemeralMode`` 
+	/// - Parameter mode: default ephemeral message mode ``ChatRoom.EphemeralMode``
+	/// - Deprecated: 21/11/2025 use ``setDefaultEphemeralMode(mode:)``. 
+	@available(*, deprecated)
 	public func chatRoomSetDefaultEphemeralMode(mode:ChatRoom.EphemeralMode) 
 	{
 		linphone_core_chat_room_set_default_ephemeral_mode(cPtr, LinphoneChatRoomEphemeralMode(rawValue: CUnsignedInt(mode.rawValue)))
@@ -26400,6 +27461,11 @@ public class Core : LinphoneObject
 	/// be given in [misc] section as key 'version_check_url_root'. The subdirectory is
 	/// appended to this root URI, per platform, and a "VERSION" file is fetched. For
 	/// example:
+	/// -https://download.linphone.org/releases/android/RELEASE
+	/// -https://download.linphone.org/releases/windows/RELEASE The RELEASE file is
+	/// expected to contain the most recent version number available followed by an
+	/// http uri where this version can be retrieved. For example: 5.2.5
+	/// https://play.google.com/store/apps/details?id=org.linphone 
 	public func checkForUpdate(currentVersion:String) 
 	{
 		linphone_core_check_for_update(cPtr, currentVersion)
@@ -26432,7 +27498,7 @@ public class Core : LinphoneObject
 	
 	
 	/// Erases all LDAP from the configuration. 
-	/// - deprecated: 18/11/2024 use
+	/// - Deprecated: 18/11/2024 use
 	/// ``removeRemoteContactDirectory(remoteContactDirectory:)`` instead.
 	@available(*, deprecated)
 	public func clearLdaps() 
@@ -26452,7 +27518,7 @@ public class Core : LinphoneObject
 	
 	
 	/// Erase all proxies from config. 
-	/// - deprecated: 04/09/2024 Use ``clearAccounts()`` 
+	/// - Deprecated: 04/09/2024 Use ``clearAccounts()`` 
 	@available(*, deprecated)
 	public func clearProxyConfig() 
 	{
@@ -26487,8 +27553,8 @@ public class Core : LinphoneObject
 	/// Once created, the account must be added to the ``Core`` in order to be used for
 	/// registration, calls, messages etc. Use ``addAccount(account:)`` to add it to
 	/// the ``Core``. 
-	/// - Parameter params: ``AccountParams`` object   
-	/// - Returns: ``Account`` with default values set   
+	/// - Parameter params: ``AccountParams`` object    
+	/// - Returns: ``Account`` with default values set    
 	public func createAccount(params:AccountParams) throws -> Account
 	{
 		let cPointer = linphone_core_create_account(cPtr, params.cPtr)
@@ -26503,9 +27569,9 @@ public class Core : LinphoneObject
 	
 	
 	/// Create a ``AccountCreator`` and set Linphone Request callbacks. 
-	/// - Parameter xmlrpcUrl: The URL to the XML-RPC server.   
-	/// - Returns: The new ``AccountCreator`` object.  
-	/// - deprecated: 04/09/2024 : The ``AccountCreator`` interface is replaced by the
+	/// - Parameter xmlrpcUrl: The URL to the XML-RPC server.    
+	/// - Returns: The new ``AccountCreator`` object.   
+	/// - Deprecated: 04/09/2024 : The ``AccountCreator`` interface is replaced by the
 	/// ``AccountManagerServices`` interface. 
 	@available(*, deprecated)
 	public func createAccountCreator(xmlrpcUrl:String?) throws -> AccountCreator
@@ -26522,7 +27588,7 @@ public class Core : LinphoneObject
 	
 	
 	/// Creates a ``AccountManagerServices``. 
-	/// - Returns: The new ``AccountManagerServices`` object.   
+	/// - Returns: The new ``AccountManagerServices`` object.    
 	public func createAccountManagerServices() throws -> AccountManagerServices
 	{
 		let cPointer = linphone_core_create_account_manager_services(cPtr)
@@ -26537,7 +27603,7 @@ public class Core : LinphoneObject
 	
 	
 	/// Create an account params using default values from Linphone core. 
-	/// - Returns: ``AccountParams`` with default values set   
+	/// - Returns: ``AccountParams`` with default values set    
 	public func createAccountParams() throws -> AccountParams
 	{
 		let cPointer = linphone_core_create_account_params(cPtr)
@@ -26553,9 +27619,9 @@ public class Core : LinphoneObject
 	
 	/// Creates a ``Address`` object by parsing the user supplied address, given as a
 	/// string. 
-	/// - Parameter address: String containing the user supplied address   
-	/// - Returns: The created ``Address`` object   
-	/// - deprecated: 04/06/2024 use ``Factory/createAddress(addr:)``.
+	/// - Parameter address: String containing the user supplied address    
+	/// - Returns: The created ``Address`` object    
+	/// - Deprecated: 04/06/2024 use ``Factory/createAddress(addr:)``.
 	@available(*, deprecated)
 	public func createAddress(address:String?) throws -> Address
 	{
@@ -26571,8 +27637,8 @@ public class Core : LinphoneObject
 	
 	
 	/// Creates a fake ``CallLog``. 
-	/// - Parameter from: ``Address`` of caller   
-	/// - Parameter to: ``Address`` of callee   
+	/// - Parameter from: ``Address`` of caller    
+	/// - Parameter to: ``Address`` of callee    
 	/// - Parameter dir: ``Call.Dir`` of call 
 	/// - Parameter duration: call length in seconds 
 	/// - Parameter startTime: timestamp of call start time 
@@ -26580,7 +27646,7 @@ public class Core : LinphoneObject
 	/// - Parameter status: ``Call.Status`` of call 
 	/// - Parameter videoEnabled: whether video was enabled or not for this call 
 	/// - Parameter quality: call quality 
-	/// - Returns: a ``CallLog`` object   
+	/// - Returns: a ``CallLog`` object    
 	public func createCallLog(from:Address, to:Address, dir:Call.Dir, duration:Int, startTime:time_t, connectedTime:time_t, status:Call.Status, videoEnabled:Bool, quality:Float) throws -> CallLog
 	{
 		let cPointer = linphone_core_create_call_log(cPtr, from.cPtr, to.cPtr, LinphoneCallDir(rawValue: CUnsignedInt(dir.rawValue)), CInt(duration), startTime, connectedTime, LinphoneCallStatus(rawValue: CUnsignedInt(status.rawValue)), videoEnabled==true ? 1:0, quality)
@@ -26602,8 +27668,8 @@ public class Core : LinphoneObject
 	/// and the current state of the call if any. In order to create a ``CallParams``
 	/// for an already created call, the call argument must not be null. 
 	/// - Parameter call: ``Call`` for which the parameters are to be built, or nil in
-	/// the case where the parameters are to be used for a new outgoing call.   
-	/// - Returns: A new ``CallParams`` object.   
+	/// the case where the parameters are to be used for a new outgoing call.    
+	/// - Returns: A new ``CallParams`` object.    
 	public func createCallParams(call:Call?) throws -> CallParams
 	{
 		let cPointer = linphone_core_create_call_params(cPtr, call?.cPtr)
@@ -26621,7 +27687,7 @@ public class Core : LinphoneObject
 	/// ``MagicSearch`` to query contacts. 
 	/// - Returns: a new ``CardDavParams`` object to configure, and then use it to
 	/// create a ``RemoteContactDirectory`` using
-	/// ``createCardDavRemoteContactDirectory(params:)``.   
+	/// ``createCardDavRemoteContactDirectory(params:)``.    
 	public func createCardDavParams() throws -> CardDavParams
 	{
 		let cPointer = linphone_core_create_card_dav_params(cPtr)
@@ -26638,9 +27704,9 @@ public class Core : LinphoneObject
 	/// Creates a new CardDAV server params object that may be used later by
 	/// ``MagicSearch`` to query contacts. 
 	/// - Parameter params: the ``CardDavParams`` to configure this remote contact
-	/// directory.   
+	/// directory.    
 	/// - Returns: a new ``RemoteContactDirectory`` object to configure, and then add
-	/// using ``addRemoteContactDirectory(remoteContactDirectory:)``.   
+	/// using ``addRemoteContactDirectory(remoteContactDirectory:)``.    
 	public func createCardDavRemoteContactDirectory(params:CardDavParams) throws -> RemoteContactDirectory
 	{
 		let cPointer = linphone_core_create_card_dav_remote_contact_directory(cPtr, params.cPtr)
@@ -26658,8 +27724,8 @@ public class Core : LinphoneObject
 	/// for now or later and then send conference info as an ICS through chat. 
 	/// A CCMPConferenceScheduler creates a conference on a server by using the CCMP
 	/// protocol 
-	/// - Parameter account: The ``Account`` to use in the ``ConferenceScheduler``.   
-	/// - Returns: A pointer on the freshly created ``ConferenceScheduler``.   
+	/// - Parameter account: The ``Account`` to use in the ``ConferenceScheduler``.    
+	/// - Returns: A pointer on the freshly created ``ConferenceScheduler``.    
 	public func createCcmpConferenceScheduler(account:Account?) throws -> ConferenceScheduler
 	{
 		let cPointer = linphone_core_create_ccmp_conference_scheduler(cPtr, account?.cPtr)
@@ -26674,10 +27740,11 @@ public class Core : LinphoneObject
 	
 	
 	/// Create a chat room. 
-	/// - Parameter params: The chat room creation parameters ``ConferenceParams``   
-	/// - Parameter participants: The initial list of participants of the chat room.    
+	/// - Parameter params: The chat room creation parameters ``ConferenceParams``    
+	/// - Parameter participants: The initial list of participants of the chat room.   
+	///   
 	/// - Returns: The newly created chat room (can be an existing one if backend is
-	/// Basic) or nil.   
+	/// Basic) or nil.    
 	public func createChatRoom(params:ConferenceParams, participants:[Address]) throws -> ChatRoom
 	{
 		let cPointer = linphone_core_create_chat_room_7(cPtr, params.cPtr, ObjectArrayToBctbxList(list: participants))
@@ -26692,13 +27759,14 @@ public class Core : LinphoneObject
 	
 	
 	/// Create a chat room. 
-	/// - Parameter params: The chat room creation parameters ``ChatRoomParams``   
+	/// - Parameter params: The chat room creation parameters ``ChatRoomParams``    
 	/// - Parameter localAddr: ``Address`` representing the local proxy configuration
 	/// to use for the chat room creation    
-	/// - Parameter subject: The subject of the group chat room   
+	/// - Parameter subject: The subject of the group chat room    
 	/// - Parameter participants: The initial list of participants of the chat room    
-	/// - Returns: The newly created chat room.   
-	/// - deprecated: 02/07/2020, use ``createChatRoom(params:participants:)`` instead
+	///  
+	/// - Returns: The newly created chat room.    
+	/// - Deprecated: 02/07/2020, use ``createChatRoom(params:participants:)`` instead
 	@available(*, deprecated)
 	public func createChatRoom(params:ChatRoomParams, localAddr:Address, subject:String, participants:[Address]) throws -> ChatRoom
 	{
@@ -26714,11 +27782,12 @@ public class Core : LinphoneObject
 	
 	
 	/// Create a chat room. 
-	/// - Parameter params: The chat room creation parameters ``ChatRoomParams``   
-	/// - Parameter subject: The subject of the group chat room   
-	/// - Parameter participants: The initial list of participants of the chat room.    
-	/// - Returns: The newly created chat room.   
-	/// - deprecated: 02/07/2020, use ``createChatRoom(params:participants:)`` instead
+	/// - Parameter params: The chat room creation parameters ``ChatRoomParams``    
+	/// - Parameter subject: The subject of the group chat room    
+	/// - Parameter participants: The initial list of participants of the chat room.   
+	///   
+	/// - Returns: The newly created chat room.    
+	/// - Deprecated: 02/07/2020, use ``createChatRoom(params:participants:)`` instead
 	@available(*, deprecated)
 	public func createChatRoom(params:ChatRoomParams, subject:String, participants:[Address]) throws -> ChatRoom
 	{
@@ -26733,10 +27802,11 @@ public class Core : LinphoneObject
 	
 	
 	
-	/// - Parameter subject: The subject of the group chat room   
-	/// - Parameter participants: The initial list of participants of the chat room.    
-	/// - Returns: The newly created chat room.   
-	/// - deprecated: 02/07/2020, use ``createChatRoom(params:participants:)`` instead
+	/// - Parameter subject: The subject of the group chat room    
+	/// - Parameter participants: The initial list of participants of the chat room.   
+	///   
+	/// - Returns: The newly created chat room.    
+	/// - Deprecated: 02/07/2020, use ``createChatRoom(params:participants:)`` instead
 	@available(*, deprecated)
 	public func createChatRoom(subject:String, participants:[Address]) throws -> ChatRoom
 	{
@@ -26751,13 +27821,13 @@ public class Core : LinphoneObject
 	
 	
 	
-	/// - Parameter params: The chat room creation parameters ``ChatRoomParams``   
+	/// - Parameter params: The chat room creation parameters ``ChatRoomParams``    
 	/// - Parameter localAddr: ``Address`` representing the local proxy configuration
 	/// to use for the chat room creation    
 	/// - Parameter participant: ``Address`` representing the initial participant to
-	/// add to the chat room   
-	/// - Returns: The newly created chat room.   
-	/// - deprecated: 02/07/2020, use ``createChatRoom(params:participants:)`` instead
+	/// add to the chat room    
+	/// - Returns: The newly created chat room.    
+	/// - Deprecated: 02/07/2020, use ``createChatRoom(params:participants:)`` instead
 	@available(*, deprecated)
 	public func createChatRoom(params:ChatRoomParams, localAddr:Address, participant:Address) throws -> ChatRoom
 	{
@@ -26773,9 +27843,9 @@ public class Core : LinphoneObject
 	
 	
 	/// - Parameter participant: ``Address`` representing the initial participant to
-	/// add to the chat room   
-	/// - Returns: The newly created chat room.   
-	/// - deprecated: 02/07/2020, use ``createChatRoom(params:participants:)`` instead
+	/// add to the chat room    
+	/// - Returns: The newly created chat room.    
+	/// - Deprecated: 02/07/2020, use ``createChatRoom(params:participants:)`` instead
 	@available(*, deprecated)
 	public func createChatRoom(participant:Address) throws -> ChatRoom
 	{
@@ -26791,12 +27861,13 @@ public class Core : LinphoneObject
 	
 	
 	/// Create a chat room. 
-	/// - Parameter params: The chat room creation parameters ``ChatRoomParams``   
-	/// - Parameter localAddr: ``Address`` of a local ``Account`` identity or nil   
-	/// - Parameter participants: The initial list of participants of the chat room.    
+	/// - Parameter params: The chat room creation parameters ``ChatRoomParams``    
+	/// - Parameter localAddr: ``Address`` of a local ``Account`` identity or nil    
+	/// - Parameter participants: The initial list of participants of the chat room.   
+	///   
 	/// - Returns: The newly created chat room (can be an existing one if backend is
-	/// Basic) or nil.   
-	/// - deprecated: 22/10/2024, use ``createChatRoom(params:participants:)`` instead
+	/// Basic) or nil.    
+	/// - Deprecated: 22/10/2024, use ``createChatRoom(params:participants:)`` instead
 	@available(*, deprecated)
 	public func createChatRoom(params:ChatRoomParams, localAddr:Address?, participants:[Address]) throws -> ChatRoom
 	{
@@ -26815,8 +27886,8 @@ public class Core : LinphoneObject
 	/// ``createConferenceWithParams(params:)``. 
 	/// - Parameter conference: ``Conference`` for which the parameters are to be
 	/// build, or nil in the case where the parameters are to be used for a new
-	/// conference.   
-	/// - Returns: a ``ConferenceParams`` object.   
+	/// conference.    
+	/// - Returns: a ``ConferenceParams`` object.    
 	public func createConferenceParams(conference:Conference?) throws -> ConferenceParams
 	{
 		let cPointer = linphone_core_create_conference_params_2(cPtr, conference?.cPtr)
@@ -26833,10 +27904,9 @@ public class Core : LinphoneObject
 	/// Create a conference scheduler that can be used to schedule conferences on a
 	/// client conference service and then send conference information invitation as an
 	/// ICS object through chat. 
-	/// - Returns: A pointer on the freshly created ``ConferenceScheduler``.   
-	/// - deprecated: 23/07/2024 Use ``createConferenceScheduler(account:)`` or
-	/// ``createConferenceSchedulerWithType(account:schedulingType:)`` instead. 
-	@available(*, deprecated)
+	/// The default account (see ``getDefaultAccount()`` ) is used to determine which
+	/// kind of conference scheduler is created. 
+	/// - Returns: A pointer on the freshly created ``ConferenceScheduler``.    
 	public func createConferenceScheduler() throws -> ConferenceScheduler
 	{
 		let cPointer = linphone_core_create_conference_scheduler(cPtr)
@@ -26852,10 +27922,11 @@ public class Core : LinphoneObject
 	
 	/// Create a conference scheduler that can be used to create client conferences for
 	/// now or later and then send conference info as an ICS through chat. 
-	/// A SipConferenceScheduler is created if the ``Account`` has not defined the URL
-	/// of the CCMP server, other it will create a CCMPConferenceServer 
-	/// - Parameter account: The ``Account`` to use in the ``ConferenceScheduler``.   
-	/// - Returns: A pointer on the freshly created ``ConferenceScheduler``.   
+	/// A SIP-based implementation is created if the ``Account`` has not defined the
+	/// URL of a CCMP server, other it will create a implementation relying on CCMP
+	/// protocol. 
+	/// - Parameter account: The ``Account`` to use in the ``ConferenceScheduler``.    
+	/// - Returns: A pointer on the freshly created ``ConferenceScheduler``.    
 	public func createConferenceScheduler(account:Account?) throws -> ConferenceScheduler
 	{
 		let cPointer = linphone_core_create_conference_scheduler_2(cPtr, account?.cPtr)
@@ -26872,9 +27943,9 @@ public class Core : LinphoneObject
 	/// Create a conference scheduler that can be used to create client conferences for
 	/// now or later and then send conference info as an ICS through chat by specifying
 	/// its type. 
-	/// - Parameter account: The ``Account`` to use in the ``ConferenceScheduler``.   
+	/// - Parameter account: The ``Account`` to use in the ``ConferenceScheduler``.    
 	/// - Parameter schedulingType: The type of the ``ConferenceScheduler``. 
-	/// - Returns: A pointer on the freshly created ``ConferenceScheduler``.   
+	/// - Returns: A pointer on the freshly created ``ConferenceScheduler``.    
 	public func createConferenceSchedulerWithType(account:Account?, schedulingType:ConferenceScheduler.Kind) throws -> ConferenceScheduler
 	{
 		let cPointer = linphone_core_create_conference_scheduler_with_type(cPtr, account?.cPtr, LinphoneConferenceSchedulerType(rawValue: CUnsignedInt(schedulingType.rawValue)))
@@ -26893,10 +27964,10 @@ public class Core : LinphoneObject
 	/// in the 'misc' section of the configuration, or by the factory address
 	/// parameter. See ``ConferenceParams/setConferenceFactoryAddress(address:)`` for
 	/// more details. 
-	/// - Parameter params: Parameters of the conference. See ``ConferenceParams``.   
+	/// - Parameter params: Parameters of the conference. See ``ConferenceParams``.    
 	/// - Returns: A pointer on the freshly created conference ``Conference``. That
 	/// object will be automatically freed by the core after calling
-	/// ``terminateConference()``.   
+	/// ``terminateConference()``.    
 	/// - Warning: To guarantee the backward comatibility, this method will assign the
 	/// created conference to the conference context held by the core. Nonetheless
 	/// starting from release 5.4, the conference context will be override at every
@@ -26916,8 +27987,8 @@ public class Core : LinphoneObject
 	
 	/// Create a ``Config`` object from a user config file. 
 	/// - Parameter filename: The filename of the config file to read to fill the
-	/// instantiated ``Config``   
-	/// - Returns: a ``Config`` object.   
+	/// instantiated ``Config``    
+	/// - Returns: a ``Config`` object.    
 	public func createConfig(filename:String?) throws -> Config
 	{
 		let cPointer = linphone_core_create_config(cPtr, filename)
@@ -26932,7 +28003,7 @@ public class Core : LinphoneObject
 	
 	
 	/// Creates a content with default values from Linphone core. 
-	/// - Returns: ``Content`` object with default values set   
+	/// - Returns: ``Content`` object with default values set    
 	public func createContent() throws -> Content
 	{
 		let cPointer = linphone_core_create_content(cPtr)
@@ -26951,8 +28022,8 @@ public class Core : LinphoneObject
 	/// chat. 
 	/// The DBConferenceScheduler only creates a conference info to be stored in the
 	/// database of the linphone core 
-	/// - Parameter account: The ``Account`` to use in the ``ConferenceScheduler``.   
-	/// - Returns: A pointer on the freshly created ``ConferenceScheduler``.   
+	/// - Parameter account: The ``Account`` to use in the ``ConferenceScheduler``.    
+	/// - Returns: A pointer on the freshly created ``ConferenceScheduler``.    
 	public func createDbConferenceScheduler(account:Account?) throws -> ConferenceScheduler
 	{
 		let cPointer = linphone_core_create_db_conference_scheduler(cPtr, account?.cPtr)
@@ -26967,7 +28038,7 @@ public class Core : LinphoneObject
 	
 	
 	/// Creates and returns the default chat room parameters. 
-	/// - Returns: A ``ChatRoomParams`` object   
+	/// - Returns: A ``ChatRoomParams`` object    
 	public func createDefaultChatRoomParams() throws -> ChatRoomParams
 	{
 		let cPointer = linphone_core_create_default_chat_room_params(cPtr)
@@ -26982,8 +28053,8 @@ public class Core : LinphoneObject
 	
 	
 	/// Gets a ``EktInfo`` from an XML body. 
-	/// - Parameter xmlBody: the string containing the XML body   
-	/// - Returns: The ``EktInfo``   
+	/// - Parameter xmlBody: the string containing the XML body    
+	/// - Returns: The ``EktInfo``    
 	public func createEktInfoFromXml(xmlBody:String) throws -> EktInfo
 	{
 		let cPointer = linphone_core_create_ekt_info_from_xml(cPtr, xmlBody)
@@ -26997,8 +28068,8 @@ public class Core : LinphoneObject
 	
 	
 	
-	/// Creates an empty LinphoneFriend. 
-	/// - Returns: The created ``Friend`` object   
+	/// Creates an empty ``Friend``. 
+	/// - Returns: The created ``Friend`` object    
 	public func createFriend() throws -> Friend
 	{
 		let cPointer = linphone_core_create_friend(cPtr)
@@ -27013,9 +28084,9 @@ public class Core : LinphoneObject
 	
 	
 	/// Creates a ``Friend`` from ai ``Vcard``. 
-	/// - Parameter vcard: a ``Vcard`` object   
+	/// - Parameter vcard: a ``Vcard`` object    
 	/// - Returns: A new ``Friend`` object which has its vCard attribute initialized
-	/// from the given vCard, accessible using ``Friend/getVcard()``.   
+	/// from the given vCard, accessible using ``Friend/getVcard()``.    
 	public func createFriendFromVcard(vcard:Vcard) throws -> Friend
 	{
 		let cPointer = linphone_core_create_friend_from_vcard(cPtr, vcard.cPtr)
@@ -27030,7 +28101,7 @@ public class Core : LinphoneObject
 	
 	
 	/// Creates a new empty ``FriendList`` object. 
-	/// - Returns: A new ``FriendList`` object.   
+	/// - Returns: A new ``FriendList`` object.    
 	public func createFriendList() throws -> FriendList
 	{
 		let cPointer = linphone_core_create_friend_list(cPtr)
@@ -27046,8 +28117,8 @@ public class Core : LinphoneObject
 	
 	/// Creates a ``Friend`` from the given address. 
 	/// - Parameter address: A string containing the address to create the ``Friend``
-	/// from   
-	/// - Returns: The created ``Friend`` object.   
+	/// from    
+	/// - Returns: The created ``Friend`` object.    
 	public func createFriendWithAddress(address:String) throws -> Friend
 	{
 		let cPointer = linphone_core_create_friend_with_address(cPtr, address)
@@ -27062,10 +28133,10 @@ public class Core : LinphoneObject
 	
 	
 	/// Creates an empty info message. 
-	/// - Returns: a new LinphoneInfoMessage.  
+	/// - Returns: a new ``InfoMessage``.   
 	/// The info message can later be filled with information using
 	/// ``InfoMessage/addHeader(name:value:)`` or ``InfoMessage/setContent(content:)``,
-	/// and finally sent with linphone_core_send_info_message(). 
+	/// and finally sent with ``Call/sendInfoMessage(info:)``. 
 	public func createInfoMessage() throws -> InfoMessage
 	{
 		let cPointer = linphone_core_create_info_message(cPtr)
@@ -27082,8 +28153,8 @@ public class Core : LinphoneObject
 	/// Creates an empty LDAP search. 
 	/// ``Ldap/setParams(params:)`` must be call to save the parameters in the
 	/// configuration file.
-	/// - Returns: ``Ldap`` with default values set     
-	/// - deprecated: 18/11/2024 use ``createLdapRemoteContactDirectory(params:)``
+	/// - Returns: ``Ldap`` with default values set       
+	/// - Deprecated: 18/11/2024 use ``createLdapRemoteContactDirectory(params:)``
 	/// instead. 
 	@available(*, deprecated)
 	public func createLdap() throws -> Ldap
@@ -27100,10 +28171,10 @@ public class Core : LinphoneObject
 	
 	
 	/// Create a LDAP params using default values from Linphone core. 
-	/// Check #linphone_ldap_params to update values. In order to add a new LDAP
-	/// configuration to ``MagicSearch``, these parameters must be passed to
+	/// Check ``LdapParams`` to update values. In order to add a new LDAP configuration
+	/// to ``MagicSearch``, these parameters must be passed to
 	/// linphone_core_create_ldap_with_params. Or, use ``Ldap/setParams(params:)``.
-	/// - Returns: ``LdapParams`` with default values set.     
+	/// - Returns: ``LdapParams`` with default values set.       
 	public func createLdapParams() throws -> LdapParams
 	{
 		let cPointer = linphone_core_create_ldap_params(cPtr)
@@ -27120,9 +28191,9 @@ public class Core : LinphoneObject
 	/// Creates a new CardDAV server params object that may be used later by
 	/// ``MagicSearch`` to query contacts. 
 	/// - Parameter params: the ``LdapParams`` to configure this remote contact
-	/// directory.   
+	/// directory.    
 	/// - Returns: a new ``RemoteContactDirectory`` object to configure, and then add
-	/// using ``addRemoteContactDirectory(remoteContactDirectory:)``.   
+	/// using ``addRemoteContactDirectory(remoteContactDirectory:)``.    
 	public func createLdapRemoteContactDirectory(params:LdapParams) throws -> RemoteContactDirectory
 	{
 		let cPointer = linphone_core_create_ldap_remote_contact_directory(cPtr, params.cPtr)
@@ -27136,11 +28207,11 @@ public class Core : LinphoneObject
 	
 	
 	
-	/// Creates a LDAP search using given parameters and store them in the
-	/// configuration file. 
-	/// - Parameter params: ``LdapParams`` object   
-	/// - Returns: ``Ldap`` with default values set     
-	/// - deprecated: 18/11/2024 use ``createLdapRemoteContactDirectory(params:)``
+	/// Creates a LDAP search using given parameters, adds it to the core list and
+	/// stores them in the configuration file. 
+	/// - Parameter params: ``LdapParams`` object    
+	/// - Returns: ``Ldap`` object       
+	/// - Deprecated: 18/11/2024 use ``createLdapRemoteContactDirectory(params:)``
 	/// instead. 
 	@available(*, deprecated)
 	public func createLdapWithParams(params:LdapParams) throws -> Ldap
@@ -27162,11 +28233,11 @@ public class Core : LinphoneObject
 	/// - Parameter soundCardName: Playback sound card. If nil, the ringer sound card
 	/// set in ``Core`` will be used    
 	/// - Parameter videoDisplayName: Video display. If nil, the video display set in
-	/// ``Core`` will be used   
+	/// ``Core`` will be used    
 	/// - Parameter windowId: Id of the drawing window. See
 	/// ``setNativeVideoWindowId(windowId:)`` for a discussion about supported native
-	/// video window types.   
-	/// - Returns: A pointer on the new instance. nil if failed.   
+	/// video window types.    
+	/// - Returns: A pointer on the new instance. nil if failed.    
 	public func createLocalPlayer(soundCardName:String?, videoDisplayName:String?, windowId:UnsafeMutableRawPointer?) throws -> Player
 	{
 		let cPointer = linphone_core_create_local_player(cPtr, soundCardName, videoDisplayName, windowId)
@@ -27181,7 +28252,7 @@ public class Core : LinphoneObject
 	
 	
 	/// Creates a ``MagicSearch`` object. 
-	/// - Returns: The created ``MagicSearch`` object   
+	/// - Returns: The created ``MagicSearch`` object    
 	public func createMagicSearch() throws -> MagicSearch
 	{
 		let cPointer = linphone_core_create_magic_search(cPtr)
@@ -27196,7 +28267,7 @@ public class Core : LinphoneObject
 	
 	
 	/// Create a new ``NatPolicy`` object with every policies being disabled. 
-	/// - Returns: A new ``NatPolicy`` object.   
+	/// - Returns: A new ``NatPolicy`` object.    
 	public func createNatPolicy() throws -> NatPolicy
 	{
 		let cPointer = linphone_core_create_nat_policy(cPtr)
@@ -27210,15 +28281,39 @@ public class Core : LinphoneObject
 	
 	
 	
+	/// Create a Window ID for the video preview window. 
+	/// Available for MSQOGL and MSOGL. see ``setNativeVideoWindowId(windowId:)`` for
+	/// details about window_id
+	/// Available for MSQOGL and MSOGL. see ``setNativeVideoWindowId(windowId:)`` for
+	/// details about window_id
+	/// MSQOgl can be used for the creation. ``createNativePreviewWindowId(context:)``
+	/// returns a QQuickFramebufferObject::Renderer. This object must be returned by
+	/// your QQuickFramebufferObject::createRenderer() overload for Qt.
+	/// linphone_core_set_native_preview_window_id_2() must be called with this object
+	/// after the creation. Note : Qt blocks GUI thread when calling createRenderer(),
+	/// so it is safe to call linphone functions there if needed.
+	/// MSQOgl can be used for the creation. ``createNativePreviewWindowId(context:)``
+	/// returns a QQuickFramebufferObject::Renderer. This object must be returned by
+	/// your QQuickFramebufferObject::createRenderer() overload for Qt.
+	/// linphone_core_set_native_preview_window_id_2() must be called with this object
+	/// after the creation. Note : Qt blocks GUI thread when calling createRenderer(),
+	/// so it is safe to call linphone functions there if needed.
+	/// A context can be used to prevent Linphone from allocating the container
+	/// (MSOglContextInfo for MSOGL). nil if not used.
+	/// A context can be used to prevent Linphone from allocating the container
+	/// (MSOglContextInfo for MSOGL). nil if not used.
+	/// - Parameter context: preallocated Window ID (Used only for MSOGL)    
+	/// - Returns: The created Window ID.    
+	public func createNativePreviewWindowId(context:UnsafeMutableRawPointer?) throws -> UnsafeMutableRawPointer
+	{
+		return linphone_core_create_native_preview_window_id_2(cPtr, context)
+	}
+	
+	
+	
 	/// Create a native window handle for the video preview window. 
-	/// see ``setNativeVideoWindowId(windowId:)`` for details about window_id
-	/// MSQOgl can be used for the creation. ``createNativePreviewWindowId()`` returns
-	/// a #QQuickFramebufferObject::Renderer. This object must be returned by your
-	/// QQuickFramebufferObject::createRenderer() overload for Qt.
-	/// ``setNativePreviewWindowId(windowId:)`` must be called with this object after
-	/// the creation. Note : Qt blocks GUI thread when calling createRenderer(), so it
-	/// is safe to call linphone functions there if needed.
-	/// - Returns: The native window handle of the video preview window.   
+	/// see ``createNativePreviewWindowId(context:)`` for details
+	/// - Returns: The native window handle of the video preview window.    
 	public func createNativePreviewWindowId() throws -> UnsafeMutableRawPointer
 	{
 		return linphone_core_create_native_preview_window_id(cPtr)
@@ -27226,15 +28321,41 @@ public class Core : LinphoneObject
 	
 	
 	
-	/// Create a native window handle for the video window. 
-	/// see ``setNativeVideoWindowId(windowId:)`` for details about window_id
-	/// When MSQOgl can be used for the creation: ``createNativeVideoWindowId()``
-	/// returns a #QQuickFramebufferObject::Renderer. This object must be returned by
-	/// your QQuickFramebufferObject::createRenderer() overload for Qt.
+	/// Create a Window ID from the current call. 
+	/// Available for MSQOGL and MSOGL. see ``setNativeVideoWindowId(windowId:)`` for
+	/// details about window_id
+	/// Available for MSQOGL and MSOGL. see ``setNativeVideoWindowId(windowId:)`` for
+	/// details about window_id
+	/// When MSQOgl can be used for the creation:
+	/// ``createNativeVideoWindowId(context:)`` returns a
+	/// QQuickFramebufferObject::Renderer. This object must be returned by your
+	/// QQuickFramebufferObject::createRenderer() overload for Qt.
 	/// ``setNativeVideoWindowId(windowId:)`` must be called with this object after the
 	/// creation. Note : Qt blocks GUI thread when calling createRenderer(), so it is
 	/// safe to call linphone functions there if needed.
-	/// - Returns: The native window handle of the video window.   
+	/// When MSQOgl can be used for the creation:
+	/// ``createNativeVideoWindowId(context:)`` returns a
+	/// QQuickFramebufferObject::Renderer. This object must be returned by your
+	/// QQuickFramebufferObject::createRenderer() overload for Qt.
+	/// ``setNativeVideoWindowId(windowId:)`` must be called with this object after the
+	/// creation. Note : Qt blocks GUI thread when calling createRenderer(), so it is
+	/// safe to call linphone functions there if needed.
+	/// A context can be used to prevent Linphone from allocating the container
+	/// (MSOglContextInfo for MSOGL). nil if not used.
+	/// A context can be used to prevent Linphone from allocating the container
+	/// (MSOglContextInfo for MSOGL). nil if not used.
+	/// - Parameter context: preallocated Window ID (Used only for MSOGL)    
+	/// - Returns: The created Window ID    
+	public func createNativeVideoWindowId(context:UnsafeMutableRawPointer?) throws -> UnsafeMutableRawPointer
+	{
+		return linphone_core_create_native_video_window_id_2(cPtr, context)
+	}
+	
+	
+	
+	/// Create a native window handle for the video window from the current call. 
+	/// see ``createNativeVideoWindowId(context:)`` for details
+	/// - Returns: The native window handle of the video window.    
 	public func createNativeVideoWindowId() throws -> UnsafeMutableRawPointer
 	{
 		return linphone_core_create_native_video_window_id(cPtr)
@@ -27245,9 +28366,9 @@ public class Core : LinphoneObject
 	/// Creates an out-of-dialog notification, specifying the destination resource, the
 	/// event name. 
 	/// The notification can be send with ``Event/notify(body:)``. 
-	/// - Parameter resource: the destination resource   
-	/// - Parameter event: the event name   
-	/// - Returns: a ``Event`` holding the context of the notification.   
+	/// - Parameter resource: the destination resource    
+	/// - Parameter event: the event name    
+	/// - Returns: a ``Event`` holding the context of the notification.    
 	public func createNotify(resource:Address, event:String) throws -> Event
 	{
 		let cPointer = linphone_core_create_notify(cPtr, resource.cPtr, event)
@@ -27266,9 +28387,9 @@ public class Core : LinphoneObject
 	/// ``Event/sendPublish(body:)``. The ``Event`` is automatically terminated when
 	/// the publish transaction is finished, either with success or failure. The
 	/// application must not call ``Event/terminate()`` for such one-shot publish. 
-	/// - Parameter resource: the resource uri for the event   
-	/// - Parameter event: the event name   
-	/// - Returns: the ``Event`` holding the context of the publish.   
+	/// - Parameter resource: the resource uri for the event    
+	/// - Parameter event: the event name    
+	/// - Returns: the ``Event`` holding the context of the publish.    
 	public func createOneShotPublish(resource:Address, event:String) throws -> Event
 	{
 		let cPointer = linphone_core_create_one_shot_publish(cPtr, resource.cPtr, event)
@@ -27285,8 +28406,8 @@ public class Core : LinphoneObject
 	/// Creates a ``PresenceActivity`` with the given type and description. 
 	/// - Parameter acttype: The ``PresenceActivity.Kind`` to set for the activity. 
 	/// - Parameter description: An additional description of the activity to set for
-	/// the activity. Can be nil if no additional description is to be added.   
-	/// - Returns: The created ``PresenceActivity`` object.   
+	/// the activity. Can be nil if no additional description is to be added.    
+	/// - Returns: The created ``PresenceActivity`` object.    
 	public func createPresenceActivity(acttype:PresenceActivity.Kind, description:String?) throws -> PresenceActivity
 	{
 		let cPointer = linphone_core_create_presence_activity(cPtr, LinphonePresenceActivityType(rawValue: CUnsignedInt(acttype.rawValue)), description)
@@ -27300,8 +28421,8 @@ public class Core : LinphoneObject
 	
 	
 	
-	/// Creates a default LinphonePresenceModel. 
-	/// - Returns: The created ``PresenceModel`` object.   
+	/// Creates a default ``PresenceModel``. 
+	/// - Returns: The created ``PresenceModel`` object.    
 	public func createPresenceModel() throws -> PresenceModel
 	{
 		let cPointer = linphone_core_create_presence_model(cPtr)
@@ -27320,8 +28441,8 @@ public class Core : LinphoneObject
 	/// - Parameter acttype: The ``PresenceActivity.Kind`` to set for the activity of
 	/// the created model. 
 	/// - Parameter description: An additional description of the activity to set for
-	/// the activity. Can be nil if no additional description is to be added.   
-	/// - Returns: The created ``PresenceModel`` object.   
+	/// the activity. Can be nil if no additional description is to be added.    
+	/// - Returns: The created ``PresenceModel`` object.    
 	public func createPresenceModelWithActivity(acttype:PresenceActivity.Kind, description:String?) throws -> PresenceModel
 	{
 		let cPointer = linphone_core_create_presence_model_with_activity(cPtr, LinphonePresenceActivityType(rawValue: CUnsignedInt(acttype.rawValue)), description)
@@ -27340,10 +28461,10 @@ public class Core : LinphoneObject
 	/// - Parameter acttype: The ``PresenceActivity.Kind`` to set for the activity of
 	/// the created model. 
 	/// - Parameter description: An additional description of the activity to set for
-	/// the activity. Can be nil if no additional description is to be added.   
-	/// - Parameter note: The content of the note to be added to the created model.   
-	/// - Parameter lang: The language of the note to be added to the created model.   
-	/// - Returns: The created ``PresenceModel`` object.   
+	/// the activity. Can be nil if no additional description is to be added.    
+	/// - Parameter note: The content of the note to be added to the created model.    
+	/// - Parameter lang: The language of the note to be added to the created model.    
+	/// - Returns: The created ``PresenceModel`` object.    
 	public func createPresenceModelWithActivityAndNote(acttype:PresenceActivity.Kind, description:String?, note:String, lang:String?) throws -> PresenceModel
 	{
 		let cPointer = linphone_core_create_presence_model_with_activity_and_note(cPtr, LinphonePresenceActivityType(rawValue: CUnsignedInt(acttype.rawValue)), description, note, lang)
@@ -27358,9 +28479,9 @@ public class Core : LinphoneObject
 	
 	
 	/// Creates a ``PresenceNote`` with the given content and language. 
-	/// - Parameter content: The content of the note to be created.   
-	/// - Parameter lang: The language of the note to be created.   
-	/// - Returns: The created ``PresenceNote`` object.   
+	/// - Parameter content: The content of the note to be created.    
+	/// - Parameter lang: The language of the note to be created.    
+	/// - Returns: The created ``PresenceNote`` object.    
 	public func createPresenceNote(content:String, lang:String?) throws -> PresenceNote
 	{
 		let cPointer = linphone_core_create_presence_note(cPtr, content, lang)
@@ -27375,8 +28496,8 @@ public class Core : LinphoneObject
 	
 	
 	/// Creates a ``PresencePerson`` with the given id. 
-	/// - Parameter id: The id of the person to be created.   
-	/// - Returns: The created ``PresencePerson`` object.   
+	/// - Parameter id: The id of the person to be created.    
+	/// - Returns: The created ``PresencePerson`` object.    
 	public func createPresencePerson(id:String) throws -> PresencePerson
 	{
 		let cPointer = linphone_core_create_presence_person(cPtr, id)
@@ -27391,11 +28512,11 @@ public class Core : LinphoneObject
 	
 	
 	/// Creates a ``PresenceService`` with the given id, basic status and contact. 
-	/// - Parameter id: The id of the service to be created.   
+	/// - Parameter id: The id of the service to be created.    
 	/// - Parameter basicStatus: The basic status of the service to be created. 
 	/// - Parameter contact: A string containing a contact information corresponding to
-	/// the service to be created.   
-	/// - Returns: The created ``PresenceService`` object.   
+	/// the service to be created.    
+	/// - Returns: The created ``PresenceService`` object.    
 	public func createPresenceService(id:String, basicStatus:PresenceBasicStatus, contact:String) throws -> PresenceService
 	{
 		let cPointer = linphone_core_create_presence_service(cPtr, id, LinphonePresenceBasicStatus(rawValue: CUnsignedInt(basicStatus.rawValue)), contact)
@@ -27412,6 +28533,8 @@ public class Core : LinphoneObject
 	/// Same as ``getPrimaryContact()`` but the result is a ``Address`` object instead
 	/// of const char *. 
 	/// - Returns: a ``Address`` object.   
+	/// - Deprecated: prefer using ``getPrimaryContactAddress()`` 
+	@available(*, deprecated)
 	public func createPrimaryContactParsed() throws -> Address
 	{
 		let cPointer = linphone_core_create_primary_contact_parsed(cPtr)
@@ -27426,8 +28549,8 @@ public class Core : LinphoneObject
 	
 	
 	/// Create a proxy config with default values from Linphone core. 
-	/// - Returns: ``ProxyConfig`` with default values set   
-	/// - deprecated: 04/09/2024 Use ``createAccount(params:)`` 
+	/// - Returns: ``ProxyConfig`` with default values set    
+	/// - Deprecated: 04/09/2024 Use ``createAccount(params:)`` 
 	@available(*, deprecated)
 	public func createProxyConfig() throws -> ProxyConfig
 	{
@@ -27446,11 +28569,11 @@ public class Core : LinphoneObject
 	/// After being created, the publish must be sent using
 	/// ``Event/sendPublish(body:)``. After expiry, the publication is refreshed unless
 	/// it is terminated before. 
-	/// - Parameter resource: the resource uri for the event   
-	/// - Parameter event: the event name   
+	/// - Parameter resource: the resource uri for the event    
+	/// - Parameter event: the event name    
 	/// - Parameter expires: the lifetime of event being published, -1 if no associated
 	/// duration, in which case it will not be refreshed. 
-	/// - Returns: the ``Event`` holding the context of the publish.   
+	/// - Returns: the ``Event`` holding the context of the publish.    
 	public func createPublish(resource:Address, event:String, expires:Int) throws -> Event
 	{
 		let cPointer = linphone_core_create_publish(cPtr, resource.cPtr, event, CInt(expires))
@@ -27468,8 +28591,8 @@ public class Core : LinphoneObject
 	/// voice or video outside of any call or conference. 
 	/// See ``getSupportedFileFormatsList()`` for supported multimedia file types. 
 	/// - Parameter params: The ``RecorderParams`` that will contains all recorder
-	/// parameters.   
-	/// - Returns: A pointer on the new instance. nil if failed.   
+	/// parameters.    
+	/// - Returns: A pointer on the new instance. nil if failed.    
 	public func createRecorder(params:RecorderParams) throws -> Recorder
 	{
 		let cPointer = linphone_core_create_recorder(cPtr, params.cPtr)
@@ -27485,7 +28608,7 @@ public class Core : LinphoneObject
 	
 	/// Creates an object that holds recording parameters. 
 	/// - See also: ``createRecorder(params:)`` 
-	/// - Returns: A pointer on the newly created instance of ``RecorderParams``   
+	/// - Returns: A pointer on the newly created instance of ``RecorderParams``    
 	public func createRecorderParams() throws -> RecorderParams
 	{
 		let cPointer = linphone_core_create_recorder_params(cPtr)
@@ -27502,8 +28625,8 @@ public class Core : LinphoneObject
 	/// Create a SIP conference scheduler that can be used to create client conferences
 	/// for now or later and then send conference info as an ICS through chat. 
 	/// A SipConferenceScheduler creates a conference on a server by using a SIP dialog 
-	/// - Parameter account: The ``Account`` to use in the ``ConferenceScheduler``.   
-	/// - Returns: A pointer on the freshly created ``ConferenceScheduler``.   
+	/// - Parameter account: The ``Account`` to use in the ``ConferenceScheduler``.    
+	/// - Returns: A pointer on the freshly created ``ConferenceScheduler``.    
 	public func createSipConferenceScheduler(account:Account?) throws -> ConferenceScheduler
 	{
 		let cPointer = linphone_core_create_sip_conference_scheduler(cPtr, account?.cPtr)
@@ -27523,10 +28646,10 @@ public class Core : LinphoneObject
 	/// renewed if not terminated before. Unlike
 	/// ``subscribe(resource:event:expires:body:)`` the subscription isn't sent
 	/// immediately. It will be send when calling ``Event/sendSubscribe(body:)``. 
-	/// - Parameter resource: the destination resource   
-	/// - Parameter event: the event name   
+	/// - Parameter resource: the destination resource    
+	/// - Parameter event: the event name    
 	/// - Parameter expires: the whished duration of the subscription 
-	/// - Returns: a ``Event`` holding the context of the created subcription.   
+	/// - Returns: a ``Event`` holding the context of the created subcription.    
 	public func createSubscribe(resource:Address, event:String, expires:Int) throws -> Event
 	{
 		let cPointer = linphone_core_create_subscribe(cPtr, resource.cPtr, event, CInt(expires))
@@ -27546,11 +28669,11 @@ public class Core : LinphoneObject
 	/// renewed if not terminated before. Unlike
 	/// ``subscribe(resource:event:expires:body:)`` the subscription isn't sent
 	/// immediately. It will be send when calling ``Event/sendSubscribe(body:)``. 
-	/// - Parameter resource: the destination resource   
-	/// - Parameter proxy: the proxy configuration to use   
-	/// - Parameter event: the event name   
+	/// - Parameter resource: the destination resource    
+	/// - Parameter proxy: the proxy configuration to use    
+	/// - Parameter event: the event name    
 	/// - Parameter expires: the whished duration of the subscription 
-	/// - Returns: a ``Event`` holding the context of the created subcription.   
+	/// - Returns: a ``Event`` holding the context of the created subcription.    
 	public func createSubscribe(resource:Address, proxy:ProxyConfig, event:String, expires:Int) throws -> Event
 	{
 		let cPointer = linphone_core_create_subscribe_2(cPtr, resource.cPtr, proxy.cPtr, event, CInt(expires))
@@ -27564,10 +28687,43 @@ public class Core : LinphoneObject
 	
 	
 	
+	/// Creates a vCard from a text, if possible. 
+	/// - Parameter input: the vCard raw text to parse.    
+	/// - Returns: a new ``Vcard`` object if the parsing of the input succeeded, nil
+	/// otherwise.    
+	public func createVcardFromText(input:String) throws -> Vcard
+	{
+		let cPointer = linphone_core_create_vcard_from_text(cPtr, input)
+		if (cPointer == nil) {
+			throw LinphoneError.exception(result: "create null Vcard value")
+		}
+		let result = Vcard.getSwiftObject(cObject: cPointer!)
+		belle_sip_object_unref(UnsafeMutableRawPointer(cPointer))
+		return result
+	}
+	
+	
+	
+	/// Gets an XML body using a specific account. 
+	/// - Parameter ektInfo: the ``EktInfo``    
+	/// - Parameter account: the ``Account`` associated with the conference    
+	/// - Returns: The XML body       
+	public func createXmlFromEktInfo(ektInfo:EktInfo, account:Account?) throws -> String
+	{
+		let cstr = linphone_core_create_xml_from_ekt_info_2(cPtr, ektInfo.cPtr, account?.cPtr)
+		let result = charArrayToString(charPointer: cstr)
+		if (cstr != nil) {
+			bctbx_free(cstr)
+		}
+		return result
+	}
+	
+	
+	
 	/// Gets an XML body. 
-	/// - Parameter ektInfo: the ``EktInfo``   
-	/// - Returns: The XML body     
-	/// - deprecated: 06/02/2025 use ``createXmlFromEktInfo(ektInfo:account:)``.
+	/// - Parameter ektInfo: the ``EktInfo``    
+	/// - Returns: The XML body       
+	/// - Deprecated: 06/02/2025 use ``createXmlFromEktInfo(ektInfo:account:)``.
 	@available(*, deprecated)
 	public func createXmlFromEktInfo(ektInfo:EktInfo) throws -> String
 	{
@@ -27581,25 +28737,9 @@ public class Core : LinphoneObject
 	
 	
 	
-	/// Gets an XML body using a specific account. 
-	/// - Parameter ektInfo: the ``EktInfo``   
-	/// - Parameter account: the ``Account`` associated with the conference   
-	/// - Returns: The XML body     
-	public func createXmlFromEktInfo(ektInfo:EktInfo, account:Account?) throws -> String
-	{
-		let cstr = linphone_core_create_xml_from_ekt_info_2(cPtr, ektInfo.cPtr, account?.cPtr)
-		let result = charArrayToString(charPointer: cstr)
-		if (cstr != nil) {
-			bctbx_free(cstr)
-		}
-		return result
-	}
-	
-	
-	
 	/// Create a ``XmlRpcSession`` for a given url. 
-	/// - Parameter url: The URL to the XML-RPC server. Must be NON nil.   
-	/// - Returns: The new ``XmlRpcSession`` object.   
+	/// - Parameter url: The URL to the XML-RPC server. Must be NON nil.    
+	/// - Returns: The new ``XmlRpcSession`` object.    
 	public func createXmlRpcSession(url:String) throws -> XmlRpcSession
 	{
 		let cPointer = linphone_core_create_xml_rpc_session(cPtr, url)
@@ -27613,8 +28753,8 @@ public class Core : LinphoneObject
 	
 	
 	
-	/// Removes a chatroom including all message history from the LinphoneCore. 
-	/// - Parameter chatRoom: A ``ChatRoom`` object   
+	/// Removes a chatroom including all message history from the ``Core``. 
+	/// - Parameter chatRoom: A ``ChatRoom`` object    
 	public func deleteChatRoom(chatRoom:ChatRoom) 
 	{
 		linphone_core_delete_chat_room(cPtr, chatRoom.cPtr)
@@ -27623,7 +28763,7 @@ public class Core : LinphoneObject
 	
 	
 	/// Deletes a conference information from DB. 
-	/// - Parameter conferenceInfo: the ``ConferenceInfo`` to delete.   
+	/// - Parameter conferenceInfo: the ``ConferenceInfo`` to delete.    
 	public func deleteConferenceInformation(conferenceInfo:ConferenceInfo) 
 	{
 		linphone_core_delete_conference_information(cPtr, conferenceInfo.cPtr)
@@ -27633,7 +28773,7 @@ public class Core : LinphoneObject
 	
 	/// Sets device_token when application
 	/// didRegisterForRemoteNotificationsWithDeviceToken (IOS only). 
-	/// - Parameter deviceToken: format (NSData *).   
+	/// - Parameter deviceToken: format (NSData *).    
 	public func didRegisterForRemotePush(deviceToken:UnsafeMutableRawPointer?) 
 	{
 		linphone_core_did_register_for_remote_push(cPtr, deviceToken)
@@ -27645,7 +28785,7 @@ public class Core : LinphoneObject
 	/// didRegisterForRemoteNotificationsWithDeviceToken (IOS only). 
 	/// - Parameter deviceTokenStr: string extracted from the Data objectf received in
 	/// didRegisterForRemoteNotificationsWithDeviceToken ios function. Append ":remote"
-	/// after data formating..   
+	/// after data formating..    
 	public func didRegisterForRemotePushWithStringifiedToken(deviceTokenStr:String?) 
 	{
 		linphone_core_did_register_for_remote_push_with_stringified_token(cPtr, deviceTokenStr)
@@ -27687,7 +28827,7 @@ public class Core : LinphoneObject
 	/// notifications manually). 
 	/// It will ensure the proxy configs are correctly registered to the proxy server,
 	/// so the call or the message will be correctly delivered. 
-	/// - deprecated: 09/03/2022 See ``processPushNotification(callId:)`` instead. 
+	/// - Deprecated: 09/03/2022 See ``processPushNotification(callId:)`` instead. 
 	@available(*, deprecated)
 	public func ensureRegistered() 
 	{
@@ -27707,7 +28847,7 @@ public class Core : LinphoneObject
 	
 	/// Joins the local participant to the running conference. 
 	/// - Returns: 0 if succeeded. Negative number if failed 
-	/// - deprecated: 09/03/2021 Use ``Conference/enter()`` instead. 
+	/// - Deprecated: 09/03/2021 Use ``Conference/enter()`` instead. 
 	@available(*, deprecated)
 	public func enterConference() throws 
 	{
@@ -27730,7 +28870,7 @@ public class Core : LinphoneObject
 	
 	/// Returns whether a specific file format is supported. 
 	/// - See also: linphone_core_get_supported_file_formats 
-	/// - Parameter fmt: The format extension (wav, mkv).   
+	/// - Parameter fmt: The format extension (wav, mkv).    
 	/// - Returns: true if the file format is supported, false otherwise 
 	public func fileFormatSupported(fmt:String) -> Bool
 	{
@@ -27743,10 +28883,10 @@ public class Core : LinphoneObject
 	/// First of all, (realm,username) pair are searched. If multiple results (which
 	/// should not happen because realm are supposed to be unique), then domain is
 	/// added to the search. 
-	/// - Parameter realm: the authentication 'realm' (optional)   
-	/// - Parameter username: the SIP username to be authenticated (mandatory)   
-	/// - Parameter sipDomain: the SIP domain name (optional)   
-	/// - Returns: a ``AuthInfo`` if found.   
+	/// - Parameter realm: the authentication 'realm' (optional)    
+	/// - Parameter username: the SIP username to be authenticated (mandatory)    
+	/// - Parameter sipDomain: the SIP domain name (optional)    
+	/// - Returns: a ``AuthInfo`` if found.    
 	public func findAuthInfo(realm:String?, username:String, sipDomain:String?) -> AuthInfo?
 	{
 		let cPointer = linphone_core_find_auth_info(cPtr, realm, username, sipDomain)
@@ -27760,9 +28900,9 @@ public class Core : LinphoneObject
 	
 	
 	/// Search from the list of current calls if a remote address match uri. 
-	/// - Parameter uri: which should match call remote uri   
-	/// - Returns: ``Call`` or nil if no match is found.   
-	/// - deprecated: 27/10/2020. Use ``getCallByRemoteAddress2(remoteAddress:)``
+	/// - Parameter uri: which should match call remote uri    
+	/// - Returns: ``Call`` or nil if no match is found.    
+	/// - Deprecated: 27/10/2020. Use ``getCallByRemoteAddress2(remoteAddress:)``
 	/// instead. 
 	@available(*, deprecated)
 	public func findCallFromUri(uri:String) -> Call?
@@ -27778,9 +28918,9 @@ public class Core : LinphoneObject
 	
 	
 	/// Gets the call log matching the call id, or nil if can't be found. 
-	/// - Parameter callId: Call id of the call log to find   
-	/// - Parameter limit: Search limit of the most recent call logs to find   
-	/// - Returns: A call log matching the call id if any.     
+	/// - Parameter callId: Call id of the call log to find    
+	/// - Parameter limit: Search limit of the most recent call logs to find    
+	/// - Returns: A call log matching the call id if any.       
 	public func findCallLog(callId:String, limit:Int) -> CallLog?
 	{
 		let cPointer = linphone_core_find_call_log(cPtr, callId, CInt(limit))
@@ -27795,8 +28935,8 @@ public class Core : LinphoneObject
 	
 	
 	/// Gets the call log matching the call id, or nil if can't be found. 
-	/// - Parameter callId: Call id of the call log to find   
-	/// - Returns: A call log matching the call id if any.     
+	/// - Parameter callId: Call id of the call log to find    
+	/// - Returns: A call log matching the call id if any.       
 	public func findCallLogFromCallId(callId:String) -> CallLog?
 	{
 		let cPointer = linphone_core_find_call_log_from_call_id(cPtr, callId)
@@ -27813,10 +28953,10 @@ public class Core : LinphoneObject
 	/// Find a chat room. 
 	/// No reference is transferred to the application. The ``Core`` keeps a reference
 	/// on the chat room. 
-	/// - Parameter peerAddr: a linphone address.   
-	/// - Parameter localAddr: a linphone address.   
-	/// - Returns: ``ChatRoom`` where messaging can take place.   
-	/// - deprecated: 02/07/2020, use
+	/// - Parameter peerAddr: a linphone address.    
+	/// - Parameter localAddr: a linphone address.    
+	/// - Returns: ``ChatRoom`` where messaging can take place.    
+	/// - Deprecated: 02/07/2020, use
 	/// ``searchChatRoom(params:localAddr:remoteAddr:participants:)`` instead
 	@available(*, deprecated)
 	public func findChatRoom(peerAddr:Address, localAddr:Address) -> ChatRoom?
@@ -27833,8 +28973,8 @@ public class Core : LinphoneObject
 	
 	/// Retrieve the conference information linked to the provided URI if any. 
 	/// - Parameter uri: Uri of the conference as provided by the CCMP server backend. 
-	///  
-	/// - Returns: The ``ConferenceInfo`` found if any, nil otherwise.     
+	///   
+	/// - Returns: The ``ConferenceInfo`` found if any, nil otherwise.       
 	public func findConferenceInformationFromCcmpUri(uri:String) -> ConferenceInfo?
 	{
 		let cPointer = linphone_core_find_conference_information_from_ccmp_uri(cPtr, uri)
@@ -27849,8 +28989,8 @@ public class Core : LinphoneObject
 	
 	
 	/// Retrieve the conference information linked to the provided URI if any. 
-	/// - Parameter uri: ``Address`` of the uri.   
-	/// - Returns: The ``ConferenceInfo`` found if any, nil otherwise.     
+	/// - Parameter uri: ``Address`` of the uri.    
+	/// - Returns: The ``ConferenceInfo`` found if any, nil otherwise.       
 	public func findConferenceInformationFromUri(uri:Address) -> ConferenceInfo?
 	{
 		let cPointer = linphone_core_find_conference_information_from_uri(cPtr, uri.cPtr)
@@ -27865,10 +29005,10 @@ public class Core : LinphoneObject
 	
 	
 	/// Retrieves a list of ``Address`` sort and filter. 
-	/// - Parameter filter: Chars used for the filter*   
+	/// - Parameter filter: Chars used for the filter*    
 	/// - Parameter sipOnly: Only sip address or not 
 	/// - Returns: A list of filtered ``Address`` + the ``Address`` created with the
-	/// filter.     
+	/// filter.      
 	public func findContactsByChar(filter:String, sipOnly:Bool) -> [Address]
 	{
 		var swiftList = [Address]()
@@ -27885,9 +29025,9 @@ public class Core : LinphoneObject
 	
 	
 	/// Searches a ``Friend`` by its address. 
-	/// - Parameter address: The ``Address`` to use to search the friend.   
+	/// - Parameter address: The ``Address`` to use to search the friend.    
 	/// - Returns: The ``Friend`` object corresponding to the given address or nil if
-	/// not found.   
+	/// not found.    
 	public func findFriend(address:Address) -> Friend?
 	{
 		let cPointer = linphone_core_find_friend(cPtr, address.cPtr)
@@ -27901,9 +29041,9 @@ public class Core : LinphoneObject
 	
 	
 	/// Searches a ``Friend`` by its phone number. 
-	/// - Parameter phoneNumber: The phone number to use to search the friend.   
+	/// - Parameter phoneNumber: The phone number to use to search the friend.    
 	/// - Returns: The ``Friend`` object corresponding to the given phone number or nil
-	/// if not found.   
+	/// if not found.    
 	public func findFriendByPhoneNumber(phoneNumber:String) -> Friend?
 	{
 		let cPointer = linphone_core_find_friend_by_phone_number(cPtr, phoneNumber)
@@ -27917,8 +29057,8 @@ public class Core : LinphoneObject
 	
 	
 	/// Searches all ``Friend`` matching an address. 
-	/// - Parameter address: The address to use to search the friends.   
-	/// - Returns: A list of ``Friend`` corresponding to the given address.       
+	/// - Parameter address: The address to use to search the friends.    
+	/// - Returns: A list of ``Friend`` corresponding to the given address.         
 	public func findFriends(address:Address) -> [Friend]
 	{
 		var swiftList = [Friend]()
@@ -27935,14 +29075,14 @@ public class Core : LinphoneObject
 	
 	
 	
-	/// Find a one to one chat room. 
+	/// Find a one-on-one chat room. 
 	/// No reference is transferred to the application. The ``Core`` keeps a reference
 	/// on the chat room. 
-	/// - Parameter localAddr: a linphone address.   
-	/// - Parameter participantAddr: a linphone address.   
+	/// - Parameter localAddr: a linphone address.    
+	/// - Parameter participantAddr: a linphone address.    
 	/// - Parameter encrypted: whether to look for an encrypted chat room or not 
-	/// - Returns: ``ChatRoom`` where messaging can take place.   
-	/// - deprecated: 02/07/2020, use
+	/// - Returns: ``ChatRoom`` where messaging can take place.    
+	/// - Deprecated: 02/07/2020, use
 	/// ``searchChatRoom(params:localAddr:remoteAddr:participants:)`` instead
 	@available(*, deprecated)
 	public func findOneToOneChatRoom(localAddr:Address, participantAddr:Address, encrypted:Bool) -> ChatRoom?
@@ -27958,9 +29098,9 @@ public class Core : LinphoneObject
 	
 	
 	/// Search for a ``Account`` by it's idkey. 
-	/// - Parameter idkey: An arbitrary idkey string associated to an account.   
+	/// - Parameter idkey: An arbitrary idkey string associated to an account.    
 	/// - Returns: the ``Account`` object for the given idkey value, or nil if none
-	/// found   
+	/// found    
 	public func getAccountByIdkey(idkey:String?) -> Account?
 	{
 		let cPointer = linphone_core_get_account_by_idkey(cPtr, idkey)
@@ -27974,8 +29114,8 @@ public class Core : LinphoneObject
 	
 	
 	/// Gets the call by its SIP callid. 
-	/// - Parameter callId: of call   
-	/// - Returns: call ``Call``, return null if there is no call find.   
+	/// - Parameter callId: of call    
+	/// - Returns: call ``Call``, return null if there is no call find.    
 	public func getCallByCallid(callId:String) -> Call?
 	{
 		let cPointer = linphone_core_get_call_by_callid(cPtr, callId)
@@ -27989,9 +29129,10 @@ public class Core : LinphoneObject
 	
 	
 	/// Get the call with the remote_address specified. 
-	/// - Parameter remoteAddress: The remote address of the call that we want to get   
-	/// - Returns: The call if it has been found, nil otherwise.  
-	/// - deprecated: 08/07/2020 use ``getCallByRemoteAddress2(remoteAddress:)``
+	/// - Parameter remoteAddress: The remote address of the call that we want to get  
+	///  
+	/// - Returns: The call if it has been found, nil otherwise.   
+	/// - Deprecated: 08/07/2020 use ``getCallByRemoteAddress2(remoteAddress:)``
 	/// instead 
 	@available(*, deprecated)
 	public func getCallByRemoteAddress(remoteAddress:String) -> Call?
@@ -28008,8 +29149,8 @@ public class Core : LinphoneObject
 	
 	/// Get the call with the specified ``Address``. 
 	/// - Parameter remoteAddress: the ``Address`` for which the call remote address
-	/// must match   
-	/// - Returns: the ``Call`` of the call if found.   
+	/// must match    
+	/// - Returns: the ``Call`` of the call if found.    
 	public func getCallByRemoteAddress2(remoteAddress:Address) -> Call?
 	{
 		let cPointer = linphone_core_get_call_by_remote_address2(cPtr, remoteAddress.cPtr)
@@ -28026,9 +29167,9 @@ public class Core : LinphoneObject
 	/// At the contrary of linphone_core_get_call_logs, it is your responsibility to
 	/// unref the logs and free this list once you are done using it. Requires
 	/// ENABLE_DB_STORAGE to work. 
-	/// - Parameter peerAddress: The remote ``Address`` object.   
-	/// - Parameter localAddress: The local ``Address`` object   
-	/// - Returns: A list of ``CallLog``.      
+	/// - Parameter peerAddress: The remote ``Address`` object.    
+	/// - Parameter localAddress: The local ``Address`` object    
+	/// - Returns: A list of ``CallLog``.         
 	public func getCallHistory(peerAddress:Address, localAddress:Address) -> [CallLog]
 	{
 		var swiftList = [CallLog]()
@@ -28050,9 +29191,9 @@ public class Core : LinphoneObject
 	/// is transferred to the application. The ``Core`` keeps a reference on the chat
 	/// room. - Warning: This method is prone to errors, use
 	/// ``searchChatRoom(params:localAddr:remoteAddr:participants:)`` instead 
-	/// - Parameter addr: a linphone address.   
-	/// - Returns: ``ChatRoom`` where messaging can take place.   
-	/// - deprecated: 02/07/2020, use
+	/// - Parameter addr: a linphone address.    
+	/// - Returns: ``ChatRoom`` where messaging can take place.    
+	/// - Deprecated: 02/07/2020, use
 	/// ``searchChatRoom(params:localAddr:remoteAddr:participants:)`` instead
 	@available(*, deprecated)
 	public func getChatRoom(addr:Address) -> ChatRoom?
@@ -28072,10 +29213,10 @@ public class Core : LinphoneObject
 	/// is transferred to the application. The ``Core`` keeps a reference on the chat
 	/// room. - Warning: This method is prone to errors, use
 	/// ``searchChatRoom(params:localAddr:remoteAddr:participants:)`` instead 
-	/// - Parameter peerAddr: a linphone address.   
-	/// - Parameter localAddr: a linphone address.   
-	/// - Returns: ``ChatRoom`` where messaging can take place.   
-	/// - deprecated: 02/07/2020, use
+	/// - Parameter peerAddr: a linphone address.    
+	/// - Parameter localAddr: a linphone address.    
+	/// - Returns: ``ChatRoom`` where messaging can take place.    
+	/// - Deprecated: 02/07/2020, use
 	/// ``searchChatRoom(params:localAddr:remoteAddr:participants:)`` instead
 	@available(*, deprecated)
 	public func getChatRoom(peerAddr:Address, localAddr:Address) -> ChatRoom?
@@ -28091,13 +29232,14 @@ public class Core : LinphoneObject
 	
 	
 	/// Get a chat room for messaging from a sip uri like sip:joe@sip.linphone.org. 
+	/// Get a chat room for messaging from a sip uri like sip:joe@sip.linphone.org. 
 	/// If it does not exist yet, it will be created as a basic chat room. No reference
 	/// is transferred to the application. The ``Core`` keeps a reference on the chat
 	/// room. - Warning: This method is prone to errors, use
 	/// ``searchChatRoom(params:localAddr:remoteAddr:participants:)`` instead 
-	/// - Parameter to: The destination address for messages.   
-	/// - Returns: ``ChatRoom`` where messaging can take place.   
-	/// - deprecated: 02/07/2020, use
+	/// - Parameter to: The destination address for messages.    
+	/// - Returns: ``ChatRoom`` where messaging can take place.    
+	/// - Deprecated: 02/07/2020, use
 	/// ``searchChatRoom(params:localAddr:remoteAddr:participants:)`` instead
 	@available(*, deprecated)
 	public func getChatRoomFromUri(to:String) -> ChatRoom?
@@ -28114,7 +29256,7 @@ public class Core : LinphoneObject
 	
 	/// Retrieve the list of conference information on DB after a certain time. 
 	/// - Parameter time: Time to retrieve conference info. 
-	/// - Returns: The list of conference infos .     
+	/// - Returns: The list of conference infos  .       
 	public func getConferenceInformationListAfterTime(time:time_t) -> [ConferenceInfo]
 	{
 		var swiftList = [ConferenceInfo]()
@@ -28133,9 +29275,9 @@ public class Core : LinphoneObject
 	
 	/// Retrieve the list of conference information on DB where the address passed as
 	/// argument is either the organizer or a participant. 
-	/// - Parameter uri: ``Address`` of the participant.   
-	/// - Returns: The list of conference infos  where the address passed as argument
-	/// is either the organizer or a participant.     
+	/// - Parameter uri: ``Address`` of the participant.    
+	/// - Returns: The list of conference infos   where the address passed as argument
+	/// is either the organizer or a participant.       
 	public func getConferenceInformationsWithParticipant(uri:Address) -> [ConferenceInfo]
 	{
 		var swiftList = [ConferenceInfo]()
@@ -28153,8 +29295,8 @@ public class Core : LinphoneObject
 	
 	
 	/// Searches a ``Friend`` by its reference key. 
-	/// - Parameter key: The reference key to use to search the friend.   
-	/// - Returns: The ``Friend`` object corresponding to the given reference key.   
+	/// - Parameter key: The reference key to use to search the friend.    
+	/// - Returns: The ``Friend`` object corresponding to the given reference key.    
 	public func getFriendByRefKey(key:String) -> Friend?
 	{
 		let cPointer = linphone_core_get_friend_by_ref_key(cPtr, key)
@@ -28168,8 +29310,8 @@ public class Core : LinphoneObject
 	
 	
 	/// Retrieves the list of ``Friend`` from the core that has the given display name. 
-	/// - Parameter name: the name of the list   
-	/// - Returns: the first ``FriendList`` object or nil.   
+	/// - Parameter name: the name of the list    
+	/// - Returns: the first ``FriendList`` object or nil.    
 	public func getFriendListByName(name:String) -> FriendList?
 	{
 		let cPointer = linphone_core_get_friend_list_by_name(cPtr, name)
@@ -28187,8 +29329,8 @@ public class Core : LinphoneObject
 	/// until the new chat room is received and return it. 
 	/// By default, after 25 seconds the function returns because iOS kills the app
 	/// extension after 30 seconds. 
-	/// - Parameter chatRoomAddr: The sip address of the chat room   
-	/// - Returns: The ``ChatRoom`` object.   
+	/// - Parameter chatRoomAddr: The sip address of the chat room    
+	/// - Returns: The ``ChatRoom`` object.    
 	public func getNewChatRoomFromConfAddr(chatRoomAddr:String) -> ChatRoom?
 	{
 		let cPointer = linphone_core_get_new_chat_room_from_conf_addr(cPtr, chatRoomAddr)
@@ -28207,8 +29349,8 @@ public class Core : LinphoneObject
 	/// By default, after 25 seconds the function returns because iOS kills the app
 	/// extension after 30 seconds. - Warning: Specific to iOS platform to satisfy
 	/// contraints of notification service extension. 
-	/// - Parameter callId: The callId of the Message SIP transaction   
-	/// - Returns: The ``ChatMessage`` object.   
+	/// - Parameter callId: The callId of the Message SIP transaction    
+	/// - Returns: The ``ChatMessage`` object.    
 	public func getNewMessageFromCallid(callId:String) -> PushNotificationMessage?
 	{
 		let cPointer = linphone_core_get_new_message_from_callid(cPtr, callId)
@@ -28224,12 +29366,12 @@ public class Core : LinphoneObject
 	/// Get payload type from mime type and clock rate. 
 	/// This function searches in audio and video codecs for the given payload type
 	/// name and clockrate. 
-	/// - Parameter type: payload mime type (I.E "speex", "pcmu", "h264")   
+	/// - Parameter type: payload mime type (I.E "speex", "pcmu", "h264")    
 	/// - Parameter rate: can be LINPHONE_FIND_PAYLOAD_IGNORE_RATE (-1) 
 	/// - Parameter channels: number of channels, can be
 	/// LINPHONE_FIND_PAYLOAD_IGNORE_CHANNELS (-1) 
 	/// - Returns: Returns nil if not found. If a ``PayloadType`` is returned, it must
-	/// be released with linphone_payload_type_unref after using it.     
+	/// be released with linphone_payload_type_unref after using it.       
 	public func getPayloadType(type:String, rate:Int, channels:Int) -> PayloadType?
 	{
 		let cPointer = linphone_core_get_payload_type(cPtr, type, CInt(rate), CInt(channels))
@@ -28247,8 +29389,8 @@ public class Core : LinphoneObject
 	/// - Parameter idkey: An arbitrary idkey string associated to a proxy
 	/// configuration 
 	/// - Returns: the ``ProxyConfig`` object for the given idkey value, or nil if none
-	/// found   
-	/// - deprecated: 04/09/2024 Use ``getAccountByIdkey(idkey:)`` 
+	/// found    
+	/// - Deprecated: 04/09/2024 Use ``getAccountByIdkey(idkey:)`` 
 	@available(*, deprecated)
 	public func getProxyConfigByIdkey(idkey:String) -> ProxyConfig?
 	{
@@ -28265,7 +29407,7 @@ public class Core : LinphoneObject
 	/// Get the zrtp sas validation status for a peer uri. 
 	/// Once the SAS has been validated or rejected, the status will never return to
 	/// Unknown (unless you delete your cache) 
-	/// - Parameter addr: the peer uri  
+	/// - Parameter addr: the peer uri   
 	/// - Returns: - LinphoneZrtpPeerStatusUnknown: this uri is not present in cache OR
 	/// during calls with the active device, SAS never was validated or rejected
 	public func getZrtpStatus(addr:String) -> ZrtpPeerStatus
@@ -28308,9 +29450,9 @@ public class Core : LinphoneObject
 	/// present. Finally, @domain will be added if not present using default proxy
 	/// config. - See also: ``ProxyConfig/normalizeSipUri(username:)`` for
 	/// documentation. 
-	/// - Parameter url: the url to parse   
-	/// - Returns: the ``Address`` matching the url or nil in case of failure.    
-	/// - deprecated: on 18/07/2022, use
+	/// - Parameter url: the url to parse    
+	/// - Returns: the ``Address`` matching the url or nil in case of failure.      
+	/// - Deprecated: on 18/07/2022, use
 	/// ``interpretUrl(url:applyInternationalPrefix:)`` instead. 
 	@available(*, deprecated)
 	public func interpretUrl(url:String) -> Address?
@@ -28330,12 +29472,12 @@ public class Core : LinphoneObject
 	/// In case of just a username, characters will be unescaped. If a phone number is
 	/// detected, it will be flattened. sip: or sips: prefix will be added if not
 	/// present. Finally, @domain will be added if not present using the default
-	/// #Account. - See also: ``Account/normalizeSipUri(username:)`` for a similar
+	/// ``Account``. - See also: ``Account/normalizeSipUri(username:)`` for a similar
 	/// function. 
-	/// - Parameter url: the url to parse   
+	/// - Parameter url: the url to parse    
 	/// - Parameter applyInternationalPrefix: whether or not to try to format url as
 	/// phone number using default account prefix if it set (and if url is a number). 
-	/// - Returns: the ``Address`` matching the url or nil in case of failure.     
+	/// - Returns: the ``Address`` matching the url or nil in case of failure.       
 	public func interpretUrl(url:String, applyInternationalPrefix:Bool) -> Address?
 	{
 		let cPointer = linphone_core_interpret_url_2(cPtr, url, applyInternationalPrefix==true ? 1:0)
@@ -28350,11 +29492,11 @@ public class Core : LinphoneObject
 	
 	
 	/// Initiates an outgoing call. 
-	/// The application doesn't own a reference to the returned LinphoneCall object.
-	/// Use linphone_call_ref to safely keep the LinphoneCall pointer valid within your
+	/// The application doesn't own a reference to the returned ``Call`` object. Use
+	/// linphone_call_ref to safely keep the ``Call`` pointer valid within your
 	/// application.
-	/// - Parameter url: The destination of the call (sip address, or phone number).   
-	/// - Returns: A ``Call`` object or nil in case of failure.   
+	/// - Parameter url: The destination of the call (sip address, or phone number).    
+	/// - Returns: A ``Call`` object or nil in case of failure.    
 	public func invite(url:String) -> Call?
 	{
 		let cPointer = linphone_core_invite(cPtr, url)
@@ -28373,8 +29515,8 @@ public class Core : LinphoneObject
 	/// In C, the application doesn't own a reference to the returned ``Call`` object.
 	/// Use linphone_call_ref to safely keep the ``Call`` pointer valid within your
 	/// application. 
-	/// - Parameter addr: The destination of the call (sip address).   
-	/// - Returns: A ``Call`` object or nil in case of failure.   
+	/// - Parameter addr: The destination of the call (sip address).    
+	/// - Returns: A ``Call`` object or nil in case of failure.    
 	public func inviteAddress(addr:Address) -> Call?
 	{
 		let cPointer = linphone_core_invite_address(cPtr, addr.cPtr)
@@ -28395,9 +29537,9 @@ public class Core : LinphoneObject
 	/// application. If the ``Account`` is not specified in parameters, the caller's
 	/// account will be automatically selected by finding what is the best to reach the
 	/// destination of the call. 
-	/// - Parameter addr: The destination of the call (sip address).   
-	/// - Parameter params: Call parameters   
-	/// - Returns: A ``Call`` object or nil in case of failure.   
+	/// - Parameter addr: The destination of the call (sip address).    
+	/// - Parameter params: Call parameters    
+	/// - Returns: A ``Call`` object or nil in case of failure.    
 	public func inviteAddressWithParams(addr:Address, params:CallParams) -> Call?
 	{
 		let cPointer = linphone_core_invite_address_with_params(cPtr, addr.cPtr, params.cPtr)
@@ -28418,11 +29560,11 @@ public class Core : LinphoneObject
 	/// application. If the ``Account`` is not specified in parameters, the caller's
 	/// account will be automatically selected by finding what is the best to reach the
 	/// destination of the call. 
-	/// - Parameter addr: The destination of the call (sip address).   
-	/// - Parameter params: Call parameters   
-	/// - Parameter subject: Subject of the call, UTF-8 encoded   
-	/// - Parameter content: Body of the SIP INVITE   
-	/// - Returns: A ``Call`` object or nil in case of failure.   
+	/// - Parameter addr: The destination of the call (sip address).    
+	/// - Parameter params: Call parameters    
+	/// - Parameter subject: Subject of the call, UTF-8 encoded    
+	/// - Parameter content: Body of the SIP INVITE    
+	/// - Returns: A ``Call`` object or nil in case of failure.    
 	public func inviteAddressWithParams(addr:Address, params:CallParams, subject:String?, content:Content?) -> Call?
 	{
 		let cPointer = linphone_core_invite_address_with_params_2(cPtr, addr.cPtr, params.cPtr, subject, content?.cPtr)
@@ -28439,9 +29581,9 @@ public class Core : LinphoneObject
 	/// application doesn't own a reference to the returned ``Call`` object. 
 	/// Use linphone_call_ref to safely keep the ``Call`` pointer valid within your
 	/// application. 
-	/// - Parameter url: The destination of the call (sip address, or phone number).   
-	/// - Parameter params: the ``CallParams`` call parameters   
-	/// - Returns: A ``Call`` object or nil in case of failure.   
+	/// - Parameter url: The destination of the call (sip address, or phone number).    
+	/// - Parameter params: the ``CallParams`` call parameters    
+	/// - Returns: A ``Call`` object or nil in case of failure.    
 	public func inviteWithParams(url:String, params:CallParams) -> Call?
 	{
 		let cPointer = linphone_core_invite_with_params(cPtr, url, params.cPtr)
@@ -28455,7 +29597,7 @@ public class Core : LinphoneObject
 	
 	
 	/// Tells whether a content type is supported. 
-	/// - Parameter contentType: The content type to check   
+	/// - Parameter contentType: The content type to check    
 	/// - Returns: A boolean value telling whether the specified content type is
 	/// supported or not. 
 	public func isContentTypeSupported(contentType:String) -> Bool
@@ -28478,7 +29620,7 @@ public class Core : LinphoneObject
 	/// Checks if the given media filter is loaded and usable. 
 	/// This is for advanced users of the library, mainly to expose mediastreamer video
 	/// filter status. 
-	/// - Parameter filtername: the filter name   
+	/// - Parameter filtername: the filter name    
 	/// - Returns: true if the filter is loaded and usable, false otherwise 
 	public func isMediaFilterSupported(filtername:String) -> Bool
 	{
@@ -28488,7 +29630,7 @@ public class Core : LinphoneObject
 	
 	
 	/// Tells whether a plugin is loaded or not. 
-	/// - Parameter name: name of the plugin   
+	/// - Parameter name: name of the plugin    
 	/// - Returns: A boolean value telling whether the plugin has been loaded 
 	public func isPluginLoaded(name:String) -> Bool
 	{
@@ -28501,6 +29643,16 @@ public class Core : LinphoneObject
 	/// Unless auto-iterate mode is provided ( see ``enableAutoIterate(enable:)`` ), it
 	/// is crucial that your application calls ``iterate()`` repeatedly.
 	/// ``iterate()`` performs various backgrounds tasks:
+	/// -receiving of SIP messages
+	/// -handles timers and timeout
+	/// -performs registration to proxies
+	/// -authentication retries The application must call this function periodically,
+	/// from the same thread it uses for calling other liblinphone methods. It may
+	/// triggered from the timer in the application's main loop if the application
+	/// design is single thread model, or from an application thread if the application
+	/// decides to perform all liblinphone invocations from a dedicated thread. If it
+	/// is not the case make sure all liblinphone calls are serialized with a mutex. A
+	/// recommanded timer value is 20 ms for calling this function. 
 	public func iterate() 
 	{
 		linphone_core_iterate(cPtr)
@@ -28520,7 +29672,7 @@ public class Core : LinphoneObject
 	
 	/// Makes the local participant leave the running conference. 
 	/// - Returns: 0 if succeeded. Negative number if failed 
-	/// - deprecated: 09/03/2021 Use ``Conference/leave()`` instead. 
+	/// - Deprecated: 09/03/2021 Use ``Conference/leave()`` instead. 
 	@available(*, deprecated)
 	public func leaveConference() throws 
 	{
@@ -28541,7 +29693,7 @@ public class Core : LinphoneObject
 	
 	
 	/// Update current config with the content of a xml config file. 
-	/// - Parameter xmlUri: the path to the xml file   
+	/// - Parameter xmlUri: the path to the xml file    
 	public func loadConfigFromXml(xmlUri:String) 
 	{
 		linphone_core_load_config_from_xml(cPtr, xmlUri)
@@ -28569,7 +29721,7 @@ public class Core : LinphoneObject
 	
 	
 	/// Notifies all friends that have subscribed. 
-	/// - Parameter presence: ``PresenceModel`` to notify   
+	/// - Parameter presence: ``PresenceModel`` to notify    
 	public func notifyAllFriends(presence:PresenceModel) 
 	{
 		linphone_core_notify_all_friends(cPtr, presence.cPtr)
@@ -28582,7 +29734,7 @@ public class Core : LinphoneObject
 	/// This method is for advanced usage, where customization of the liblinphone's
 	/// internal behavior is required. 
 	/// - Parameter linphoneFriend: the ``Friend`` whose presence information has been
-	/// received.   
+	/// received.    
 	public func notifyNotifyPresenceReceived(linphoneFriend:Friend) 
 	{
 		linphone_core_notify_notify_presence_received(cPtr, linphoneFriend.cPtr)
@@ -28596,9 +29748,9 @@ public class Core : LinphoneObject
 	/// This method is for advanced usage, where customization of the liblinphone's
 	/// internal behavior is required. 
 	/// - Parameter linphoneFriend: the ``Friend`` whose presence information has been
-	/// received.   
-	/// - Parameter uriOrTel: telephone number or sip uri   
-	/// - Parameter presenceModel: the ``PresenceModel`` that has been modified   
+	/// received.    
+	/// - Parameter uriOrTel: telephone number or sip uri    
+	/// - Parameter presenceModel: the ``PresenceModel`` that has been modified    
 	public func notifyNotifyPresenceReceivedForUriOrTel(linphoneFriend:Friend, uriOrTel:String, presenceModel:PresenceModel) 
 	{
 		linphone_core_notify_notify_presence_received_for_uri_or_tel(cPtr, linphoneFriend.cPtr, uriOrTel, presenceModel.cPtr)
@@ -28633,7 +29785,7 @@ public class Core : LinphoneObject
 	/// This function works at any time, during calls, or when no calls are running. It
 	/// doesn't request the underlying audio system to support multiple playback
 	/// streams. 
-	/// - Parameter audiofile: The path to an audio file in wav PCM 16 bit format   
+	/// - Parameter audiofile: The path to an audio file in wav PCM 16 bit format    
 	/// - Returns: 0 on success, -1 on error 
 	public func playLocal(audiofile:String) throws 
 	{
@@ -28671,7 +29823,7 @@ public class Core : LinphoneObject
 	/// It will ensure the proxy configs are correctly registered to the proxy server,
 	/// so the call or the message will be correctly delivered. 
 	/// - Parameter callId: the Call-ID of the MESSAGE or INVITE for which the push was
-	/// received and to wait for.   
+	/// received and to wait for.    
 	public func processPushNotification(callId:String?) 
 	{
 		linphone_core_process_push_notification(cPtr, callId)
@@ -28683,12 +29835,12 @@ public class Core : LinphoneObject
 	/// This first create a ``Event`` with ``createPublish(resource:event:expires:)``
 	/// and calls ``Event/sendPublish(body:)`` to actually send it. After expiry, the
 	/// publication is refreshed unless it is terminated before. 
-	/// - Parameter resource: the resource uri for the event   
-	/// - Parameter event: the event name   
+	/// - Parameter resource: the resource uri for the event    
+	/// - Parameter event: the event name    
 	/// - Parameter expires: the lifetime of event being published, -1 if no associated
 	/// duration, in which case it will not be refreshed. 
-	/// - Parameter body: the actual published data   
-	/// - Returns: the ``Event`` holding the context of the publish.   
+	/// - Parameter body: the actual published data    
+	/// - Returns: the ``Event`` holding the context of the publish.    
 	public func publish(resource:Address, event:String, expires:Int, body:Content) -> Event?
 	{
 		let cPointer = linphone_core_publish(cPtr, resource.cPtr, event, CInt(expires), body.cPtr)
@@ -28711,7 +29863,7 @@ public class Core : LinphoneObject
 	
 	/// Black list a friend. 
 	/// same as ``Friend/setIncSubscribePolicy(policy:)`` with ``SPDeny`` policy; 
-	/// - Parameter linphoneFriend: ``Friend`` to reject   
+	/// - Parameter linphoneFriend: ``Friend`` to reject    
 	public func rejectSubscriber(linphoneFriend:Friend) 
 	{
 		linphone_core_reject_subscriber(cPtr, linphoneFriend.cPtr)
@@ -28721,7 +29873,7 @@ public class Core : LinphoneObject
 	
 	/// Reload mediastreamer2 plugins from specified directory. 
 	/// - Parameter path: the path from where plugins are to be loaded, pass nil to use
-	/// default (compile-time determined) plugin directory.   
+	/// default (compile-time determined) plugin directory.    
 	public func reloadMsPlugins(path:String?) 
 	{
 		linphone_core_reload_ms_plugins(cPtr, path)
@@ -28752,7 +29904,7 @@ public class Core : LinphoneObject
 	/// Removes an account. 
 	/// ``Core`` will then automatically unregister and place the account on a deleted
 	/// list. For that reason, a removed account does NOT need to be freed. 
-	/// - Parameter account: the ``Account`` to remove   
+	/// - Parameter account: the ``Account`` to remove    
 	public func removeAccount(account:Account) 
 	{
 		linphone_core_remove_account(cPtr, account.cPtr)
@@ -28760,8 +29912,19 @@ public class Core : LinphoneObject
 	
 	
 	
+	/// Removes an account and any associated data. 
+	/// ``Core`` will then automatically unregister and place the account on a deleted
+	/// list. For that reason, a removed account does NOT need to be freed. 
+	/// - Parameter account: the ``Account`` to remove    
+	public func removeAccountWithData(account:Account) 
+	{
+		linphone_core_remove_account_with_data(cPtr, account.cPtr)
+	}
+	
+	
+	
 	/// Removes an authentication information object. 
-	/// - Parameter info: The ``AuthInfo`` to remove.   
+	/// - Parameter info: The ``AuthInfo`` to remove.    
 	public func removeAuthInfo(info:AuthInfo) 
 	{
 		linphone_core_remove_auth_info(cPtr, info.cPtr)
@@ -28772,7 +29935,7 @@ public class Core : LinphoneObject
 	/// Removes a specific call log from call history list. 
 	/// This function destroys the call log object. It must not be accessed anymore by
 	/// the application after calling this function. 
-	/// - Parameter callLog: ``CallLog`` object to remove.   
+	/// - Parameter callLog: ``CallLog`` object to remove.    
 	public func removeCallLog(callLog:CallLog) 
 	{
 		linphone_core_remove_call_log(cPtr, callLog.cPtr)
@@ -28782,7 +29945,7 @@ public class Core : LinphoneObject
 	
 	/// Remove support for the specified content type. 
 	/// It is the application responsibility to handle it correctly afterwards. 
-	/// - Parameter contentType: The content type to remove support for   
+	/// - Parameter contentType: The content type to remove support for    
 	public func removeContentTypeSupport(contentType:String) 
 	{
 		linphone_core_remove_content_type_support(cPtr, contentType)
@@ -28791,7 +29954,7 @@ public class Core : LinphoneObject
 	
 	
 	/// Removes a friend list. 
-	/// - Parameter list: ``FriendList`` object   
+	/// - Parameter list: ``FriendList`` object    
 	public func removeFriendList(list:FriendList) 
 	{
 		linphone_core_remove_friend_list(cPtr, list.cPtr)
@@ -28800,7 +29963,7 @@ public class Core : LinphoneObject
 	
 	
 	/// Removes a call from the conference. 
-	/// - Parameter call: a call that has been previously merged into the conference.  
+	/// - Parameter call: a call that has been previously merged into the conference.   
 	/// After removing the remote participant belonging to the supplied call, the call
 	/// becomes a normal call in paused state. If one single remote participant is left
 	/// alone together with the local user in the conference after the removal, then
@@ -28811,7 +29974,7 @@ public class Core : LinphoneObject
 	/// remote participant of a conference is automatically put in a simple call in
 	/// running state.
 	/// - Returns: 0 if successful, -1 otherwise. 
-	/// - deprecated: 23/01/2025 Use ``Conference/removeParticipant(participant:)``
+	/// - Deprecated: 23/01/2025 Use ``Conference/removeParticipant(participant:)``
 	/// instead. 
 	@available(*, deprecated)
 	public func removeFromConference(call:Call) throws 
@@ -28825,8 +29988,8 @@ public class Core : LinphoneObject
 	
 	
 	/// Remove a LDAP from the configuration. 
-	/// - Parameter ldap: The LDAP to remove.   
-	/// - deprecated: 18/11/2024 use
+	/// - Parameter ldap: The ``Ldap`` object to remove.    
+	/// - Deprecated: 18/11/2024 use
 	/// ``removeRemoteContactDirectory(remoteContactDirectory:)`` instead. 
 	@available(*, deprecated)
 	public func removeLdap(ldap:Ldap) 
@@ -28839,7 +30002,7 @@ public class Core : LinphoneObject
 	/// Remove the given linphone specs from the list of functionalities the linphone
 	/// client supports. 
 	/// - See also: ``setLinphoneSpecsList(specs:)`` 
-	/// - Parameter spec: The spec to remove   
+	/// - Parameter spec: The spec to remove    
 	public func removeLinphoneSpec(spec:String) 
 	{
 		linphone_core_remove_linphone_spec(cPtr, spec)
@@ -28850,8 +30013,8 @@ public class Core : LinphoneObject
 	/// Removes a proxy configuration. 
 	/// ``Core`` will then automatically unregister and place the proxy configuration
 	/// on a deleted list. For that reason, a removed proxy does NOT need to be freed. 
-	/// - Parameter config: the ``ProxyConfig`` to remove   
-	/// - deprecated: 04/09/2024 Use ``removeAccount(account:)`` 
+	/// - Parameter config: the ``ProxyConfig`` to remove    
+	/// - Deprecated: 04/09/2024 Use ``removeAccount(account:)`` 
 	@available(*, deprecated)
 	public func removeProxyConfig(config:ProxyConfig) 
 	{
@@ -28861,7 +30024,8 @@ public class Core : LinphoneObject
 	
 	
 	/// Removes a ``RemoteContactDirectory`` object previously added to the Core. 
-	/// - Parameter remoteContactDirectory: the ``RemoteContactDirectory`` to remove.   
+	/// - Parameter remoteContactDirectory: the ``RemoteContactDirectory`` to remove.  
+	///  
 	public func removeRemoteContactDirectory(remoteContactDirectory:RemoteContactDirectory) 
 	{
 		linphone_core_remove_remote_contact_directory(cPtr, remoteContactDirectory.cPtr)
@@ -28870,7 +30034,7 @@ public class Core : LinphoneObject
 	
 	
 	/// Remove a supported tag. 
-	/// - Parameter tag: The tag to remove  
+	/// - Parameter tag: The tag to remove   
 	/// - See also: ``addSupportedTag(tag:)`` 
 	public func removeSupportedTag(tag:String) 
 	{
@@ -28900,13 +30064,13 @@ public class Core : LinphoneObject
 	
 	/// Find a chat room. 
 	/// - Parameter params: The chat room parameters to match ``ChatRoomParams`` or nil
-	///   
-	/// - Parameter localAddr: ``Address`` of a local ``Account`` identity or nil   
-	/// - Parameter remoteAddr: ``Address`` to search for or nil   
+	///    
+	/// - Parameter localAddr: ``Address`` of a local ``Account`` identity or nil    
+	/// - Parameter remoteAddr: ``Address`` to search for or nil    
 	/// - Parameter participants: The participants that must be present in the chat
-	/// room to find.     
-	/// - Returns: A matching chat room or nil if none matches.   
-	/// - deprecated: 22/10/2024, use
+	/// room to find.      
+	/// - Returns: A matching chat room or nil if none matches.    
+	/// - Deprecated: 22/10/2024, use
 	/// ``searchChatRoom(params:localAddr:remoteAddr:participants:)`` instead
 	@available(*, deprecated)
 	public func searchChatRoom(params:ChatRoomParams?, localAddr:Address?, remoteAddr:Address?, participants:[Address]?) -> ChatRoom?
@@ -28923,12 +30087,12 @@ public class Core : LinphoneObject
 	
 	/// Find a chat room. 
 	/// - Parameter params: The chat room parameters to match ``ChatRoomParams`` or nil
-	///   
-	/// - Parameter localAddr: ``Address`` of a local ``Account`` identity or nil   
-	/// - Parameter remoteAddr: ``Address`` to search for or nil   
+	///    
+	/// - Parameter localAddr: ``Address`` of a local ``Account`` identity or nil    
+	/// - Parameter remoteAddr: ``Address`` to search for or nil    
 	/// - Parameter participants: The participants that must be present in the chat
-	/// room to find.     
-	/// - Returns: A matching chat room or nil if none matches.   
+	/// room to find.      
+	/// - Returns: A matching chat room or nil if none matches.    
 	public func searchChatRoom(params:ConferenceParams?, localAddr:Address?, remoteAddr:Address?, participants:[Address]?) -> ChatRoom?
 	{
 		let cPointer = linphone_core_search_chat_room_2(cPtr, params?.cPtr, localAddr?.cPtr, remoteAddr?.cPtr, ObjectArrayToBctbxList(list: participants))
@@ -28942,8 +30106,8 @@ public class Core : LinphoneObject
 	
 	
 	/// Find a chat room by its identifier. 
-	/// - Parameter identifier: The chat room identifier   
-	/// - Returns: A matching chat room or nil if none matches.   
+	/// - Parameter identifier: The chat room identifier    
+	/// - Returns: A matching chat room or nil if none matches.    
 	public func searchChatRoomByIdentifier(identifier:String) -> ChatRoom?
 	{
 		let cPointer = linphone_core_search_chat_room_by_identifier(cPtr, identifier)
@@ -28958,14 +30122,14 @@ public class Core : LinphoneObject
 	
 	/// Find a conference. 
 	/// - Parameter params: The conference parameters to match ``ConferenceParams`` or
-	/// nil   
+	/// nil    
 	/// - Parameter localAddr: ``Address`` representing the local proxy configuration
-	/// or nil   
-	/// - Parameter remoteAddr: ``Address`` to search for or nil   
+	/// or nil    
+	/// - Parameter remoteAddr: ``Address`` to search for or nil    
 	/// - Parameter participants: The participants that must be present in the chat
-	/// room to find     
+	/// room to find      
 	/// - Returns: A pointer on ``Conference`` satisfying the non-nil function
-	/// arguments or nil if none matches   
+	/// arguments or nil if none matches    
 	public func searchConference(params:ConferenceParams?, localAddr:Address?, remoteAddr:Address?, participants:[Address]?) -> Conference?
 	{
 		let cPointer = linphone_core_search_conference(cPtr, params?.cPtr, localAddr?.cPtr, remoteAddr?.cPtr, ObjectArrayToBctbxList(list: participants))
@@ -28979,9 +30143,9 @@ public class Core : LinphoneObject
 	
 	
 	/// Finds a conference. 
-	/// - Parameter conferenceAddr: ``Address`` representing the conference address   
+	/// - Parameter conferenceAddr: ``Address`` representing the conference address    
 	/// - Returns: A pointer on ``Conference`` whose conference address is the one
-	/// provided as argument or nil if none matches   
+	/// provided as argument or nil if none matches    
 	public func searchConference(conferenceAddr:Address) -> Conference?
 	{
 		let cPointer = linphone_core_search_conference_2(cPtr, conferenceAddr.cPtr)
@@ -28995,8 +30159,8 @@ public class Core : LinphoneObject
 	
 	
 	/// Find a conference by its identifier. 
-	/// - Parameter identifier: The conference identifier   
-	/// - Returns: A matching conference or nil if none matches.   
+	/// - Parameter identifier: The conference identifier    
+	/// - Returns: A matching conference or nil if none matches.    
 	public func searchConferenceByIdentifier(identifier:String) -> Conference?
 	{
 		let cPointer = linphone_core_search_conference_by_identifier(cPtr, identifier)
@@ -29060,9 +30224,12 @@ public class Core : LinphoneObject
 	/// If you want to disable a tone, set a path to a non-existent file. To disable
 	/// all tones, use ``enableCallToneIndications(yesno:)`` or set the
 	/// tone_indications to 0 in the [misc] section of your linphonerc. 
-	/// - Parameter toneId: the #LinphoneToneId 
+	/// If you want to disable a tone, set a path to a non-existent file. To disable
+	/// all tones, use ``enableCallToneIndications(yesno:)`` or set the
+	/// tone_indications to 0 in the [misc] section of your linphonerc. 
+	/// - Parameter toneId: the ``ToneID`` 
 	/// - Parameter audiofile: a wav file to be played or nil to use the default
-	/// (generated) one.   
+	/// (generated) one.    
 	public func setTone(toneId:ToneID, audiofile:String?) 
 	{
 		linphone_core_set_tone(cPtr, LinphoneToneID(rawValue: CUnsignedInt(toneId.rawValue)), audiofile)
@@ -29075,8 +30242,8 @@ public class Core : LinphoneObject
 	/// slash character will be printed if nil is given to "version". If nil is given
 	/// to "ua_name" and "version" both, the User-agent header will be empty.
 	/// This function should be called just after linphone_factory_create_core ideally. 
-	/// - Parameter name: Name of the user agent.   
-	/// - Parameter version: Version of the user agent.   
+	/// - Parameter name: Name of the user agent.    
+	/// - Parameter version: Version of the user agent.    
 	public func setUserAgent(name:String?, version:String?) 
 	{
 		linphone_core_set_user_agent(cPtr, name, version)
@@ -29097,10 +30264,10 @@ public class Core : LinphoneObject
 	
 	/// Tells whether a specified sound device can capture sound. 
 	/// - Parameter device: the device name as returned by
-	/// linphone_core_get_sound_devices   
+	/// linphone_core_get_sound_devices    
 	/// - Returns: A boolean value telling whether the specified sound device can
 	/// capture sound 
-	/// - deprecated: 08/07/2020 use ``AudioDevice`` API instead()
+	/// - Deprecated: 08/07/2020 use ``AudioDevice`` API instead()
 	@available(*, deprecated)
 	public func soundDeviceCanCapture(device:String) -> Bool
 	{
@@ -29111,10 +30278,10 @@ public class Core : LinphoneObject
 	
 	/// Tells whether a specified sound device can play sound. 
 	/// - Parameter device: the device name as returned by
-	/// linphone_core_get_sound_devices   
+	/// linphone_core_get_sound_devices    
 	/// - Returns: A boolean value telling whether the specified sound device can play
 	/// sound 
-	/// - deprecated: 08/07/2020 use ``AudioDevice`` API instead()
+	/// - Deprecated: 08/07/2020 use ``AudioDevice`` API instead()
 	@available(*, deprecated)
 	public func soundDeviceCanPlayback(device:String) -> Bool
 	{
@@ -29186,6 +30353,8 @@ public class Core : LinphoneObject
 	/// ``GlobalState`` is either On. State will changed to Shutdown and then Off. This
 	/// function may block to perform SIP server unregistration. Using ``stopAsync()``
 	/// is preferred.
+	/// - Warning: This function must never be called from within an event notification
+	/// triggered by Liblinphone. 
 	public func stop() 
 	{
 		linphone_core_stop(cPtr)
@@ -29199,6 +30368,8 @@ public class Core : LinphoneObject
 	/// to end asynchronous tasks (terminate call, etc.). When all tasks are finished,
 	/// State will change to Off. Must be called only if ``GlobalState`` is On. When
 	/// ``GlobalState`` is Off ``Core`` can be started again using ``start()``.
+	/// - Warning: This function must never be called from within an event notification
+	/// triggered by Liblinphone. 
 	public func stopAsync() 
 	{
 		linphone_core_stop_async(cPtr)
@@ -29239,11 +30410,11 @@ public class Core : LinphoneObject
 	/// the event name, and an optional content body. 
 	/// If accepted, the subscription runs for a finite period, but is automatically
 	/// renewed if not terminated before. 
-	/// - Parameter resource: the destination resource   
-	/// - Parameter event: the event name   
+	/// - Parameter resource: the destination resource    
+	/// - Parameter event: the event name    
 	/// - Parameter expires: the whished duration of the subscription 
-	/// - Parameter body: an optional body, may be nil.   
-	/// - Returns: a ``Event`` holding the context of the created subcription.   
+	/// - Parameter body: an optional body, may be nil.    
+	/// - Returns: a ``Event`` holding the context of the created subcription.    
 	public func subscribe(resource:Address, event:String, expires:Int, body:Content?) -> Event?
 	{
 		let cPointer = linphone_core_subscribe(cPtr, resource.cPtr, event, CInt(expires), body?.cPtr)
@@ -29259,7 +30430,7 @@ public class Core : LinphoneObject
 	/// Takes a photo of currently from capture device and write it into a jpeg file. 
 	/// Note that the snapshot is asynchronous, an application shall not assume that
 	/// the file is created when the function returns.
-	/// - Parameter file: a path where to write the jpeg content.   
+	/// - Parameter file: a path where to write the jpeg content.    
 	/// - Returns: 0 if successful, -1 otherwise (typically if jpeg format is not
 	/// supported). 
 	public func takePreviewSnapshot(file:String) throws 
@@ -29286,10 +30457,13 @@ public class Core : LinphoneObject
 	
 	/// Terminates the running conference. 
 	/// If it is a local conference, all calls inside it will become back separate
-	/// calls and will be put in #LinphoneCallPaused state. If it is a conference
+	/// calls and will be put in LinphoneCallPaused state. If it is a conference
+	/// involving a focus server, all calls inside the conference will be terminated. 
+	/// If it is a local conference, all calls inside it will become back separate
+	/// calls and will be put in LinphoneCallPaused state. If it is a conference
 	/// involving a focus server, all calls inside the conference will be terminated. 
 	/// - Returns: 0 if succeeded. Negative number if failed 
-	/// - deprecated: 23/01/2025 Use ``Conference/terminate()`` instead. 
+	/// - Deprecated: 23/01/2025 Use ``Conference/terminate()`` instead. 
 	@available(*, deprecated)
 	public func terminateConference() throws 
 	{
@@ -29297,6 +30471,14 @@ public class Core : LinphoneObject
 		guard exception_result == 0 else {
 			throw LinphoneError.exception(result: "terminateConference returned value \(exception_result)")
 		}
+	}
+	
+	
+	
+	/// Upgrade the database manually to the latest schema. 
+	public func upgradeDatabase() 
+	{
+		linphone_core_upgrade_database(cPtr)
 	}
 	
 	
@@ -29372,8 +30554,8 @@ public class DialPlan : LinphoneObject
 	
 	
 	/// Find best match for given CCC. 
-	/// - Parameter ccc: The country calling code   
-	/// - Returns: the matching dial plan, or a generic one if none found   
+	/// - Parameter ccc: The country calling code    
+	/// - Returns: the matching dial plan, or a generic one if none found    
 	static public func byCcc(ccc:String) -> DialPlan?
 	{
 		let cPointer = linphone_dial_plan_by_ccc(ccc)
@@ -29387,8 +30569,8 @@ public class DialPlan : LinphoneObject
 	
 	
 	/// Find best match for given CCC. 
-	/// - Parameter ccc: the country calling code   
-	/// - Returns: the matching dial plan, or a generic one if none found   
+	/// - Parameter ccc: the country calling code    
+	/// - Returns: the matching dial plan, or a generic one if none found    
 	static public func byCccAsInt(ccc:Int) -> DialPlan?
 	{
 		let cPointer = linphone_dial_plan_by_ccc_as_int(CInt(ccc))
@@ -29401,7 +30583,7 @@ public class DialPlan : LinphoneObject
 	
 	
 	/// Returns a list of all known dial plans. 
-	/// - Returns: The list of all known dial plans.      
+	/// - Returns: The list of all known dial plans.         
 	static public var getAllList: [DialPlan]
 	{
 	
@@ -29422,7 +30604,7 @@ public class DialPlan : LinphoneObject
 	
 	/// Function to get call country code from an e164 number, ex: +33952650121 will
 	/// return 33. 
-	/// - Parameter e164: phone number   
+	/// - Parameter e164: phone number    
 	/// - Returns: call country code or -1 if not found 
 	static public func lookupCccFromE164(e164:String) -> Int
 	{
@@ -29433,7 +30615,7 @@ public class DialPlan : LinphoneObject
 	
 	/// Function to get call country code from ISO 3166-1 alpha-2 code, ex: FR returns
 	/// 33. 
-	/// - Parameter iso: country code alpha2   
+	/// - Parameter iso: country code alpha2    
 	/// - Returns: call country code or -1 if not found 
 	static public func lookupCccFromIso(iso:String) -> Int
 	{
@@ -29455,7 +30637,7 @@ public class DialPlan : LinphoneObject
 		
 	
 	/// Returns the country calling code of the dialplan. 
-	/// - Returns: the country calling code   
+	/// - Returns: the country calling code    
 	public var countryCallingCode: String
 	{
 	
@@ -29468,7 +30650,7 @@ public class DialPlan : LinphoneObject
 		
 	
 	/// Returns the flag of the teritory as unicode characters. 
-	/// - Returns: the flag as unicode characters   
+	/// - Returns: the flag as unicode characters    
 	public var flag: String
 	{
 	
@@ -29481,7 +30663,7 @@ public class DialPlan : LinphoneObject
 		
 	
 	/// Returns the international call prefix of the dialplan. 
-	/// - Returns: the international call prefix   
+	/// - Returns: the international call prefix    
 	public var internationalCallPrefix: String
 	{
 	
@@ -29504,7 +30686,7 @@ public class DialPlan : LinphoneObject
 		
 	
 	/// Returns the iso country code of the dialplan. 
-	/// - Returns: the iso country code   
+	/// - Returns: the iso country code    
 	public var isoCountryCode: String
 	{
 	
@@ -29526,12 +30708,30 @@ public class DialPlan : LinphoneObject
 	}
 		
 	
+	/// Returns the trunk prefix for this country. 
+	/// Trunk prefix will be removed from the start of flattened phone number before
+	/// adding international prefix. 
+	/// - Returns: the trunk prefix if any, nil otherwise    
+	public var trunkPrefix: String?
+	{
+	
+			
+			let cPointer = linphone_dial_plan_get_trunk_prefix(cPtr)
+			if (cPointer == nil) {
+				return nil
+			}
+			let result = charArrayToString(charPointer: cPointer)
+			return result
+
+	}
+		
+	
 	
 	/// Formats a phone number using dial plan informations. 
-	/// - Parameter phoneNumber: the phone number to format.   
+	/// - Parameter phoneNumber: the phone number to format.    
 	/// - Parameter escapePlus: whether or not to use + or international calling prefix 
 	/// - Returns: the formatted phone number, or the original phone number if couldn't
-	/// be formatted for some reason.      
+	/// be formatted for some reason.       
 	public func formatPhoneNumber(phoneNumber:String, escapePlus:Bool) -> String
 	{
 		let cstr = linphone_dial_plan_format_phone_number(cPtr, phoneNumber, escapePlus==true ? 1:0)
@@ -29564,7 +30764,7 @@ public class Dictionary : LinphoneObject
 	
 	
 	/// Returns the list of keys present in the dictionary. 
-	/// - Returns: the  of keys inside the dictionary.     
+	/// - Returns: the   of keys inside the dictionary.       
 	public var keys: [String]
 	{
 	
@@ -29591,7 +30791,7 @@ public class Dictionary : LinphoneObject
 	
 	
 	/// Instantiates a new dictionary with values from source. 
-	/// - Returns: The newly created ``Dictionary`` object.   
+	/// - Returns: The newly created ``Dictionary`` object.    
 	public func clone() -> Dictionary?
 	{
 		let cPointer = linphone_dictionary_clone(cPtr)
@@ -29605,9 +30805,9 @@ public class Dictionary : LinphoneObject
 	
 	
 	
-	/// Gets the LinphoneBuffer value of a key. 
-	/// - Parameter key: The key.   
-	/// - Returns: The value.   
+	/// Gets the ``Buffer`` value of a key. 
+	/// - Parameter key: The key.    
+	/// - Returns: The value.    
 	public func getBuffer(key:String?) -> Buffer?
 	{
 		let cPointer = linphone_dictionary_get_buffer(cPtr, key)
@@ -29621,7 +30821,7 @@ public class Dictionary : LinphoneObject
 	
 	
 	/// Gets the float value of a key. 
-	/// - Parameter key: The key.   
+	/// - Parameter key: The key.    
 	/// - Returns: The value. 
 	public func getFloat(key:String?) -> Float
 	{
@@ -29631,7 +30831,7 @@ public class Dictionary : LinphoneObject
 	
 	
 	/// Gets the int value of a key. 
-	/// - Parameter key: The key.   
+	/// - Parameter key: The key.    
 	/// - Returns: The value. 
 	public func getInt(key:String?) -> Int
 	{
@@ -29641,7 +30841,7 @@ public class Dictionary : LinphoneObject
 	
 	
 	/// Gets the int64 value of a key. 
-	/// - Parameter key: The key.   
+	/// - Parameter key: The key.    
 	/// - Returns: The value. 
 	public func getInt64(key:String?) -> Int64
 	{
@@ -29651,8 +30851,8 @@ public class Dictionary : LinphoneObject
 	
 	
 	/// Gets the char* value of a key. 
-	/// - Parameter key: The key.   
-	/// - Returns: The value.   
+	/// - Parameter key: The key.    
+	/// - Returns: The value.    
 	public func getString(key:String?) -> String
 	{
 		let cstr = linphone_dictionary_get_string(cPtr, key)
@@ -29663,7 +30863,7 @@ public class Dictionary : LinphoneObject
 	
 	
 	/// Search if the key is present in the dictionary. 
-	/// - Parameter key: The key.   
+	/// - Parameter key: The key.    
 	/// - Returns: The LinphoneStatus of the operation. 
 	public func hasKey(key:String?) throws 
 	{
@@ -29676,7 +30876,7 @@ public class Dictionary : LinphoneObject
 	
 	
 	/// Removes the pair of the key. 
-	/// - Parameter key: The key.   
+	/// - Parameter key: The key.    
 	/// - Returns: The LinphoneStatus of the operation. 
 	public func remove(key:String?) throws 
 	{
@@ -29688,9 +30888,9 @@ public class Dictionary : LinphoneObject
 	
 	
 	
-	/// Sets a LinphoneBuffer value to a key. 
-	/// - Parameter key: The key.   
-	/// - Parameter value: The LinphoneBuffer value.   
+	/// Sets a ``Buffer`` value to a key. 
+	/// - Parameter key: The key.    
+	/// - Parameter value: The ``Buffer`` value.    
 	public func setBuffer(key:String?, value:Buffer?) 
 	{
 		linphone_dictionary_set_buffer(cPtr, key, value?.cPtr)
@@ -29699,7 +30899,7 @@ public class Dictionary : LinphoneObject
 	
 	
 	/// Sets a float value to a key. 
-	/// - Parameter key: The key.   
+	/// - Parameter key: The key.    
 	/// - Parameter value: The int value. 
 	public func setFloat(key:String?, value:Float) 
 	{
@@ -29709,7 +30909,7 @@ public class Dictionary : LinphoneObject
 	
 	
 	/// Sets a int value to a key. 
-	/// - Parameter key: The key.   
+	/// - Parameter key: The key.    
 	/// - Parameter value: The int value. 
 	public func setInt(key:String?, value:Int) 
 	{
@@ -29719,7 +30919,7 @@ public class Dictionary : LinphoneObject
 	
 	
 	/// Sets a int64 value to a key. 
-	/// - Parameter key: The key.   
+	/// - Parameter key: The key.    
 	/// - Parameter value: The int64 value. 
 	public func setInt64(key:String?, value:Int64) 
 	{
@@ -29729,8 +30929,8 @@ public class Dictionary : LinphoneObject
 	
 	
 	/// Sets a char* value to a key. 
-	/// - Parameter key: The key.   
-	/// - Parameter value: The value.   
+	/// - Parameter key: The key.    
+	/// - Parameter value: The value.    
 	public func setString(key:String?, value:String?) 
 	{
 		linphone_dictionary_set_string(cPtr, key, value)
@@ -29738,7 +30938,7 @@ public class Dictionary : LinphoneObject
 }
 
 
-/// The LinphoneDigestAuthenticationPolicy holds parameters relative to digest
+/// The ``DigestAuthenticationPolicy`` holds parameters relative to digest
 /// authentication procedures. 
 public class DigestAuthenticationPolicy : LinphoneObject
 {
@@ -29808,11 +31008,11 @@ public class DigestAuthenticationPolicy : LinphoneObject
 	}
 		
 	/// Assign a user pointer to the ``DigestAuthenticationPolicy`` object. 
-	/// - Parameter userData: The user pointer.   
+	/// - Parameter userData: The user pointer.    
 	
 	/// Retrieve the user pointer associated with the ``DigestAuthenticationPolicy``
 	/// object. 
-	/// - Returns: The user pointer.   
+	/// - Returns: The user pointer.    
 	public var userData: UnsafeMutableRawPointer?
 	{
 	
@@ -29848,10 +31048,10 @@ public class EktInfo : LinphoneObject
 	}
 	
 	/// Set ciphers. 
-	/// - Parameter ciphers: the ciphers to set.   
+	/// - Parameter ciphers: the ciphers to set.    
 	
 	/// Get ciphers. 
-	/// - Returns: a ``Dictionary`` object.   
+	/// - Returns: a ``Dictionary`` object.    
 	public var ciphers: Dictionary?
 	{
 	
@@ -29871,10 +31071,10 @@ public class EktInfo : LinphoneObject
 	}
 		
 	/// Set cSPI. 
-	/// - Parameter cspi: the address to set.   
+	/// - Parameter cspi: the address to set.    
 	
 	/// Get cSPI. 
-	/// - Returns: a ``Address`` object.     
+	/// - Returns: a ``Address`` object.       
 	public var cspi: Buffer?
 	{
 	
@@ -29895,10 +31095,10 @@ public class EktInfo : LinphoneObject
 	}
 		
 	/// Set from address. 
-	/// - Parameter from: the address to set.   
+	/// - Parameter from: the address to set.    
 	
 	/// Get from address. 
-	/// - Returns: a ``Address`` object.   
+	/// - Returns: a ``Address`` object.    
 	public var fromAddress: Address?
 	{
 	
@@ -29938,8 +31138,8 @@ public class EktInfo : LinphoneObject
 	
 	
 	/// Add a cipher to the chipher map. 
-	/// - Parameter to: the address to set.   
-	/// - Parameter cipher: the cipher to set.   
+	/// - Parameter to: the address to set.    
+	/// - Parameter cipher: the cipher to set.    
 	public func addCipher(to:String?, cipher:Buffer?) 
 	{
 		linphone_ekt_info_add_cipher(cPtr, to, cipher?.cPtr)
@@ -29970,11 +31170,11 @@ public class ErrorInfo : LinphoneObject
 	}
 	
 	/// Assign phrase to a ``ErrorInfo`` object. 
-	/// - Parameter phrase: the phrase explaining the error   
+	/// - Parameter phrase: the phrase explaining the error    
 	
 	/// Get textual phrase from the error info. 
 	/// This is the text that is provided by the peer in the protocol (SIP). 
-	/// - Returns: The error phrase   
+	/// - Returns: The error phrase    
 	public var phrase: String?
 	{
 	
@@ -29995,10 +31195,10 @@ public class ErrorInfo : LinphoneObject
 	}
 		
 	/// Assign protocol name to a ``ErrorInfo`` object. 
-	/// - Parameter proto: the protocol name   
+	/// - Parameter proto: the protocol name    
 	
 	/// Get protocol from the error info. 
-	/// - Returns: The protocol.   
+	/// - Returns: The protocol.    
 	public var proto: String?
 	{
 	
@@ -30075,12 +31275,12 @@ public class ErrorInfo : LinphoneObject
 	/// Set the sub_ei in ``ErrorInfo`` to another ``ErrorInfo``. 
 	/// Used when a reason header is to be added in a SIP response. The first level
 	/// ``ErrorInfo`` defines the SIP response code and phrase, the second (sub)
-	/// #LinphoneErroInfo defining the content of the Reason header. 
-	/// - Parameter appendedErrorInfo: ``ErrorInfo`` to append   
+	/// ``ErrorInfo`` defining the content of the Reason header. 
+	/// - Parameter appendedErrorInfo: ``ErrorInfo`` to append    
 	
 	/// Get pointer to chained ``ErrorInfo`` set in sub_ei. 
 	/// It corresponds to a Reason header in a received SIP response. 
-	/// - Returns: ``ErrorInfo`` pointer defined in the ei object.   
+	/// - Returns: ``ErrorInfo`` pointer defined in the ei object.    
 	public var subErrorInfo: ErrorInfo?
 	{
 	
@@ -30100,11 +31300,11 @@ public class ErrorInfo : LinphoneObject
 	}
 		
 	/// Assign warnings to a ``ErrorInfo`` object. 
-	/// - Parameter warnings: the warnings   
+	/// - Parameter warnings: the warnings    
 	
 	/// Provides additional information regarding the failure. 
 	/// With SIP protocol, the content of "Warning" headers are returned. 
-	/// - Returns: More details about the failure.   
+	/// - Returns: More details about the failure.    
 	public var warnings: String?
 	{
 	
@@ -30127,11 +31327,11 @@ public class ErrorInfo : LinphoneObject
 	
 	
 	/// Assign information to a ``ErrorInfo`` object. 
-	/// - Parameter proto: protocol name   
+	/// - Parameter proto: protocol name    
 	/// - Parameter reason: reason from ``Reason`` enum 
 	/// - Parameter code: protocol code 
-	/// - Parameter status: description of the reason   
-	/// - Parameter warning: warning message   
+	/// - Parameter status: description of the reason    
+	/// - Parameter warning: warning message    
 	public func set(proto:String?, reason:Reason, code:Int, status:String?, warning:String?) 
 	{
 		linphone_error_info_set(cPtr, proto, LinphoneReason(rawValue: CUnsignedInt(reason.rawValue)), CInt(code), status, warning)
@@ -30183,7 +31383,7 @@ public class Event : LinphoneObject
 	}	
 	
 	/// Get the call ID of the subscription. 
-	/// - Returns: The call ID used by the call as a string.   
+	/// - Returns: The call ID used by the call as a string.    
 	public var callId: String?
 	{
 	
@@ -30199,7 +31399,7 @@ public class Event : LinphoneObject
 		
 	
 	/// Returns back pointer to the ``Core`` that created this ``Event``. 
-	/// - Returns: the ``Core`` object associated.   
+	/// - Returns: the ``Core`` object associated.    
 	public var core: Core?
 	{
 	
@@ -30213,9 +31413,9 @@ public class Event : LinphoneObject
 	}
 		
 	
-	/// Get the current LinphoneEventCbs object associated with a LinphoneEvent. 
-	/// - Returns: The current LinphoneEventCbs object associated with the
-	/// LinphoneEvent.   
+	/// Get the current ``EventDelegate`` object associated with a ``Event``. 
+	/// - Returns: The current ``EventDelegate`` object associated with the ``Event``. 
+	///   
 	public var currentDelegate: EventDelegate?
 	{
 	
@@ -30230,7 +31430,7 @@ public class Event : LinphoneObject
 		
 	
 	/// Get full details about an error occured. 
-	/// - Returns: a ``ErrorInfo`` object.   
+	/// - Returns: a ``ErrorInfo`` object.    
 	public var errorInfo: ErrorInfo?
 	{
 	
@@ -30245,8 +31445,8 @@ public class Event : LinphoneObject
 		
 	
 	/// Get the "from" address of the subscription. 
-	/// - Returns: the from ``Address``.   
-	/// - deprecated: 19/07/2020 use ``getFromAddress()`` instead 
+	/// - Returns: the from ``Address``.    
+	/// - Deprecated: 19/07/2020 use ``getFromAddress()`` instead 
 	@available(*, deprecated)
 	public var from: Address?
 	{
@@ -30262,7 +31462,7 @@ public class Event : LinphoneObject
 		
 	
 	/// Get the "from" address of the subscription. 
-	/// - Returns: the from ``Address``.   
+	/// - Returns: the from ``Address``.    
 	public var fromAddress: Address?
 	{
 	
@@ -30277,7 +31477,7 @@ public class Event : LinphoneObject
 		
 	
 	/// Get the name of the event as specified in the event package RFC. 
-	/// - Returns: the event name.   
+	/// - Returns: the event name.    
 	public var name: String
 	{
 	
@@ -30312,7 +31512,7 @@ public class Event : LinphoneObject
 		
 	
 	/// Get the "contact" address of the subscription. 
-	/// - Returns: The "contact" address of the subscription   
+	/// - Returns: The "contact" address of the subscription    
 	public var remoteContact: Address?
 	{
 	
@@ -30326,10 +31526,10 @@ public class Event : LinphoneObject
 	}
 		
 	/// Sets the "request uri" address of the subscription. 
-	/// - Parameter requestAddress: ``Address`` to use in the request uri   
+	/// - Parameter requestAddress: ``Address`` to use in the request uri    
 	
 	/// Get the "request uri" address of the subscription. 
-	/// - Returns: the request uri ``Address``.   
+	/// - Returns: the request uri ``Address``.    
 	public var requestAddress: Address?
 	{
 	
@@ -30350,7 +31550,7 @@ public class Event : LinphoneObject
 		
 	
 	/// Get the resource address of the subscription or publish. 
-	/// - Returns: the resource ``Address``.   
+	/// - Returns: the resource ``Address``.    
 	public var resource: Address?
 	{
 	
@@ -30389,8 +31589,8 @@ public class Event : LinphoneObject
 		
 	
 	/// Get the "to" address of the subscription. 
-	/// - Returns: the to ``Address``.   
-	/// - deprecated: 19/07/2020 use ``getToAddress()`` instead 
+	/// - Returns: the to ``Address``.    
+	/// - Deprecated: 19/07/2020 use ``getToAddress()`` instead 
 	@available(*, deprecated)
 	public var to: Address?
 	{
@@ -30406,7 +31606,7 @@ public class Event : LinphoneObject
 		
 	
 	/// Get the "to" address of the subscription. 
-	/// - Returns: the to ``Address``.   
+	/// - Returns: the to ``Address``.    
 	public var toAddress: Address?
 	{
 	
@@ -30420,10 +31620,10 @@ public class Event : LinphoneObject
 	}
 		
 	/// Set a user (application) pointer. 
-	/// - Parameter userData: The user data to set.   
+	/// - Parameter userData: The user data to set.    
 	
 	/// Retrieve user pointer. 
-	/// - Returns: the user_data pointer or nil.   
+	/// - Returns: the user_data pointer or nil.    
 	public var userData: UnsafeMutableRawPointer?
 	{
 	
@@ -30464,8 +31664,8 @@ public class Event : LinphoneObject
 	
 	
 	/// Add a custom header to an outgoing susbscription or publish. 
-	/// - Parameter name: header's name   
-	/// - Parameter value: the header's value.   
+	/// - Parameter name: header's name    
+	/// - Parameter value: the header's value.    
 	public func addCustomHeader(name:String, value:String?) 
 	{
 		linphone_event_add_custom_header(cPtr, name, value)
@@ -30474,7 +31674,7 @@ public class Event : LinphoneObject
 	
 	
 	/// Deny an incoming publish with given reason. 
-	/// - Parameter reason: The ``Reason`` of denial.   
+	/// - Parameter reason: The ``Reason`` of denial.    
 	/// - Returns: 0 if successful, error code otherwise 
 	public func denyPublish(reason:Reason) throws 
 	{
@@ -30487,7 +31687,7 @@ public class Event : LinphoneObject
 	
 	
 	/// Deny an incoming subscription with given reason. 
-	/// - Parameter reason: The ``Reason`` of denial.   
+	/// - Parameter reason: The ``Reason`` of denial.    
 	/// - Returns: 0 if successful, error code otherwise 
 	public func denySubscription(reason:Reason) throws 
 	{
@@ -30500,8 +31700,8 @@ public class Event : LinphoneObject
 	
 	
 	/// Obtain the value of a given header for an incoming subscription. 
-	/// - Parameter name: header's name   
-	/// - Returns: the header's value or nil if such header doesn't exist.   
+	/// - Parameter name: header's name    
+	/// - Returns: the header's value or nil if such header doesn't exist.    
 	public func getCustomHeader(name:String) -> String
 	{
 		let cstr = linphone_event_get_custom_header(cPtr, name)
@@ -30560,7 +31760,7 @@ public class Event : LinphoneObject
 	
 	
 	/// Remove custom header to an outgoing susbscription or publish. 
-	/// - Parameter name: header's name   
+	/// - Parameter name: header's name    
 	public func removeCustomHeader(name:String) 
 	{
 		linphone_event_remove_custom_header(cPtr, name)
@@ -30569,7 +31769,7 @@ public class Event : LinphoneObject
 	
 	
 	/// Send a publish created by ``Core/createPublish(resource:event:expires:)``. 
-	/// - Parameter body: the new data to be published   
+	/// - Parameter body: the new data to be published    
 	/// - Returns: 0 if successful, -1 otherwise. 
 	public func sendPublish(body:Content) throws 
 	{
@@ -30583,7 +31783,7 @@ public class Event : LinphoneObject
 	
 	/// Send a subscription previously created by
 	/// ``Core/createSubscribe(resource:event:expires:)``. 
-	/// - Parameter body: optional content to attach with the subscription.   
+	/// - Parameter body: optional content to attach with the subscription.    
 	/// - Returns: 0 if successful, -1 otherwise. 
 	public func sendSubscribe(body:Content?) throws 
 	{
@@ -30606,7 +31806,7 @@ public class Event : LinphoneObject
 	
 	
 	/// Update (refresh) a publish. 
-	/// - Parameter body: the new data to be published   
+	/// - Parameter body: the new data to be published    
 	/// - Returns: 0 if successful, error code otherwise 
 	public func updatePublish(body:Content) throws 
 	{
@@ -30620,7 +31820,7 @@ public class Event : LinphoneObject
 	
 	/// Update (refresh) an outgoing subscription, changing the body. 
 	/// - Parameter body: an optional body to include in the subscription update, may
-	/// be nil.   
+	/// be nil.    
 	/// - Returns: 0 if successful, error code otherwise    
 	public func updateSubscribe(body:Content?) throws 
 	{
@@ -30743,7 +31943,7 @@ public class EventLog : LinphoneObject
 	
 	
 	/// Returns the call log of a conference call event. 
-	/// - Returns: The conference ``CallLog``.   
+	/// - Returns: The conference ``CallLog``.    
 	public var callLog: CallLog?
 	{
 	
@@ -30758,7 +31958,7 @@ public class EventLog : LinphoneObject
 		
 	
 	/// Returns the chat message of a conference chat message event. 
-	/// - Returns: The conference ``ChatMessage``.   
+	/// - Returns: The conference ``ChatMessage``.    
 	public var chatMessage: ChatMessage?
 	{
 	
@@ -30773,7 +31973,7 @@ public class EventLog : LinphoneObject
 		
 	
 	/// Returns the conference info of a conference call event. 
-	/// - Returns: The conference ``ConferenceInfo``.   
+	/// - Returns: The conference ``ConferenceInfo``.    
 	public var conferenceInfo: ConferenceInfo?
 	{
 	
@@ -30798,7 +31998,7 @@ public class EventLog : LinphoneObject
 		
 	
 	/// Returns the device address of a conference participant device event. 
-	/// - Returns: The conference device ``Address``.   
+	/// - Returns: The conference device ``Address``.    
 	public var deviceAddress: Address?
 	{
 	
@@ -30825,7 +32025,7 @@ public class EventLog : LinphoneObject
 		
 	
 	/// Returns the local address of a conference event. 
-	/// - Returns: The local ``Address``.   
+	/// - Returns: The local ``Address``.    
 	public var localAddress: Address?
 	{
 	
@@ -30850,7 +32050,7 @@ public class EventLog : LinphoneObject
 		
 	
 	/// Returns the participant address of a conference participant event. 
-	/// - Returns: The conference participant ``Address``.   
+	/// - Returns: The conference participant ``Address``.    
 	public var participantAddress: Address?
 	{
 	
@@ -30865,7 +32065,7 @@ public class EventLog : LinphoneObject
 		
 	
 	/// Returns the peer address of a conference event. 
-	/// - Returns: The peer ``Address``.   
+	/// - Returns: The peer ``Address``.    
 	public var peerAddress: Address?
 	{
 	
@@ -30880,7 +32080,7 @@ public class EventLog : LinphoneObject
 		
 	
 	/// Returns the faulty device address of a conference security event. 
-	/// - Returns: The ``Address`` of the faulty device.   
+	/// - Returns: The ``Address`` of the faulty device.    
 	public var securityEventFaultyDeviceAddress: Address?
 	{
 	
@@ -30905,7 +32105,7 @@ public class EventLog : LinphoneObject
 		
 	
 	/// Returns the subject of a conference subject event. 
-	/// - Returns: The conference subject.   
+	/// - Returns: The conference subject.    
 	public var subject: String?
 	{
 	
@@ -30973,7 +32173,7 @@ public class Factory : LinphoneObject
 	
 	
 	/// Create the ``Factory`` if that has not been done and return a pointer on it. 
-	/// - Returns: A pointer on the ``Factory``   
+	/// - Returns: A pointer on the ``Factory``    
 	static public var Instance: Factory
 	{
 	
@@ -30987,7 +32187,7 @@ public class Factory : LinphoneObject
 	/// If the path is empty (default value), the path will be computed when calling
 	/// ``getDataDir(context:)`` 
 	/// - Parameter path: The path to the directory where the application local cache
-	/// is located   
+	/// is located    
 	
 	public var cacheDir: String = ""
 	{
@@ -31002,7 +32202,7 @@ public class Factory : LinphoneObject
 	/// If the path is empty (default value), the path will be computed when calling
 	/// ``getConfigDir(context:)`` 
 	/// - Parameter path: The path to the directory where the configurations are
-	/// located   
+	/// located    
 	
 	public var configDir: String = ""
 	{
@@ -31017,7 +32217,7 @@ public class Factory : LinphoneObject
 	/// If the path is empty (default value), the path will be computed when calling
 	/// ``getDataDir(context:)`` 
 	/// - Parameter path: The path to the directory where the application local data
-	/// are located   
+	/// are located    
 	
 	public var dataDir: String = ""
 	{
@@ -31029,10 +32229,10 @@ public class Factory : LinphoneObject
 	}
 		
 	/// Set the directory where the data resources are located. 
-	/// - Parameter path: The path where the data resources are located   
+	/// - Parameter path: The path where the data resources are located    
 	
 	/// Get the directory where the data resources are located. 
-	/// - Returns: The path to the directory where the data resources are located   
+	/// - Returns: The path to the directory where the data resources are located    
 	public var dataResourcesDir: String?
 	{
 	
@@ -31054,7 +32254,7 @@ public class Factory : LinphoneObject
 		
 	
 	/// Returns a bctbx_list_t of all DialPlans. 
-	/// - Returns: A list of ``DialPlan``    
+	/// - Returns: A list of ``DialPlan``      
 	public var dialPlans: [DialPlan]
 	{
 	
@@ -31073,7 +32273,7 @@ public class Factory : LinphoneObject
 	/// Set the directory where downloads are located. 
 	/// If the path is empty (default value), the path will be computed when calling
 	/// ``getDownloadDir(context:)`` 
-	/// - Parameter path: The path to the directory where downloads are located   
+	/// - Parameter path: The path to the directory where downloads are located    
 	
 	public var downloadDir: String = ""
 	{
@@ -31085,10 +32285,10 @@ public class Factory : LinphoneObject
 	}
 		
 	/// Set the directory where the image resources are located. 
-	/// - Parameter path: The path where the image resources are located   
+	/// - Parameter path: The path where the image resources are located    
 	
 	/// Get the directory where the image resources are located. 
-	/// - Returns: The path to the directory where the image resources are located   
+	/// - Returns: The path to the directory where the image resources are located    
 	public var imageResourcesDir: String?
 	{
 	
@@ -31180,7 +32380,7 @@ public class Factory : LinphoneObject
 		
 	/// Set the directory where the liblinphone plugins are located. 
 	/// - Parameter path: The path to the directory where the liblinphone plugins are
-	/// located   
+	/// located    
 	
 	/// Get the directory where the liblinphone plugins are located. 
 	/// - Returns: The path to the directory where the liblinphone plugins are located,
@@ -31205,7 +32405,7 @@ public class Factory : LinphoneObject
 	}
 		
 	/// Sets the log collection path. 
-	/// - Parameter path: the path of the logs   
+	/// - Parameter path: the path of the logs    
 	
 	public var logCollectionPath: String = ""
 	{
@@ -31218,7 +32418,7 @@ public class Factory : LinphoneObject
 		
 	/// Set the directory where the mediastreamer2 plugins are located. 
 	/// - Parameter path: The path to the directory where the mediastreamer2 plugins
-	/// are located   
+	/// are located    
 	
 	/// Get the directory where the mediastreamer2 plugins are located. 
 	/// - Returns: The path to the directory where the mediastreamer2 plugins are
@@ -31247,7 +32447,7 @@ public class Factory : LinphoneObject
 	/// This list is suitable for a widest set of hardware for all video codec
 	/// implementations, and thus excludes some very high definition formats that are
 	/// unlikely to work unless specific hardware or codecs are used. 
-	/// - Returns: A list of video definitions.    
+	/// - Returns: A list of video definitions.      
 	public var recommendedVideoDefinitions: [VideoDefinition]
 	{
 	
@@ -31264,10 +32464,10 @@ public class Factory : LinphoneObject
 	}
 		
 	/// Set the directory where the ring resources are located. 
-	/// - Parameter path: The path where the ring resources are located   
+	/// - Parameter path: The path where the ring resources are located    
 	
 	/// Get the directory where the ring resources are located. 
-	/// - Returns: The path to the directory where the ring resources are located   
+	/// - Returns: The path to the directory where the ring resources are located    
 	public var ringResourcesDir: String?
 	{
 	
@@ -31288,10 +32488,10 @@ public class Factory : LinphoneObject
 	}
 		
 	/// Set the directory where the sound resources are located. 
-	/// - Parameter path: The path where the sound resources are located   
+	/// - Parameter path: The path where the sound resources are located    
 	
 	/// Get the directory where the sound resources are located. 
-	/// - Returns: The path to the directory where the sound resources are located   
+	/// - Returns: The path to the directory where the sound resources are located    
 	public var soundResourcesDir: String?
 	{
 	
@@ -31313,7 +32513,7 @@ public class Factory : LinphoneObject
 		
 	
 	/// Get the list of standard video definitions supported by Linphone. 
-	/// - Returns: A list of video definitions.    
+	/// - Returns: A list of video definitions.      
 	public var supportedVideoDefinitions: [VideoDefinition]
 	{
 	
@@ -31333,10 +32533,10 @@ public class Factory : LinphoneObject
 	/// If you only define this top directory, the other resources directory will
 	/// automatically be derived form this one. 
 	/// - Parameter path: The path to the top directory where the resources are located
-	///   
+	///    
 	
 	/// Get the top directory where the resources are located. 
-	/// - Returns: The path to the top directory where the resources are located   
+	/// - Returns: The path to the top directory where the resources are located    
 	public var topResourcesDir: String?
 	{
 	
@@ -31357,10 +32557,10 @@ public class Factory : LinphoneObject
 	}
 		
 	/// Sets the user data in the ``Factory`` object. 
-	/// - Parameter data: the user data.   
+	/// - Parameter data: the user data.    
 	
 	/// Gets the user data in the ``Factory`` object. 
-	/// - Returns: the user data.   
+	/// - Returns: the user data.    
 	public var userData: UnsafeMutableRawPointer?
 	{
 	
@@ -31378,11 +32578,11 @@ public class Factory : LinphoneObject
 	
 	/// Computes the hashed version of the password given the user ID and the realm,
 	/// using given algorithm. 
-	/// - Parameter userid: the username or user ID to use.   
-	/// - Parameter password: the password to hash.   
-	/// - Parameter realm: the real to use.   
-	/// - Parameter algorithm: the algorithm to use (MD5 or SHA-256).   
-	/// - Returns: the generated hash if it succeeded, nil otherwise.     
+	/// - Parameter userid: the username or user ID to use.    
+	/// - Parameter password: the password to hash.    
+	/// - Parameter realm: the real to use.    
+	/// - Parameter algorithm: the algorithm to use (MD5 or SHA-256).    
+	/// - Returns: the generated hash if it succeeded, nil otherwise.       
 	public func computeHa1ForAlgorithm(userid:String, password:String, realm:String, algorithm:String) -> String
 	{
 		let cstr = linphone_factory_compute_ha1_for_algorithm(cPtr, userid, password, realm, algorithm)
@@ -31396,8 +32596,8 @@ public class Factory : LinphoneObject
 	
 	
 	/// Parse a string holding a SIP URI and create the according ``Address`` object. 
-	/// - Parameter addr: A string holding the SIP URI to parse.   
-	/// - Returns: A new ``Address``.   
+	/// - Parameter addr: A string holding the SIP URI to parse.    
+	/// - Returns: A new ``Address``.    
 	public func createAddress(addr:String) throws -> Address
 	{
 		let cPointer = linphone_factory_create_address(cPtr, addr)
@@ -31415,19 +32615,19 @@ public class Factory : LinphoneObject
 	/// The object can be created empty, that is with all arguments set to nil.
 	/// Username, userid, password, realm and domain can be set later using specific
 	/// methods. At the end, username and passwd (or ha1) are required. 
-	/// - Parameter username: The username that needs to be authenticated   
+	/// - Parameter username: The username that needs to be authenticated    
 	/// - Parameter userid: The userid used for authenticating (use nil if you don't
-	/// know what it is)   
-	/// - Parameter passwd: The password in clear text   
+	/// know what it is)    
+	/// - Parameter passwd: The password in clear text    
 	/// - Parameter ha1: The ha1-encrypted password if password is not given in clear
-	/// text.   
+	/// text.    
 	/// - Parameter realm: The authentication domain (which can be larger than the sip
-	/// domain. Unfortunately many SIP servers don't use this parameter.   
+	/// domain. Unfortunately many SIP servers don't use this parameter.    
 	/// - Parameter domain: The SIP domain for which this authentication information is
-	/// valid, if it has to be restricted for a single SIP domain.   
+	/// valid, if it has to be restricted for a single SIP domain.    
 	/// - Returns: A ``AuthInfo`` object. linphone_auth_info_destroy must be used to
 	/// destroy it when no longer needed. The ``Core`` makes a copy of ``AuthInfo``
-	/// passed through ``Core/addAuthInfo(info:)``.   
+	/// passed through ``Core/addAuthInfo(info:)``.    
 	public func createAuthInfo(username:String, userid:String?, passwd:String?, ha1:String?, realm:String?, domain:String?) throws -> AuthInfo
 	{
 		let cPointer = linphone_factory_create_auth_info(cPtr, username, userid, passwd, ha1, realm, domain)
@@ -31445,20 +32645,20 @@ public class Factory : LinphoneObject
 	/// The object can be created empty, that is with all arguments set to nil.
 	/// Username, userid, password, realm and domain can be set later using specific
 	/// methods. At the end, username and passwd (or ha1) are required. 
-	/// - Parameter username: The username that needs to be authenticated   
+	/// - Parameter username: The username that needs to be authenticated    
 	/// - Parameter userid: The userid used for authenticating (use nil if you don't
-	/// know what it is)   
-	/// - Parameter passwd: The password in clear text   
+	/// know what it is)    
+	/// - Parameter passwd: The password in clear text    
 	/// - Parameter ha1: The ha1-encrypted password if password is not given in clear
-	/// text.   
+	/// text.    
 	/// - Parameter realm: The authentication domain (which can be larger than the sip
-	/// domain. Unfortunately many SIP servers don't use this parameter.   
+	/// domain. Unfortunately many SIP servers don't use this parameter.    
 	/// - Parameter domain: The SIP domain for which this authentication information is
-	/// valid, if it has to be restricted for a single SIP domain.   
-	/// - Parameter algorithm: The algorithm for encrypting password.   
+	/// valid, if it has to be restricted for a single SIP domain.    
+	/// - Parameter algorithm: The algorithm for encrypting password.    
 	/// - Returns: A ``AuthInfo`` object. linphone_auth_info_destroy must be used to
 	/// destroy it when no longer needed. The ``Core`` makes a copy of ``AuthInfo``
-	/// passed through ``Core/addAuthInfo(info:)``.   
+	/// passed through ``Core/addAuthInfo(info:)``.    
 	public func createAuthInfo(username:String, userid:String?, passwd:String?, ha1:String?, realm:String?, domain:String?, algorithm:String?) throws -> AuthInfo
 	{
 		let cPointer = linphone_factory_create_auth_info_2(cPtr, username, userid, passwd, ha1, realm, domain, algorithm)
@@ -31476,13 +32676,13 @@ public class Factory : LinphoneObject
 	/// The object can be created empty, that is with all arguments set to nil.
 	/// Username, userid, password, realm and domain can be set later using specific
 	/// methods. At the end, username and passwd (or ha1) are required. 
-	/// - Parameter username: The username that needs to be authenticated   
-	/// - Parameter accessToken: An access token to send to authenticate   
+	/// - Parameter username: The username that needs to be authenticated    
+	/// - Parameter accessToken: An access token to send to authenticate    
 	/// - Parameter realm: The authentication domain (which can be larger than the sip
-	/// domain. Unfortunately many SIP servers don't use this parameter.   
+	/// domain. Unfortunately many SIP servers don't use this parameter.    
 	/// - Returns: A ``AuthInfo`` object. linphone_auth_info_unref must be used to
 	/// destroy it when no longer needed. The ``Core`` makes a copy of ``AuthInfo``
-	/// passed through ``Core/addAuthInfo(info:)``.   
+	/// passed through ``Core/addAuthInfo(info:)``.    
 	public func createAuthInfo(username:String, accessToken:BearerToken?, realm:String?) throws -> AuthInfo
 	{
 		let cPointer = linphone_factory_create_auth_info_3(cPtr, username, accessToken?.cPtr, realm)
@@ -31499,10 +32699,10 @@ public class Factory : LinphoneObject
 	/// Create a new ``BearerToken`` object. 
 	/// The expiration time may be set to zero if unknown, in which case the ``Core``
 	/// will anyway use the refresh token if an access token is rejected by a server. 
-	/// - Parameter token: the token, as an opaque string. 
+	/// - Parameter token: the token, as an opaque string.    
 	/// - Parameter expirationTime: the expiration time as the number of seconds since
 	/// the Epoch, 1970-01-01 00:00:00 +0000 (UTC). 
-	/// - Returns: the newly created ``BearerToken`` .   
+	/// - Returns: the newly created ``BearerToken`` .    
 	public func createBearerToken(token:String, expirationTime:time_t) throws -> BearerToken
 	{
 		let cPointer = linphone_factory_create_bearer_token(cPtr, token, expirationTime)
@@ -31517,7 +32717,7 @@ public class Factory : LinphoneObject
 	
 	
 	/// Creates an object ``Buffer``. 
-	/// - Returns: a ``Buffer``   
+	/// - Returns: a ``Buffer``    
 	public func createBuffer() throws -> Buffer
 	{
 		let cPointer = linphone_factory_create_buffer(cPtr)
@@ -31532,9 +32732,9 @@ public class Factory : LinphoneObject
 	
 	
 	/// Creates an object ``Buffer``. 
-	/// - Parameter data: the data to set in the buffer   
+	/// - Parameter data: the data to set in the buffer    
 	/// - Parameter size: the size of the data 
-	/// - Returns: a ``Buffer``   
+	/// - Returns: a ``Buffer``    
 	public func createBufferFromData(data:UnsafePointer<UInt8>, size:Int) throws -> Buffer
 	{
 		let cPointer = linphone_factory_create_buffer_from_data(cPtr, data, size)
@@ -31549,8 +32749,8 @@ public class Factory : LinphoneObject
 	
 	
 	/// Creates an object ``Buffer``. 
-	/// - Parameter data: the data to set in the buffer   
-	/// - Returns: a ``Buffer``   
+	/// - Parameter data: the data to set in the buffer    
+	/// - Returns: a ``Buffer``    
 	public func createBufferFromString(data:String) throws -> Buffer
 	{
 		let cPointer = linphone_factory_create_buffer_from_string(cPtr, data)
@@ -31565,7 +32765,7 @@ public class Factory : LinphoneObject
 	
 	
 	/// Creates an object ``ConferenceInfo``. 
-	/// - Returns: a ``ConferenceInfo``   
+	/// - Returns: a ``ConferenceInfo``    
 	public func createConferenceInfo() throws -> ConferenceInfo
 	{
 		let cPointer = linphone_factory_create_conference_info(cPtr)
@@ -31580,8 +32780,8 @@ public class Factory : LinphoneObject
 	
 	
 	/// Creates an object ``ConferenceInfo`` from an Icalendar ``Content``. 
-	/// - Parameter content: the Icalendar ``Content``   
-	/// - Returns: a ``ConferenceInfo`` created from an Icalendar ``Content``   
+	/// - Parameter content: the Icalendar ``Content``    
+	/// - Returns: a ``ConferenceInfo`` created from an Icalendar ``Content``    
 	public func createConferenceInfoFromIcalendarContent(content:Content) throws -> ConferenceInfo
 	{
 		let cPointer = linphone_factory_create_conference_info_from_icalendar_content(cPtr, content.cPtr)
@@ -31596,8 +32796,8 @@ public class Factory : LinphoneObject
 	
 	
 	/// Creates an object ``Config``. 
-	/// - Parameter path: the path of the config   
-	/// - Returns: a ``Config``   
+	/// - Parameter path: the path of the config    
+	/// - Returns: a ``Config``    
 	public func createConfig(path:String?) throws -> Config
 	{
 		let cPointer = linphone_factory_create_config(cPtr, path)
@@ -31612,8 +32812,8 @@ public class Factory : LinphoneObject
 	
 	
 	/// Creates an object ``Config``. 
-	/// - Parameter data: the config data   
-	/// - Returns: a ``Config``   
+	/// - Parameter data: the config data    
+	/// - Returns: a ``Config``    
 	public func createConfigFromString(data:String) throws -> Config
 	{
 		let cPointer = linphone_factory_create_config_from_string(cPtr, data)
@@ -31628,9 +32828,9 @@ public class Factory : LinphoneObject
 	
 	
 	/// Creates an object ``Config``. 
-	/// - Parameter path: the path of the config   
-	/// - Parameter factoryPath: the path of the factory   
-	/// - Returns: a ``Config``   
+	/// - Parameter path: the path of the config    
+	/// - Parameter factoryPath: the path of the factory    
+	/// - Returns: a ``Config``    
 	public func createConfigWithFactory(path:String?, factoryPath:String?) throws -> Config
 	{
 		let cPointer = linphone_factory_create_config_with_factory(cPtr, path, factoryPath)
@@ -31645,7 +32845,7 @@ public class Factory : LinphoneObject
 	
 	
 	/// Creates an object ``Content``. 
-	/// - Returns: a ``Content``   
+	/// - Returns: a ``Content``    
 	public func createContent() throws -> Content
 	{
 		let cPointer = linphone_factory_create_content(cPtr)
@@ -31660,8 +32860,8 @@ public class Factory : LinphoneObject
 	
 	
 	/// Creates a file object of ``Content`` from a file path. 
-	/// - Parameter filePath: the path of the file   
-	/// - Returns: a ``Content`` which can be used as a file   
+	/// - Parameter filePath: the path of the file    
+	/// - Returns: a ``Content`` which can be used as a file    
 	public func createContentFromFile(filePath:String) throws -> Content
 	{
 		let cPointer = linphone_factory_create_content_from_file(cPtr, filePath)
@@ -31686,15 +32886,15 @@ public class Factory : LinphoneObject
 	/// be created. The config file is used to store all settings, proxies... so that
 	/// all these settings become persistent over the life of the ``Core`` object. It
 	/// is allowed to set a nil config file. In that case ``Core`` will not store any
-	/// settings.   
+	/// settings.    
 	/// - Parameter factoryConfigPath: A path to a read-only config file that can be
 	/// used to store hard-coded preferences such as proxy settings or internal
 	/// preferences. The settings in this factory file always override the ones in the
-	/// normal config file. It is optional, use nil if unneeded.   
+	/// normal config file. It is optional, use nil if unneeded.    
 	/// - Parameter systemContext: A pointer to a system object required by the core to
 	/// operate. Currently it is required to pass an android Context on android, pass
-	/// nil on other platforms.   
-	/// - Returns: a ``Core`` object   
+	/// nil on other platforms.    
+	/// - Returns: a ``Core`` object    
 	/// - See also: linphone_core_new_with_config_3() 
 	public func createCore(configPath:String?, factoryConfigPath:String?, systemContext:UnsafeMutableRawPointer?) throws -> Core
 	{
@@ -31709,7 +32909,7 @@ public class Factory : LinphoneObject
 	
 	
 	
-	/// Instantiate a ``Core`` object with a given LinphoneConfig. 
+	/// Instantiate a ``Core`` object with a given ``Config``. 
 	/// The ``Core`` object is the primary handle for doing all phone actions. It
 	/// should be unique within your application. The ``Core`` object is not started
 	/// automatically, you need to call ``Core/start()`` to that effect. The returned
@@ -31717,11 +32917,11 @@ public class Factory : LinphoneObject
 	/// using ``Core/stop()`` which is strongly encouraged on garbage collected
 	/// languages. 
 	/// - Parameter config: A ``Config`` object holding the configuration for the
-	/// ``Core`` to be instantiated.   
+	/// ``Core`` to be instantiated.    
 	/// - Parameter systemContext: A pointer to a system object required by the core to
 	/// operate. Currently it is required to pass an android Context on android, pass
-	/// nil on other platforms.   
-	/// - Returns: a ``Core`` object   
+	/// nil on other platforms.    
+	/// - Returns: a ``Core`` object    
 	/// - See also: ``createCore(configPath:factoryConfigPath:systemContext:)`` 
 	public func createCoreWithConfig(config:Config, systemContext:UnsafeMutableRawPointer?) throws -> Core
 	{
@@ -31739,7 +32939,7 @@ public class Factory : LinphoneObject
 	/// Create a ``DigestAuthenticationPolicy`` object. 
 	/// The ``DigestAuthenticationPolicy`` object which is used to configure a policy
 	/// for digest authentication, such as allowing MD5 or mode without qop=auth. 
-	/// - Returns: a new ``DigestAuthenticationPolicy`` .   
+	/// - Returns: a new ``DigestAuthenticationPolicy`` .    
 	public func createDigestAuthenticationPolicy() throws -> DigestAuthenticationPolicy
 	{
 		let cPointer = linphone_factory_create_digest_authentication_policy(cPtr)
@@ -31754,7 +32954,7 @@ public class Factory : LinphoneObject
 	
 	
 	/// Create an empty ``EktInfo`` object. 
-	/// - Returns: A new ``EktInfo`` object   
+	/// - Returns: A new ``EktInfo`` object    
 	public func createEktInfo() throws -> EktInfo
 	{
 		let cPointer = linphone_factory_create_ekt_info(cPtr)
@@ -31768,8 +32968,8 @@ public class Factory : LinphoneObject
 	
 	
 	
-	/// Creates an object LinphoneErrorInfo. 
-	/// - Returns: a ``ErrorInfo`` object.   
+	/// Creates an object ``ErrorInfo``. 
+	/// - Returns: a ``ErrorInfo`` object.    
 	public func createErrorInfo() throws -> ErrorInfo
 	{
 		let cPointer = linphone_factory_create_error_info(cPtr)
@@ -31784,10 +32984,10 @@ public class Factory : LinphoneObject
 	
 	
 	/// Creates a new ``FriendPhoneNumber`` object. 
-	/// - Parameter phoneNumber: The phone number.   
+	/// - Parameter phoneNumber: The phone number.    
 	/// - Parameter label: the type of phone number, for example "home", "cell", etc.
-	/// Use nil or empty for no label.   
-	/// - Returns: The newly created ``FriendPhoneNumber`` object.   
+	/// Use nil or empty for no label.    
+	/// - Returns: The newly created ``FriendPhoneNumber`` object.    
 	public func createFriendPhoneNumber(phoneNumber:String, label:String?) throws -> FriendPhoneNumber
 	{
 		let cPointer = linphone_factory_create_friend_phone_number(cPtr, phoneNumber, label)
@@ -31802,9 +33002,9 @@ public class Factory : LinphoneObject
 	
 	
 	/// Create a ``ParticipantDeviceIdentity`` object. 
-	/// - Parameter address: ``Address`` object.   
-	/// - Parameter name: the name given to the device.   
-	/// - Returns: A new ``ParticipantDeviceIdentity``.   
+	/// - Parameter address: ``Address`` object.    
+	/// - Parameter name: the name given to the device.    
+	/// - Returns: A new ``ParticipantDeviceIdentity``.    
 	public func createParticipantDeviceIdentity(address:Address, name:String?) throws -> ParticipantDeviceIdentity
 	{
 		let cPointer = linphone_factory_create_participant_device_identity(cPtr, address.cPtr, name)
@@ -31819,8 +33019,8 @@ public class Factory : LinphoneObject
 	
 	
 	/// Creates an object ``ConferenceInfo`` from an Icalendar ``Content``. 
-	/// - Parameter address: the ``Address`` of the participant   
-	/// - Returns: a ``ParticipantInfo``   
+	/// - Parameter address: the ``Address`` of the participant    
+	/// - Returns: a ``ParticipantInfo``    
 	public func createParticipantInfo(address:Address) throws -> ParticipantInfo
 	{
 		let cPointer = linphone_factory_create_participant_info(cPtr, address.cPtr)
@@ -31836,13 +33036,13 @@ public class Factory : LinphoneObject
 	
 	/// Creates a Bitmap QRCode and return it into an object ``Content``. 
 	/// - Parameter code: The code to be generated into an image. It must not be empty.
-	///   
+	///    
 	/// - Parameter width: The requested width of the QRCode image. It will be 100 if
 	/// 0. 
 	/// - Parameter height: The requested height of the QRCode image. It will be 100 if
 	/// 0. 
 	/// - Parameter margin: The requested margin of the QRCode image. 
-	/// - Returns: a ``Content``   
+	/// - Returns: a ``Content``    
 	public func createQrcode(code:String, width:UInt, height:UInt, margin:UInt) throws -> Content
 	{
 		let cPointer = linphone_factory_create_qrcode(cPtr, code, CUnsignedInt(width), CUnsignedInt(height), CUnsignedInt(margin))
@@ -31856,8 +33056,8 @@ public class Factory : LinphoneObject
 	
 	
 	
-	/// Creates an object LinphoneRange. 
-	/// - Returns: a ``Range`` object.   
+	/// Creates an object ``Range``. 
+	/// - Returns: a ``Range`` object.    
 	public func createRange() throws -> Range
 	{
 		let cPointer = linphone_factory_create_range(cPtr)
@@ -31889,19 +33089,19 @@ public class Factory : LinphoneObject
 	/// it will be created. Its path is computed using the app_group_id. The config
 	/// file is used to store all settings, proxies... so that all these settings
 	/// become persistent over the life of the ``Core`` object. It is allowed to set a
-	/// nil config file. In that case ``Core`` will not store any settings.   
+	/// nil config file. In that case ``Core`` will not store any settings.    
 	/// - Parameter factoryConfigPath: A path to a read-only config file that can be
 	/// used to store hard-coded preferences such as proxy settings or internal
 	/// preferences. The settings in this factory file always override the ones in the
-	/// normal config file. It is optional, use nil if unneeded.   
+	/// normal config file. It is optional, use nil if unneeded.    
 	/// - Parameter systemContext: A pointer to a system object required by the core to
 	/// operate. Currently it is required to pass an android Context on android, pass
-	/// nil on other platforms.   
+	/// nil on other platforms.    
 	/// - Parameter appGroupId: Name of iOS App Group that lead to the file system that
-	/// is shared between an app and its app extensions.   
+	/// is shared between an app and its app extensions.    
 	/// - Parameter mainCore: Indicate if we want to create a "Main Core" or an
 	/// "Executor Core". 
-	/// - Returns: a ``Core`` object   
+	/// - Returns: a ``Core`` object    
 	/// - See also:
 	/// ``createSharedCoreWithConfig(config:systemContext:appGroupId:mainCore:)`` 
 	public func createSharedCore(configFilename:String?, factoryConfigPath:String?, systemContext:UnsafeMutableRawPointer?, appGroupId:String, mainCore:Bool) throws -> Core
@@ -31932,15 +33132,14 @@ public class Factory : LinphoneObject
 	/// ``GlobalState`` Ready. Core ressources can be released using ``Core/stop()``
 	/// which is strongly encouraged on garbage collected languages. 
 	/// - Parameter config: A ``Config`` object holding the configuration for the
-	/// ``Core`` to be instantiated.   
+	/// ``Core`` to be instantiated.    
 	/// - Parameter systemContext: A pointer to a system object required by the core to
-	/// operate. Currently it is required to pass an android Context on android, pass
-	/// nil on other platforms.   
+	/// operate.
 	/// - Parameter appGroupId: Name of iOS App Group that lead to the file system that
-	/// is shared between an app and its app extensions.   
+	/// is shared between an app and its app extensions.    
 	/// - Parameter mainCore: Indicate if we want to create a "Main Core" or an
 	/// "Executor Core". 
-	/// - Returns: a ``Core`` object   
+	/// - Returns: a ``Core`` object    
 	/// - See also:
 	/// ``createSharedCore(configFilename:factoryConfigPath:systemContext:appGroupId:mainCore:)`` 
 	public func createSharedCoreWithConfig(config:Config, systemContext:UnsafeMutableRawPointer?, appGroupId:String, mainCore:Bool) throws -> Core
@@ -31957,7 +33156,7 @@ public class Factory : LinphoneObject
 	
 	
 	/// Creates an object ``SignalInformation``. 
-	/// - Returns: a ``SignalInformation``   
+	/// - Returns: a ``SignalInformation``    
 	public func createSignalInformation() throws -> SignalInformation
 	{
 		let cPointer = linphone_factory_create_signal_information(cPtr)
@@ -31971,8 +33170,8 @@ public class Factory : LinphoneObject
 	
 	
 	
-	/// Creates an object LinphoneTransports. 
-	/// - Returns: a ``Transports`` object.   
+	/// Creates an object ``Transports``. 
+	/// - Returns: a ``Transports`` object.    
 	public func createTransports() throws -> Transports
 	{
 		let cPointer = linphone_factory_create_transports(cPtr)
@@ -31987,7 +33186,7 @@ public class Factory : LinphoneObject
 	
 	
 	/// Creates an object ``TunnelConfig``. 
-	/// - Returns: a ``TunnelConfig``   
+	/// - Returns: a ``TunnelConfig``    
 	public func createTunnelConfig() throws -> TunnelConfig
 	{
 		let cPointer = linphone_factory_create_tunnel_config(cPtr)
@@ -32002,7 +33201,7 @@ public class Factory : LinphoneObject
 	
 	
 	/// Create an empty ``Vcard``. 
-	/// - Returns: a new ``Vcard``.   
+	/// - Returns: a new ``Vcard``.    
 	public func createVcard() throws -> Vcard
 	{
 		let cPointer = linphone_factory_create_vcard(cPtr)
@@ -32016,8 +33215,8 @@ public class Factory : LinphoneObject
 	
 	
 	
-	/// Creates an object LinphoneVideoActivationPolicy. 
-	/// - Returns: ``VideoActivationPolicy`` object.   
+	/// Creates an object ``VideoActivationPolicy``. 
+	/// - Returns: ``VideoActivationPolicy`` object.    
 	public func createVideoActivationPolicy() throws -> VideoActivationPolicy
 	{
 		let cPointer = linphone_factory_create_video_activation_policy(cPtr)
@@ -32034,7 +33233,7 @@ public class Factory : LinphoneObject
 	/// Create a ``VideoDefinition`` from a given width and height. 
 	/// - Parameter width: The width of the created video definition 
 	/// - Parameter height: The height of the created video definition 
-	/// - Returns: A new ``VideoDefinition`` object   
+	/// - Returns: A new ``VideoDefinition`` object    
 	public func createVideoDefinition(width:UInt, height:UInt) throws -> VideoDefinition
 	{
 		let cPointer = linphone_factory_create_video_definition(cPtr, CUnsignedInt(width), CUnsignedInt(height))
@@ -32050,8 +33249,8 @@ public class Factory : LinphoneObject
 	
 	/// Create a ``VideoDefinition`` from a given standard definition name. 
 	/// - Parameter name: The standard definition name of the video definition to
-	/// create   
-	/// - Returns: A new ``VideoDefinition`` object   
+	/// create    
+	/// - Returns: A new ``VideoDefinition`` object    
 	public func createVideoDefinitionFromName(name:String) throws -> VideoDefinition
 	{
 		let cPointer = linphone_factory_create_video_definition_from_name(cPtr, name)
@@ -32066,7 +33265,7 @@ public class Factory : LinphoneObject
 	
 	
 	/// Creates an object ``VideoSourceDescriptor``. 
-	/// - Returns: a ``VideoSourceDescriptor``   
+	/// - Returns: a ``VideoSourceDescriptor``    
 	public func createVideoSourceDescriptor() throws -> VideoSourceDescriptor
 	{
 		let cPointer = linphone_factory_create_video_source_descriptor(cPtr)
@@ -32091,8 +33290,8 @@ public class Factory : LinphoneObject
 	
 	/// Get the cache path. 
 	/// - Parameter context: used to compute path. Can be nil. JavaPlatformHelper on
-	/// Android and char *appGroupId on iOS with shared core.   
-	/// - Returns: The cache path   
+	/// Android and char *appGroupId on iOS with shared core.    
+	/// - Returns: The cache path    
 	public func getCacheDir(context:UnsafeMutableRawPointer?) -> String
 	{
 		let cstr = linphone_factory_get_cache_dir(cPtr, context)
@@ -32104,8 +33303,8 @@ public class Factory : LinphoneObject
 	
 	/// Get the config path. 
 	/// - Parameter context: used to compute path. Can be nil. JavaPlatformHelper on
-	/// Android and char *appGroupId on iOS with shared core.   
-	/// - Returns: The config path   
+	/// Android and char *appGroupId on iOS with shared core.    
+	/// - Returns: The config path    
 	public func getConfigDir(context:UnsafeMutableRawPointer?) -> String
 	{
 		let cstr = linphone_factory_get_config_dir(cPtr, context)
@@ -32117,8 +33316,8 @@ public class Factory : LinphoneObject
 	
 	/// Get the data path. 
 	/// - Parameter context: used to compute path. Can be nil. JavaPlatformHelper on
-	/// Android and char *appGroupId on iOS with shared core.   
-	/// - Returns: The data path   
+	/// Android and char *appGroupId on iOS with shared core.    
+	/// - Returns: The data path    
 	public func getDataDir(context:UnsafeMutableRawPointer?) -> String
 	{
 		let cstr = linphone_factory_get_data_dir(cPtr, context)
@@ -32130,8 +33329,8 @@ public class Factory : LinphoneObject
 	
 	/// Get the download path. 
 	/// - Parameter context: used to compute path. Can be nil. JavaPlatformHelper on
-	/// Android and char *appGroupId on iOS with shared core.   
-	/// - Returns: The download path   
+	/// Android and char *appGroupId on iOS with shared core.    
+	/// - Returns: The download path    
 	public func getDownloadDir(context:UnsafeMutableRawPointer?) -> String
 	{
 		let cstr = linphone_factory_get_download_dir(cPtr, context)
@@ -32141,7 +33340,7 @@ public class Factory : LinphoneObject
 	
 	
 	
-	/// Indicates if the given LinphoneChatRoomBackend is available. 
+	/// Indicates if the given ``ChatRoom.Backend`` is available. 
 	/// - Parameter chatroomBackend: the ``ChatRoom.Backend`` 
 	/// - Returns: true if the chatroom backend is available, false otherwise 
 	public func isChatroomBackendAvailable(chatroomBackend:ChatRoom.Backend) -> Bool
@@ -32169,9 +33368,9 @@ public class Factory : LinphoneObject
 	
 	/// Creates a QRCode and write it into a JPEG file specified by file_path (only if
 	/// build with JPEG). 
-	/// - Parameter filePath: The file where to write the QRCode JPEG image.   
+	/// - Parameter filePath: The file where to write the QRCode JPEG image.    
 	/// - Parameter code: The code to be generated into an image. It must not be empty.
-	///   
+	///    
 	/// - Parameter width: The requested width of the QRCode image. It will be 100 if
 	/// 0. 
 	/// - Parameter height: The requested height of the QRCode image. It will be 100 if
@@ -32257,13 +33456,13 @@ public class Friend : LinphoneObject
 		}
 	}	
 	/// Set ``Address`` for this friend. 
-	/// - Parameter address: the ``Address`` to set   return 0 if successful, -1
+	/// - Parameter address: the ``Address`` to set    return 0 if successful, -1
 	/// otherwise 
 	
 	/// Get address of this friend. 
-	/// - Note: the ``Address`` object returned is hold by the LinphoneFriend, however
+	/// - Note: the ``Address`` object returned is hold by the ``Friend``, however
 	/// calling several time this function may return different objects. 
-	/// - Returns: the ``Address``.   
+	/// - Returns: the ``Address``.    
 	public var address: Address?
 	{
 	
@@ -32275,9 +33474,9 @@ public class Friend : LinphoneObject
 			return result
 
 	}
-	public func setAddress(newValue: Address) throws
+	public func setAddress(newValue: Address?) throws
 	{
-		let exception_result = linphone_friend_set_address(cPtr, newValue.cPtr)
+		let exception_result = linphone_friend_set_address(cPtr, newValue?.cPtr)
 		guard exception_result == 0 else {
 			throw LinphoneError.exception(result: "username setter returned value \(exception_result)")
 		}
@@ -32285,7 +33484,7 @@ public class Friend : LinphoneObject
 		
 	
 	/// Returns a list of ``Address`` for this friend. 
-	/// - Returns: A list of ``Address``.    
+	/// - Returns: A list of ``Address``.      
 	public var addresses: [Address]
 	{
 	
@@ -32325,7 +33524,7 @@ public class Friend : LinphoneObject
 		
 	
 	/// Returns the ``Core`` object managing this friend, if any. 
-	/// - Returns: the ``Core`` object associated.   
+	/// - Returns: the ``Core`` object associated.    
 	public var core: Core?
 	{
 	
@@ -32339,9 +33538,9 @@ public class Friend : LinphoneObject
 	}
 		
 	
-	/// Get the current ``FriendDelegate`` object associated with a LinphoneFriend. 
+	/// Get the current ``FriendDelegate`` object associated with a ``Friend``. 
 	/// - Returns: The current ``FriendDelegate`` object associated with the
-	/// LinphoneFriend.   
+	/// ``Friend``.    
 	public var currentDelegate: FriendDelegate?
 	{
 	
@@ -32356,7 +33555,7 @@ public class Friend : LinphoneObject
 		
 	
 	/// Returns a list of ``FriendDevice`` for this friend, for all known addresses. 
-	/// - Returns: A list of ``FriendDevice``.      
+	/// - Returns: A list of ``FriendDevice``.         
 	public var devices: [FriendDevice]
 	{
 	
@@ -32373,9 +33572,35 @@ public class Friend : LinphoneObject
 
 	}
 		
+	/// Sets the first name for this friend is available. 
+	/// - Parameter firstName: the first name to set    
+	/// - Returns: 0 if successful, -1 otherwise 
+	
+	/// Gets the first name for this friend if vCard exists. 
+	/// - Returns: The first name of this friend.    
+	public var firstName: String?
+	{
+	
+			
+			let cPointer = linphone_friend_get_first_name(cPtr)
+			if (cPointer == nil) {
+				return nil
+			}
+			let result = charArrayToString(charPointer: cPointer)
+			return result
+
+	}
+	public func setFirstname(newValue: String?) throws
+	{
+		let exception_result = linphone_friend_set_first_name(cPtr, newValue)
+		guard exception_result == 0 else {
+			throw LinphoneError.exception(result: "username setter returned value \(exception_result)")
+		}
+	}
+		
 	
 	/// Check that the given friend is in a friend list. 
-	/// - Returns: The ``FriendList`` the friend is in if any, nil otherwise.   
+	/// - Returns: The ``FriendList`` the friend is in if any, nil otherwise.    
 	public var friendList: FriendList?
 	{
 	
@@ -32419,13 +33644,25 @@ public class Friend : LinphoneObject
 
 	}
 		
+	
+	/// Gets whether this friend is read only or not. 
+	/// A friend is read-only if the ``FriendList`` to which it belongs is read-only. 
+	/// - Returns: true if the friend is attached to an existing ``FriendList`` which
+	/// is in read-only mode, false otherwise. 
+	public var isReadOnly: Bool
+	{
+	
+						return linphone_friend_get_is_read_only(cPtr) != 0
+
+	}
+		
 	/// Sets the contact's job title. 
 	/// It's a shortcut to ``getVcard()`` and ``Vcard/setJobTitle(jobTitle:)``. 
-	/// - Parameter jobTitle: the job title to store in Friend's vCard.   
+	/// - Parameter jobTitle: the job title to store in Friend's vCard.    
 	
 	/// Gets the contact's job title from it's vCard. 
 	/// It's a shortcut to ``getVcard()`` and ``Vcard/getJobTitle()``. 
-	/// - Returns: the job_title set if any & vCard is available, nil otherwise.   
+	/// - Returns: the job_title set if any & vCard is available, nil otherwise.    
 	public var jobTitle: String?
 	{
 	
@@ -32445,12 +33682,38 @@ public class Friend : LinphoneObject
 		}
 	}
 		
-	/// Set the display name for this friend. 
-	/// - Parameter name: the display name to set   
+	/// Sets the last name for this friend if vCard is available. 
+	/// - Parameter lastName: the last name to set    
 	/// - Returns: 0 if successful, -1 otherwise 
 	
-	/// Get the display name for this friend. 
-	/// - Returns: The display name of this friend.   
+	/// Gets the last name for this friend if vCard exists. 
+	/// - Returns: The last name of this friend.    
+	public var lastName: String?
+	{
+	
+			
+			let cPointer = linphone_friend_get_last_name(cPtr)
+			if (cPointer == nil) {
+				return nil
+			}
+			let result = charArrayToString(charPointer: cPointer)
+			return result
+
+	}
+	public func setLastname(newValue: String?) throws
+	{
+		let exception_result = linphone_friend_set_last_name(cPtr, newValue)
+		guard exception_result == 0 else {
+			throw LinphoneError.exception(result: "username setter returned value \(exception_result)")
+		}
+	}
+		
+	/// Sets the display name for this friend. 
+	/// - Parameter name: the display name to set    
+	/// - Returns: 0 if successful, -1 otherwise 
+	
+	/// Gets the display name for this friend. 
+	/// - Returns: The display name of this friend.    
 	public var name: String?
 	{
 	
@@ -32463,7 +33726,7 @@ public class Friend : LinphoneObject
 			return result
 
 	}
-	public func setName(newValue: String) throws
+	public func setName(newValue: String?) throws
 	{
 		let exception_result = linphone_friend_set_name(cPtr, newValue)
 		guard exception_result == 0 else {
@@ -32472,10 +33735,11 @@ public class Friend : LinphoneObject
 	}
 		
 	/// Sets the contact's native URI. 
-	/// - Parameter nativeUri: the URI that matches the contact on the native system.   
+	/// - Parameter nativeUri: the URI that matches the contact on the native system.  
+	///  
 	
 	/// Gets the contact's native URI. 
-	/// - Returns: the native URI set if any, nil otherwise.   
+	/// - Returns: the native URI set if any, nil otherwise.    
 	public var nativeUri: String?
 	{
 	
@@ -32497,11 +33761,11 @@ public class Friend : LinphoneObject
 		
 	/// Sets the contact's organization. 
 	/// It's a shortcut to ``getVcard()`` and ``Vcard/setOrganization(organization:)``. 
-	/// - Parameter organization: the organization to store in Friend's vCard.   
+	/// - Parameter organization: the organization to store in Friend's vCard.    
 	
 	/// Gets the contact's organization from it's vCard. 
 	/// It's a shortcut to ``getVcard()`` and ``Vcard/getOrganization()``. 
-	/// - Returns: the organization set if any & vCard is available, nil otherwise.   
+	/// - Returns: the organization set if any & vCard is available, nil otherwise.    
 	public var organization: String?
 	{
 	
@@ -32523,7 +33787,7 @@ public class Friend : LinphoneObject
 		
 	
 	/// Returns a list of phone numbers for this friend. 
-	/// - Returns: A list of phone numbers as string.      
+	/// - Returns: A list of phone numbers as string.         
 	public var phoneNumbers: [String]
 	{
 	
@@ -32541,7 +33805,7 @@ public class Friend : LinphoneObject
 		
 	
 	/// Returns a list of ``FriendPhoneNumber`` for this friend. 
-	/// - Returns: A list of phone numbers as string.      
+	/// - Returns: A list of phone numbers as string.         
 	public var phoneNumbersWithLabel: [FriendPhoneNumber]
 	{
 	
@@ -32559,10 +33823,10 @@ public class Friend : LinphoneObject
 	}
 		
 	/// Sets the contact's picture URI. 
-	/// - Parameter pictureUri: the picture URI to set.   
+	/// - Parameter pictureUri: the picture URI to set.    
 	
 	/// Gets the contact's picture URI. 
-	/// - Returns: the picture URI set if any, nil otherwise.   
+	/// - Returns: the picture URI set if any, nil otherwise.    
 	public var photo: String?
 	{
 	
@@ -32583,13 +33847,13 @@ public class Friend : LinphoneObject
 	}
 		
 	/// Set the presence model of a friend. 
-	/// - Parameter presence: The ``PresenceModel`` object to set for the friend   
+	/// - Parameter presence: The ``PresenceModel`` object to set for the friend    
 	
 	/// Get the presence model of a friend. 
 	/// If a friend has more than one SIP address and phone number, this method will
 	/// return the most recent presence model using ``PresenceModel/getTimestamp()``. 
 	/// - Returns: A ``PresenceModel`` object, or nil if the friend do not have
-	/// presence information (in which case he is considered offline).   
+	/// presence information (in which case he is considered offline).    
 	public var presenceModel: PresenceModel?
 	{
 	
@@ -32609,10 +33873,10 @@ public class Friend : LinphoneObject
 	}
 		
 	/// Set the reference key of a friend. 
-	/// - Parameter key: The reference key to use for the friend.   
+	/// - Parameter key: The reference key to use for the friend.    
 	
 	/// Get the reference key of a friend. 
-	/// - Returns: The reference key of the friend.   
+	/// - Returns: The reference key of the friend.    
 	public var refKey: String?
 	{
 	
@@ -32693,10 +33957,10 @@ public class Friend : LinphoneObject
 	}
 		
 	/// Store user pointer to friend object. 
-	/// - Parameter userData: the user data to store.   
+	/// - Parameter userData: the user data to store.    
 	
 	/// Retrieve user data associated with friend. 
-	/// - Returns: the user data pointer.   
+	/// - Returns: the user data pointer.    
 	public var userData: UnsafeMutableRawPointer?
 	{
 	
@@ -32711,10 +33975,10 @@ public class Friend : LinphoneObject
 	}
 		
 	/// Binds a vCard object to a friend. 
-	/// - Parameter vcard: The ``Vcard`` object to bind   
+	/// - Parameter vcard: The ``Vcard`` object to bind    
 	
 	/// Returns the vCard object associated to this friend, if any. 
-	/// - Returns: the ``Vcard`` or nil.   
+	/// - Returns: the ``Vcard`` or nil.    
 	public var vcard: Vcard?
 	{
 	
@@ -32736,7 +34000,7 @@ public class Friend : LinphoneObject
 	
 	
 	/// Adds an address in this friend. 
-	/// - Parameter address: ``Address`` object   
+	/// - Parameter address: ``Address`` object    
 	public func addAddress(address:Address) 
 	{
 		linphone_friend_add_address(cPtr, address.cPtr)
@@ -32745,7 +34009,7 @@ public class Friend : LinphoneObject
 	
 	
 	/// Adds a phone number in this friend. 
-	/// - Parameter phoneNumber: number to add   
+	/// - Parameter phoneNumber: number to add    
 	public func addPhoneNumber(phoneNumber:String) 
 	{
 		linphone_friend_add_phone_number(cPtr, phoneNumber)
@@ -32754,7 +34018,7 @@ public class Friend : LinphoneObject
 	
 	
 	/// Adds a ``FriendPhoneNumber`` to this friend. 
-	/// - Parameter phoneNumber: the ``FriendPhoneNumber`` to add   
+	/// - Parameter phoneNumber: the ``FriendPhoneNumber`` to add    
 	public func addPhoneNumberWithLabel(phoneNumber:FriendPhoneNumber) 
 	{
 		linphone_friend_add_phone_number_with_label(cPtr, phoneNumber.cPtr)
@@ -32766,7 +34030,7 @@ public class Friend : LinphoneObject
 	/// the full name is available, either by the parameter or the one in the friend's
 	/// SIP URI. 
 	/// - Parameter name: The full name of the friend or nil to use the one from the
-	/// friend's SIP URI   
+	/// friend's SIP URI    
 	/// - Returns: true if the vCard has been created, false if it wasn't possible (for
 	/// exemple if name and the friend's SIP URI are null or if the friend's SIP URI
 	/// doesn't have a display name), or if there is already one vcard 
@@ -32781,6 +34045,17 @@ public class Friend : LinphoneObject
 	public func done() 
 	{
 		linphone_friend_done(cPtr)
+	}
+	
+	
+	
+	/// Returns the a string matching the vCard inside the friend, if any. 
+	/// - Returns: the vCard as a string or nil.    
+	public func dumpVcard() -> String
+	{
+		let cstr = linphone_friend_dump_vcard(cPtr)
+		let result = charArrayToString(charPointer: cstr)
+		return result
 	}
 	
 	
@@ -32809,8 +34084,8 @@ public class Friend : LinphoneObject
 	
 	
 	/// Returns a list of ``FriendDevice`` for this friend and a specific address. 
-	/// - Parameter address: ``Address`` object   
-	/// - Returns: A list of ``FriendDevice``.      
+	/// - Parameter address: ``Address`` object    
+	/// - Returns: A list of ``FriendDevice``.         
 	public func getDevicesForAddress(address:Address) -> [FriendDevice]
 	{
 		var swiftList = [FriendDevice]()
@@ -32829,9 +34104,9 @@ public class Friend : LinphoneObject
 	
 	/// Get the presence model for a specific SIP URI or phone number of a friend. 
 	/// - Parameter uriOrTel: The SIP URI or phone number for which to get the presence
-	/// model   
+	/// model    
 	/// - Returns: A ``PresenceModel`` object, or nil if the friend do not have
-	/// presence information for this SIP URI or phone number.   
+	/// presence information for this SIP URI or phone number.    
 	public func getPresenceModelForUriOrTel(uriOrTel:String) -> PresenceModel?
 	{
 		let cPointer = linphone_friend_get_presence_model_for_uri_or_tel(cPtr, uriOrTel)
@@ -32846,7 +34121,7 @@ public class Friend : LinphoneObject
 	
 	/// Returns the security level of a friend for a given address which is the lowest
 	/// among all devices we know for that address. 
-	/// - Parameter address: ``Address`` object   
+	/// - Parameter address: ``Address`` object    
 	/// - Returns: A ``SecurityLevel``, which is the lowest among all known devices for
 	/// that address. 
 	public func getSecurityLevelForAddress(address:Address) -> SecurityLevel
@@ -32891,7 +34166,7 @@ public class Friend : LinphoneObject
 	
 	
 	/// Returns whether a friend contains the given phone number. 
-	/// - Parameter phoneNumber: the phone number to search for   
+	/// - Parameter phoneNumber: the phone number to search for    
 	/// - Returns: true if found, false otherwise 
 	public func hasPhoneNumber(phoneNumber:String) -> Bool
 	{
@@ -32918,7 +34193,7 @@ public class Friend : LinphoneObject
 	
 	
 	/// Removes an address in this friend. 
-	/// - Parameter address: ``Address`` object   
+	/// - Parameter address: ``Address`` object    
 	public func removeAddress(address:Address) 
 	{
 		linphone_friend_remove_address(cPtr, address.cPtr)
@@ -32927,7 +34202,7 @@ public class Friend : LinphoneObject
 	
 	
 	/// Removes a phone number in this friend. 
-	/// - Parameter phoneNumber: number to remove   
+	/// - Parameter phoneNumber: number to remove    
 	public func removePhoneNumber(phoneNumber:String) 
 	{
 		linphone_friend_remove_phone_number(cPtr, phoneNumber)
@@ -32936,7 +34211,7 @@ public class Friend : LinphoneObject
 	
 	
 	/// Removes a ``FriendPhoneNumber`` from this friend. 
-	/// - Parameter phoneNumber: the ``FriendPhoneNumber`` to remove   
+	/// - Parameter phoneNumber: the ``FriendPhoneNumber`` to remove    
 	public func removePhoneNumberWithLabel(phoneNumber:FriendPhoneNumber) 
 	{
 		linphone_friend_remove_phone_number_with_label(cPtr, phoneNumber.cPtr)
@@ -32945,7 +34220,7 @@ public class Friend : LinphoneObject
 	
 	
 	/// Saves a friend either in database if configured, otherwise in linphonerc. 
-	/// - Parameter core: the linphone core   
+	/// - Parameter core: the linphone core    
 	public func save(core:Core) 
 	{
 		linphone_friend_save(cPtr, core.cPtr)
@@ -32955,8 +34230,8 @@ public class Friend : LinphoneObject
 	
 	/// Set the presence model for a specific SIP URI or phone number of a friend. 
 	/// - Parameter uriOrTel: The SIP URI or phone number for which to set the presence
-	/// model   
-	/// - Parameter presence: The ``PresenceModel`` object to set   
+	/// model    
+	/// - Parameter presence: The ``PresenceModel`` object to set    
 	public func setPresenceModelForUriOrTel(uriOrTel:String, presence:PresenceModel?) 
 	{
 		linphone_friend_set_presence_model_for_uri_or_tel(cPtr, uriOrTel, presence?.cPtr)
@@ -32985,7 +34260,7 @@ public class FriendDevice : LinphoneObject
 	
 	
 	/// Gets the address associated to this device. 
-	/// - Returns: the address (including gruu) to which this device is linked.   
+	/// - Returns: the address (including gruu) to which this device is linked.    
 	public var address: Address?
 	{
 	
@@ -33000,7 +34275,7 @@ public class FriendDevice : LinphoneObject
 		
 	
 	/// Gets the display name of this device. 
-	/// - Returns: the name of the device.   
+	/// - Returns: the name of the device.    
 	public var displayName: String?
 	{
 	
@@ -33027,7 +34302,7 @@ public class FriendDevice : LinphoneObject
 	
 	
 	/// Clones a device. 
-	/// - Returns: The newly created ``FriendDevice`` object.   
+	/// - Returns: The newly created ``FriendDevice`` object.    
 	public func clone() -> FriendDevice?
 	{
 		let cPointer = linphone_friend_device_clone(cPtr)
@@ -33076,7 +34351,7 @@ public class FriendList : LinphoneObject
 	}
 
 	
-	///Enum describing the status of a LinphoneFriendList operation. 
+	///Enum describing the status of a ``FriendList`` operation. 
 	public enum Status:Int
 	{
 		
@@ -33086,6 +34361,8 @@ public class FriendList : LinphoneObject
 		case NonExistentFriend = 1
 		/// ``Friend`` is already present in a ``FriendList`` 
 		case InvalidFriend = 2
+		/// ``FriendList`` is read only 
+		case ReadOnly = 3
 	}
 
 	
@@ -33093,9 +34370,15 @@ public class FriendList : LinphoneObject
 	public enum Kind:Int
 	{
 		
+		/// Default value, used when no other type applies. 
 		case Default = -1
+		/// Used when list is synchronized with a remote CardDAV server. 
 		case CardDAV = 0
+		/// Used for simple vCards list remotely provisionned by a server. 
 		case VCard4 = 1
+		/// Friend list used by app for cache purposes, friends added in this list will be
+		/// ignored by ``MagicSearch``. 
+		case ApplicationCache = 2
 	}
 	
 	
@@ -33120,8 +34403,8 @@ public class FriendList : LinphoneObject
 		}
 	}	
 	
-	/// Returns the ``Core`` object attached to this LinphoneFriendList. 
-	/// - Returns: a ``Core`` object   
+	/// Returns the ``Core`` object attached to this ``FriendList``. 
+	/// - Returns: a ``Core`` object    
 	public var core: Core?
 	{
 	
@@ -33135,10 +34418,9 @@ public class FriendList : LinphoneObject
 	}
 		
 	
-	/// Get the current ``FriendListDelegate`` object associated with a
-	/// LinphoneFriendList. 
+	/// Get the current ``FriendListDelegate`` object associated with a ``FriendList``. 
 	/// - Returns: The current ``FriendListDelegate`` object associated with the
-	/// LinphoneFriendList.   
+	/// ``FriendList``.    
 	public var currentDelegate: FriendListDelegate?
 	{
 	
@@ -33171,10 +34453,10 @@ public class FriendList : LinphoneObject
 	}
 		
 	/// Set the display name of the friend list. 
-	/// - Parameter displayName: The new display name of the friend list.   
+	/// - Parameter displayName: The new display name of the friend list.    
 	
 	/// Get the display name of the friend list. 
-	/// - Returns: The display name of the friend list.   
+	/// - Returns: The display name of the friend list.    
 	public var displayName: String?
 	{
 	
@@ -33195,8 +34477,8 @@ public class FriendList : LinphoneObject
 	}
 		
 	
-	/// Retrieves the list of ``Friend`` from this LinphoneFriendList. 
-	/// - Returns: A list of ``Friend``    
+	/// Retrieves the list of ``Friend`` from this ``FriendList``. 
+	/// - Returns: A list of ``Friend``      
 	public var friends: [Friend]
 	{
 	
@@ -33212,9 +34494,33 @@ public class FriendList : LinphoneObject
 
 	}
 		
+	/// Sets whether this friend list is read only or not. 
+	/// If it is, you won't be able to add/remove friends in/from it, nor to edit
+	/// existing friends in it. 
+	/// - Parameter readOnly: true to make this friend list "read only", false
+	/// otherwise. 
 	
-	/// Get wheter the subscription of the friend list is bodyless or not. 
-	/// - Returns: Wheter the subscription of the friend list is bodyless or not. 
+	/// Gets whether this friend list is read only or not. 
+	/// If it is, you won't be able to add/remove friends in/from it, nor to edit
+	/// existing friends in it. 
+	/// - Returns: true if this friend list is in read-only mode and thus can't be
+	/// modified, false otherwise. 
+	public var isReadOnly: Bool
+	{
+	
+		get
+		{ 
+						return linphone_friend_list_get_is_read_only(cPtr) != 0
+		}
+		set
+		{
+			linphone_friend_list_set_is_read_only(cPtr, newValue==true ? 1:0)
+		}
+	}
+		
+	
+	/// Get wether the subscription of the friend list is bodyless or not. 
+	/// - Returns: Wether the subscription of the friend list is bodyless or not. 
 	public var isSubscriptionBodyless: Bool
 	{
 	
@@ -33224,11 +34530,11 @@ public class FriendList : LinphoneObject
 		
 	/// Set the RLS (Resource List Server) URI associated with the friend list to
 	/// subscribe to these friends presence. 
-	/// - Parameter rlsAddr: The RLS URI to associate with the friend list.   
+	/// - Parameter rlsAddr: The RLS URI to associate with the friend list.    
 	
 	/// Get the RLS (Resource List Server) URI associated with the friend list to
 	/// subscribe to these friends presence. 
-	/// - Returns: The RLS URI as ``Address`` associated with the friend list.   
+	/// - Returns: The RLS URI as ``Address`` associated with the friend list.    
 	public var rlsAddress: Address?
 	{
 	
@@ -33249,13 +34555,13 @@ public class FriendList : LinphoneObject
 		
 	/// Set the RLS (Resource List Server) URI associated with the friend list to
 	/// subscribe to these friends presence. 
-	/// - Parameter rlsUri: The RLS URI to associate with the friend list.   
-	/// - deprecated: 27/10/2020. Use ``setRlsAddress(rlsAddr:)`` instead. 
+	/// - Parameter rlsUri: The RLS URI to associate with the friend list.    
+	/// - Deprecated: 27/10/2020. Use ``setRlsAddress(rlsAddr:)`` instead. 
 	
 	/// Get the RLS (Resource List Server) URI associated with the friend list to
 	/// subscribe to these friends presence. 
-	/// - Returns: The RLS URI associated with the friend list.   
-	/// - deprecated: 27/10/2020. Use ``getRlsAddress()`` instead. 
+	/// - Returns: The RLS URI associated with the friend list.    
+	/// - Deprecated: 27/10/2020. Use ``getRlsAddress()`` instead. 
 	public var rlsUri: String?
 	{
 	@available(*, deprecated)
@@ -33276,7 +34582,7 @@ public class FriendList : LinphoneObject
 		}
 	}
 		
-	/// Set wheter the subscription of the friend list is bodyless or not. 
+	/// Set wether the subscription of the friend list is bodyless or not. 
 	/// - Parameter bodyless: boolean telling if the subscription of the friend list is
 	/// bodyless or not. 
 	
@@ -33325,10 +34631,10 @@ public class FriendList : LinphoneObject
 	}
 		
 	/// Set the URI associated with the friend list. 
-	/// - Parameter uri: The URI to associate with the friend list.   
+	/// - Parameter uri: The URI to associate with the friend list.    
 	
 	/// Get the URI associated with the friend list. 
-	/// - Returns: The URI associated with the friend list.   
+	/// - Returns: The URI associated with the friend list.    
 	public var uri: String?
 	{
 	
@@ -33349,10 +34655,10 @@ public class FriendList : LinphoneObject
 	}
 		
 	/// Assign a user pointer to the friend list. 
-	/// - Parameter userData: The user pointer to associate with the friend list.   
+	/// - Parameter userData: The user pointer to associate with the friend list.    
 	
 	/// Retrieve the user pointer associated with the friend list. 
-	/// - Returns: The user pointer associated with the friend list.   
+	/// - Returns: The user pointer associated with the friend list.    
 	public var userData: UnsafeMutableRawPointer?
 	{
 	
@@ -33371,7 +34677,7 @@ public class FriendList : LinphoneObject
 	/// Add a friend to a friend list. 
 	/// If or when a remote CardDAV server will be attached to the list, the friend
 	/// will be sent to the server. 
-	/// - Parameter linphoneFriend: ``Friend`` object to add to the friend list.   
+	/// - Parameter linphoneFriend: ``Friend`` object to add to the friend list.    
 	/// - Returns: ``OK`` if successfully added, ``InvalidFriend`` if the friend is not
 	/// valid. 
 	public func addFriend(linphoneFriend:Friend) -> FriendList.Status
@@ -33385,7 +34691,7 @@ public class FriendList : LinphoneObject
 	/// The friend will never be sent to a remote CardDAV server. Warning! ``Friend``
 	/// added this way will be removed on the next synchronization, and the callback
 	/// contact_deleted will be called. 
-	/// - Parameter linphoneFriend: ``Friend`` object to add to the friend list.   
+	/// - Parameter linphoneFriend: ``Friend`` object to add to the friend list.    
 	/// - Returns: ``OK`` if successfully added, ``InvalidFriend`` if the friend is not
 	/// valid. 
 	public func addLocalFriend(linphoneFriend:Friend) -> FriendList.Status
@@ -33397,7 +34703,7 @@ public class FriendList : LinphoneObject
 	
 	/// Creates and export ``Friend`` objects from ``FriendList`` to a file using vCard
 	/// 4 format. 
-	/// - Parameter vcardFile: the path to a file that will contain the vCards   
+	/// - Parameter vcardFile: the path to a file that will contain the vCards    
 	public func exportFriendsAsVcard4File(vcardFile:String) 
 	{
 		linphone_friend_list_export_friends_as_vcard4_file(cPtr, vcardFile)
@@ -33405,9 +34711,9 @@ public class FriendList : LinphoneObject
 	
 	
 	
-	/// Find a friend in the friend list using a LinphoneAddress. 
-	/// - Parameter address: ``Address`` object of the friend we want to search for.   
-	/// - Returns: A ``Friend`` if found, nil otherwise.   
+	/// Find a friend in the friend list using a ``Address``. 
+	/// - Parameter address: ``Address`` object of the friend we want to search for.    
+	/// - Returns: A ``Friend`` if found, nil otherwise.    
 	public func findFriendByAddress(address:Address) -> Friend?
 	{
 		let cPointer = linphone_friend_list_find_friend_by_address(cPtr, address.cPtr)
@@ -33422,8 +34728,8 @@ public class FriendList : LinphoneObject
 	
 	/// Find a friend in the friend list using a phone number. 
 	/// - Parameter phoneNumber: a string of the phone number for which we want to find
-	/// a friend.   
-	/// - Returns: A ``Friend`` if found, nil otherwise.   
+	/// a friend.    
+	/// - Returns: A ``Friend`` if found, nil otherwise.    
 	public func findFriendByPhoneNumber(phoneNumber:String) -> Friend?
 	{
 		let cPointer = linphone_friend_list_find_friend_by_phone_number(cPtr, phoneNumber)
@@ -33437,8 +34743,8 @@ public class FriendList : LinphoneObject
 	
 	
 	/// Find a friend in the friend list using a ref key. 
-	/// - Parameter refKey: The ref key string of the friend we want to search for.   
-	/// - Returns: A ``Friend`` if found, nil otherwise.   
+	/// - Parameter refKey: The ref key string of the friend we want to search for.    
+	/// - Returns: A ``Friend`` if found, nil otherwise.    
 	public func findFriendByRefKey(refKey:String) -> Friend?
 	{
 		let cPointer = linphone_friend_list_find_friend_by_ref_key(cPtr, refKey)
@@ -33453,8 +34759,8 @@ public class FriendList : LinphoneObject
 	
 	/// Find a friend in the friend list using an URI string. 
 	/// - Parameter uri: A string containing the URI of the friend we want to search
-	/// for.   
-	/// - Returns: A ``Friend`` if found, nil otherwise.   
+	/// for.    
+	/// - Returns: A ``Friend`` if found, nil otherwise.    
 	public func findFriendByUri(uri:String) -> Friend?
 	{
 		let cPointer = linphone_friend_list_find_friend_by_uri(cPtr, uri)
@@ -33467,9 +34773,10 @@ public class FriendList : LinphoneObject
 	
 	
 	
-	/// Find all friends in the friend list using a LinphoneAddress. 
-	/// - Parameter address: ``Address`` object of the friends we want to search for.   
-	/// - Returns: A list of ``Friend`` if found, nil otherwise.    
+	/// Find all friends in the friend list using a ``Address``. 
+	/// - Parameter address: ``Address`` object of the friends we want to search for.  
+	///  
+	/// - Returns: A list of ``Friend`` if found, nil otherwise.      
 	public func findFriendsByAddress(address:Address) -> [Friend]
 	{
 		var swiftList = [Friend]()
@@ -33488,8 +34795,8 @@ public class FriendList : LinphoneObject
 	
 	/// Find all friends in the friend list using an URI string. 
 	/// - Parameter uri: A string containing the URI of the friends we want to search
-	/// for.   
-	/// - Returns: A list of ``Friend`` if found, nil otherwise.    
+	/// for.    
+	/// - Returns: A list of ``Friend`` if found, nil otherwise.      
 	public func findFriendsByUri(uri:String) -> [Friend]
 	{
 		var swiftList = [Friend]()
@@ -33508,7 +34815,7 @@ public class FriendList : LinphoneObject
 	
 	/// Creates and adds ``Friend`` objects to ``FriendList`` from a buffer that
 	/// contains the vCard(s) to parse. 
-	/// - Parameter vcardBuffer: the buffer that contains the vCard(s) to parse   
+	/// - Parameter vcardBuffer: the buffer that contains the vCard(s) to parse    
 	/// - Returns: the amount of linphone friends created 
 	public func importFriendsFromVcard4Buffer(vcardBuffer:String) -> Int
 	{
@@ -33519,7 +34826,8 @@ public class FriendList : LinphoneObject
 	
 	/// Creates and adds ``Friend`` objects to ``FriendList`` from a file that contains
 	/// the vCard(s) to parse. 
-	/// - Parameter vcardFile: the path to a file that contains the vCard(s) to parse   
+	/// - Parameter vcardFile: the path to a file that contains the vCard(s) to parse  
+	///  
 	/// - Returns: the amount of linphone friends created 
 	public func importFriendsFromVcard4File(vcardFile:String) -> Int
 	{
@@ -33530,7 +34838,7 @@ public class FriendList : LinphoneObject
 	
 	/// Notify our presence to all the friends in the friend list that have subscribed
 	/// to our presence directly (not using a RLS). 
-	/// - Parameter presence: ``PresenceModel`` object.   
+	/// - Parameter presence: ``PresenceModel`` object.    
 	public func notifyPresence(presence:PresenceModel) 
 	{
 		linphone_friend_list_notify_presence(cPtr, presence.cPtr)
@@ -33539,7 +34847,8 @@ public class FriendList : LinphoneObject
 	
 	
 	/// Remove a friend from a friend list. 
-	/// - Parameter linphoneFriend: ``Friend`` object to remove from the friend list.   
+	/// - Parameter linphoneFriend: ``Friend`` object to remove from the friend list.  
+	///  
 	/// - Returns: ``OK`` if removed successfully, ``NonExistentFriend`` if the friend
 	/// is not in the list. 
 	public func removeFriend(linphoneFriend:Friend) -> FriendList.Status
@@ -33558,6 +34867,21 @@ public class FriendList : LinphoneObject
 	
 	
 	
+	/// Synchronize a local friendlist with another list of friends. 
+	/// All friends in common will be updated using the data from the source friends.
+	/// Missing friends from the source friends will be added. Extra friends from the
+	/// local friendlist will be removed. 
+	/// - Parameter sourceFriends: the list of ``Friend`` whose data will be copied.
+	/// (not a ``FriendList`` !)      
+	/// - Returns: true if the friendlist has been modified, false if no change
+	/// happened 
+	public func synchronizeFriendsWith(sourceFriends:[Friend]) -> Bool
+	{
+		return linphone_friend_list_synchronize_friends_with(cPtr, ObjectArrayToBctbxList(list: sourceFriends)) != 0
+	}
+	
+	
+	
 	/// Goes through all the ``Friend`` that are dirty and does a CardDAV PUT to update
 	/// the server. 
 	public func updateDirtyFriends() 
@@ -33568,7 +34892,7 @@ public class FriendList : LinphoneObject
 	
 	
 	/// Sets the revision from the last synchronization. 
-	/// - Parameter revision: The revision.   
+	/// - Parameter revision: The revision.    
 	/// - Warning: before 5.4.0 release revision was an int, it's now a string. 
 	public func updateRevision(revision:String?) 
 	{
@@ -33606,10 +34930,10 @@ public class FriendPhoneNumber : LinphoneObject
 	}
 	
 	/// Sets the label for this phone number. 
-	/// - Parameter label: the label to set.   
+	/// - Parameter label: the label to set.    
 	
 	/// Gets the label associated to this phone number. 
-	/// - Returns: the label set if any, nil otherwise.   
+	/// - Returns: the label set if any, nil otherwise.    
 	public var label: String?
 	{
 	
@@ -33630,10 +34954,10 @@ public class FriendPhoneNumber : LinphoneObject
 	}
 		
 	/// Sets the phone number. 
-	/// - Parameter number: the phone number to set.   
+	/// - Parameter number: the phone number to set.    
 	
 	/// Gets the phone number. 
-	/// - Returns: the phone number stored.   
+	/// - Returns: the phone number stored.    
 	public var phoneNumber: String
 	{
 	
@@ -33653,7 +34977,7 @@ public class FriendPhoneNumber : LinphoneObject
 	
 	
 	/// Clones a phone number. 
-	/// - Returns: The newly created ``FriendPhoneNumber`` object.   
+	/// - Returns: The newly created ``FriendPhoneNumber`` object.    
 	public func clone() -> FriendPhoneNumber?
 	{
 		let cPointer = linphone_friend_phone_number_clone(cPtr)
@@ -33689,8 +35013,8 @@ public class Headers : LinphoneObject
 	
 	
 	/// Add given header name and corresponding value. 
-	/// - Parameter name: the header's name   
-	/// - Parameter value: the header's value   
+	/// - Parameter name: the header's name    
+	/// - Parameter value: the header's value    
 	public func add(name:String, value:String?) 
 	{
 		linphone_headers_add(cPtr, name, value)
@@ -33699,8 +35023,8 @@ public class Headers : LinphoneObject
 	
 	
 	/// Search for a given header name and return its value. 
-	/// - Parameter headerName: the header's name   
-	/// - Returns: the header's value or nil if not found.   
+	/// - Parameter headerName: the header's name    
+	/// - Returns: the header's value or nil if not found.    
 	public func getValue(headerName:String) -> String
 	{
 		let cstr = linphone_headers_get_value(cPtr, headerName)
@@ -33711,7 +35035,7 @@ public class Headers : LinphoneObject
 	
 	
 	/// Add given header name and corresponding value. 
-	/// - Parameter name: the header's name   
+	/// - Parameter name: the header's name    
 	public func remove(name:String) 
 	{
 		linphone_headers_remove(cPtr, name)
@@ -33905,10 +35229,10 @@ public class ImNotifPolicy : LinphoneObject
 		
 	/// Assign a user pointer to the ``ImNotifPolicy`` object. 
 	/// - Parameter userData: The user pointer to associate with the ``ImNotifPolicy``
-	/// object.   
+	/// object.    
 	
 	/// Retrieve the user pointer associated with the ``ImNotifPolicy`` object. 
-	/// - Returns: The user pointer associated with the ``ImNotifPolicy`` object.   
+	/// - Returns: The user pointer associated with the ``ImNotifPolicy`` object.    
 	public var userData: UnsafeMutableRawPointer?
 	{
 	
@@ -33963,10 +35287,10 @@ public class InfoMessage : LinphoneObject
 	/// Assign a content to the info message. 
 	/// All fields of the ``Content`` are copied, thus the application can
 	/// destroy/modify/recycloe the content object freely ater the function returns. 
-	/// - Parameter content: the content described as a ``Content`` structure.   
+	/// - Parameter content: the content described as a ``Content`` structure.    
 	
 	/// Returns the info message's content as a ``Content`` structure. 
-	/// - Returns: the ``Content`` object.   
+	/// - Returns: the ``Content`` object.    
 	public var content: Content?
 	{
 	
@@ -33988,8 +35312,8 @@ public class InfoMessage : LinphoneObject
 	
 	
 	/// Add a header to an info message to be sent. 
-	/// - Parameter name: the header'name   
-	/// - Parameter value: the header's value   
+	/// - Parameter name: the header'name    
+	/// - Parameter value: the header's value    
 	public func addHeader(name:String, value:String?) 
 	{
 		linphone_info_message_add_header(cPtr, name, value)
@@ -33998,8 +35322,8 @@ public class InfoMessage : LinphoneObject
 	
 	
 	/// Obtain a header value from a received info message. 
-	/// - Parameter name: the header'name   
-	/// - Returns: the corresponding header's value, or nil if not exists.   
+	/// - Parameter name: the header'name    
+	/// - Returns: the corresponding header's value, or nil if not exists.    
 	public func getHeader(name:String) -> String
 	{
 		let cstr = linphone_info_message_get_header(cPtr, name)
@@ -34011,7 +35335,7 @@ public class InfoMessage : LinphoneObject
 
 /// Object that represents a LDAP connection. 
 /// Use a ``LdapParams`` object to configure it.
-/// - deprecated: 18/11/2024 ``Ldap`` object is no longer used, use
+/// - Deprecated: 18/11/2024 ``Ldap`` object is no longer used, use
 /// ``RemoteContactDirectory`` instead. 
 public class Ldap : LinphoneObject
 {
@@ -34092,10 +35416,10 @@ public class Ldap : LinphoneObject
 	
 	/// Create a new ``Ldap``, associate it with the ``LdapParams`` and store it into
 	/// the configuration file. 
-	/// - Parameter lc: The ``Core`` object.   
-	/// - Parameter params: The ``LdapParams`` object.   
-	/// - Returns: The newly created ``Ldap`` object.     
-	/// - deprecated: 18/11/2024 ``Ldap`` object is no longer used, use
+	/// - Parameter lc: The ``Core`` object.    
+	/// - Parameter params: The ``LdapParams`` object.    
+	/// - Returns: The newly created ``Ldap`` object.       
+	/// - Deprecated: 18/11/2024 ``Ldap`` object is no longer used, use
 	/// ``RemoteContactDirectory`` instead. 
 	@available(*, deprecated)
 	static public func newWithParams(lc:Core, params:LdapParams) -> Ldap?
@@ -34111,8 +35435,8 @@ public class Ldap : LinphoneObject
 	
 	
 	/// Get the ``Core`` object to which is associated the ``Ldap``. 
-	/// - Returns: The ``Core`` object to which is associated the ``Ldap``.   
-	/// - deprecated: 18/11/2024 ``Ldap`` object is no longer used, use
+	/// - Returns: The ``Core`` object to which is associated the ``Ldap``.    
+	/// - Deprecated: 18/11/2024 ``Ldap`` object is no longer used, use
 	/// ``RemoteContactDirectory`` instead. 
 	@available(*, deprecated)
 	public var core: Core?
@@ -34130,12 +35454,12 @@ public class Ldap : LinphoneObject
 	/// Set the index associated to the ``Ldap``. 
 	/// - Parameter index: The index of the Ldap. Can be -1 : it will be determined on
 	/// save. 
-	/// - deprecated: 18/11/2024 ``Ldap`` object is no longer used, use
+	/// - Deprecated: 18/11/2024 ``Ldap`` object is no longer used, use
 	/// ``RemoteContactDirectory`` instead. 
 	
 	/// Get the index of the ``Ldap``. 
 	/// - Returns: The index of the Ldap 
-	/// - deprecated: 18/11/2024 ``Ldap`` object is no longer used, use
+	/// - Deprecated: 18/11/2024 ``Ldap`` object is no longer used, use
 	/// ``RemoteContactDirectory`` instead. 
 	public var index: Int
 	{
@@ -34153,15 +35477,15 @@ public class Ldap : LinphoneObject
 		
 	/// Set the ``LdapParams`` used by this ``Ldap``. 
 	/// The parameters will be saved in the configuration file.
-	/// - Parameter params: The ``LdapParams`` object.   
-	/// - deprecated: 18/11/2024 ``Ldap`` object is no longer used, use
+	/// - Parameter params: The ``LdapParams`` object.    
+	/// - Deprecated: 18/11/2024 ``Ldap`` object is no longer used, use
 	/// ``RemoteContactDirectory`` instead. 
 	
 	/// Get the ``LdapParams`` as read-only object. 
 	/// To make changes, clone the returned object using ``LdapParams/clone()`` method,
 	/// make your changes on it and apply them using with ``setParams(params:)``. 
-	/// - Returns: The ``LdapParams`` attached to this ldap.   
-	/// - deprecated: 18/11/2024 ``Ldap`` object is no longer used, use
+	/// - Returns: The ``LdapParams`` attached to this ldap.    
+	/// - Deprecated: 18/11/2024 ``Ldap`` object is no longer used, use
 	/// ``RemoteContactDirectory`` instead. 
 	public var params: LdapParams?
 	{
@@ -34228,13 +35552,13 @@ public class LdapParams : LinphoneObject
 	/// search base DN. 
 	/// No entries above it will be considered. This field is required. Default value :
 	/// "dc=example,dc=com"
-	/// - Parameter baseObject: The specification.   
+	/// - Parameter baseObject: The specification.    
 	
 	/// Get the BaseObject. 
 	/// It is a specification for LDAP Search Scopes that specifies that the Search
 	/// Request should only be performed against the entry specified as the search base
 	/// DN. No entries above it will be considered. This field is required.
-	/// - Returns: The specification.   
+	/// - Returns: The specification.    
 	public var baseObject: String
 	{
 	
@@ -34255,13 +35579,13 @@ public class LdapParams : LinphoneObject
 	/// The bindDN DN is the credential that is used to authenticate against an LDAP.
 	/// If empty, the connection will be Anonymous. eg:
 	/// cn=ausername,ou=people,dc=bc,dc=com Default value : "".
-	/// - Parameter bindDn: The Bind DN to use for bindings.   
+	/// - Parameter bindDn: The Bind DN to use for bindings.    
 	
 	/// Get the Bind DN to use for bindings. 
 	/// The bindDN DN is the credential that is used to authenticate against an LDAP.
 	/// If empty, the connection will be Anonymous. eg:
 	/// cn=ausername,ou=people,dc=bc,dc=com
-	/// - Returns: The Bind DN to use for bindings.   
+	/// - Returns: The Bind DN to use for bindings.    
 	public var bindDn: String?
 	{
 	
@@ -34302,16 +35626,20 @@ public class LdapParams : LinphoneObject
 		
 	/// Delay between each search in milliseconds Default value : 500. 
 	/// - Parameter delay: The timeout in milliseconds. 
+	/// - Deprecated: 22/08/2025 use ``RemoteContactDirectory/setDelay(milliseconds:)``
+	/// instead. 
 	
 	/// Get the delay between each search in milliseconds. 
+	/// - Deprecated: 22/08/2025 use ``RemoteContactDirectory/getDelay()`` instead. 
 	/// - Returns: The delay in milliseconds. 
 	public var delay: Int
 	{
-	
+	@available(*, deprecated)
 		get
 		{ 
 						return Int(linphone_ldap_params_get_delay(cPtr))
 		}
+	@available(*, deprecated)
 		set
 		{
 			linphone_ldap_params_set_delay(cPtr, CInt(newValue))
@@ -34321,16 +35649,19 @@ public class LdapParams : LinphoneObject
 	/// If this config is enabled. 
 	/// Default value : false.
 	/// - Parameter enable: Enable or not the LDAP configuration. 
+	/// - Deprecated: 22/08/2025 Use ``RemoteContactDirectory/enable(value:)`` instead. 
 	
 	/// Return if the configuration is enabled. 
 	/// - Returns: Enable or not the LDAP configuration. 
+	/// - Deprecated: 22/08/2025 Use ``RemoteContactDirectory/enabled()`` instead. 
 	public var enabled: Bool
 	{
-	
+	@available(*, deprecated)
 		get
 		{ 
 						return linphone_ldap_params_get_enabled(cPtr) != 0
 		}
+	@available(*, deprecated)
 		set
 		{
 			linphone_ldap_params_set_enabled(cPtr, newValue==true ? 1:0)
@@ -34339,10 +35670,10 @@ public class LdapParams : LinphoneObject
 		
 	/// The search is based on this filter to search contacts. 
 	/// Default value : "(sn=*%s*)".
-	/// - Parameter filter: The filter to use.   
+	/// - Parameter filter: The filter to use.    
 	
 	/// Get the search is based on this filter to search contacts. 
-	/// - Returns: The filter to use.   
+	/// - Returns: The filter to use.    
 	public var filter: String?
 	{
 	
@@ -34367,13 +35698,13 @@ public class LdapParams : LinphoneObject
 	/// are needed. Also, it avoids latency on each searchs. Set this value to 0 to
 	/// have an unlimited search (but magic search limitation may apply).
 	/// - Parameter maxResults: The max results when requesting searches. 
-	/// - deprecated: 18/11/2024 use ``RemoteContactDirectory/setLimit(limit:)``
+	/// - Deprecated: 18/11/2024 use ``RemoteContactDirectory/setLimit(limit:)``
 	/// instead. 
 	
 	/// Get the max results when requesting searches. 
 	/// 0 means the results aren't limited (but magic search limitation may apply).
 	/// - Returns: The max results when requesting searches. 
-	/// - deprecated: 18/11/2024 use ``RemoteContactDirectory/getLimit()`` instead. 
+	/// - Deprecated: 18/11/2024 use ``RemoteContactDirectory/getLimit()`` instead. 
 	public var maxResults: Int
 	{
 	@available(*, deprecated)
@@ -34391,12 +35722,12 @@ public class LdapParams : LinphoneObject
 	/// The minimum characters needed for doing a search on LDAP servers. 
 	/// Default value : 0.
 	/// - Parameter minChars: The minimum characters needed by a search. 
-	/// - deprecated: 18/11/2024 use ``RemoteContactDirectory/setMinCharacters(min:)``
+	/// - Deprecated: 18/11/2024 use ``RemoteContactDirectory/setMinCharacters(min:)``
 	/// instead. 
 	
 	/// Get the minimum characters needed for doing a search on LDAP servers. 
 	/// - Returns: The minimum characters needed by a search. 
-	/// - deprecated: 18/11/2024 use ``RemoteContactDirectory/getMinCharacters()``
+	/// - Deprecated: 18/11/2024 use ``RemoteContactDirectory/getMinCharacters()``
 	/// instead. 
 	public var minChars: Int
 	{
@@ -34412,14 +35743,14 @@ public class LdapParams : LinphoneObject
 		}
 	}
 		
-	/// Check these attributes to build Name Friend, separated by a comma and the first
-	/// is the highest priority. 
-	/// Default value : "sn".
-	/// - Parameter nameAttribute: The comma separated attributes for the search.   
+	/// List of LDAP attributes to check for the contact name, separated by a comma and
+	/// the first being the highest priority. 
+	/// Default value : "sn". 
+	/// - Parameter nameAttribute: The comma separated attributes for the search.    
 	
-	/// Get the attributes to build Name Friend, separated by a comma and the first is
-	/// the highest priority. 
-	/// - Returns: The comma separated attributes for the search.   
+	/// Get the list of LDAP attributes to check for the contact name, separated by a
+	/// comma and the first being the highest priority. 
+	/// - Returns: The comma separated attributes for the search.    
 	public var nameAttribute: String?
 	{
 	
@@ -34441,10 +35772,10 @@ public class LdapParams : LinphoneObject
 		
 	/// The password to pass to server when binding. 
 	/// Default value : "".
-	/// - Parameter password: The password to pass to server when binding.   
+	/// - Parameter password: The password to pass to server when binding.    
 	
 	/// Get the password to pass to server when binding. 
-	/// - Returns: The password to pass to server when binding.   
+	/// - Returns: The password to pass to server when binding.    
 	public var password: String?
 	{
 	
@@ -34490,13 +35821,13 @@ public class LdapParams : LinphoneObject
 	/// "ldap:///". This field is required.
 	/// You must use 'ldap' scheme. 'ldaps' for LDAP over SSL is non-standardized and
 	/// deprecated.
-	/// - Parameter server: LDAP Server address.   
-	/// - deprecated: 18/11/2024 use
+	/// - Parameter server: LDAP Server address.    
+	/// - Deprecated: 18/11/2024 use
 	/// ``RemoteContactDirectory/setServerUrl(serverUrl:)`` instead. 
 	
 	/// Get the LDAP Server. 
-	/// - Returns: LDAP Server address.   
-	/// - deprecated: 18/11/2024 use ``RemoteContactDirectory/getServerUrl()`` instead. 
+	/// - Returns: LDAP Server address.    
+	/// - Deprecated: 18/11/2024 use ``RemoteContactDirectory/getServerUrl()`` instead. 
 	public var server: String
 	{
 	@available(*, deprecated)
@@ -34540,11 +35871,12 @@ public class LdapParams : LinphoneObject
 	/// Check these attributes to build the SIP username in address of Friend. 
 	/// Attributes are separated by a comma. Default value :
 	/// "mobile,telephoneNumber,homePhone,sn".
-	/// - Parameter sipAttribute: The comma separated attributes for building Friend.   
+	/// - Parameter sipAttribute: The comma separated attributes for building Friend.  
+	///  
 	
 	/// Get the attributes to build the SIP username in address of Friend. 
 	/// Attributes are separated by a comma.
-	/// - Returns: The comma separated attributes for building Friend.   
+	/// - Returns: The comma separated attributes for building Friend.    
 	public var sipAttribute: String?
 	{
 	
@@ -34567,10 +35899,10 @@ public class LdapParams : LinphoneObject
 	/// Add the domain to the sip address(sip:username@domain). 
 	/// By default or if it is empty, the domain will be specify while searching on the
 	/// current proxy account. Default value : "".
-	/// - Parameter sipDomain: The SIP domain for the friend.   
+	/// - Parameter sipDomain: The SIP domain for the friend.    
 	
 	/// Get the domain to the sip address(sip:username@domain). 
-	/// - Returns: The SIP domain for the friend.   
+	/// - Returns: The SIP domain for the friend.    
 	public var sipDomain: String?
 	{
 	
@@ -34593,13 +35925,15 @@ public class LdapParams : LinphoneObject
 	/// Timeout for requests in seconds. 
 	/// It limits the time for searchs and the value is passed to Ldap with
 	/// LDAP_OPT_NETWORK_TIMEOUT. Default value : 5.
+	/// It limits the time for searchs and the value is passed to Ldap with
+	/// LDAP_OPT_NETWORK_TIMEOUT. Default value : 5.
 	/// - Parameter timeout: The timeout in seconds. 
-	/// - deprecated: 18/11/2024 use ``RemoteContactDirectory/setTimeout(seconds:)``
+	/// - Deprecated: 18/11/2024 use ``RemoteContactDirectory/setTimeout(seconds:)``
 	/// instead. 
 	
 	/// Get the timeout for requests in seconds. 
 	/// - Returns: The timeout in seconds. 
-	/// - deprecated: 18/11/2024 use ``RemoteContactDirectory/getTimeout()`` instead. 
+	/// - Deprecated: 18/11/2024 use ``RemoteContactDirectory/getTimeout()`` instead. 
 	public var timeout: Int
 	{
 	@available(*, deprecated)
@@ -34677,7 +36011,7 @@ public class LdapParams : LinphoneObject
 	
 	
 	/// Instantiate a new ``LdapParams`` with values from source. 
-	/// - Returns: The newly created ``LdapParams`` object.   
+	/// - Returns: The newly created ``LdapParams`` object.    
 	public func clone() -> LdapParams?
 	{
 		let cPointer = linphone_ldap_params_clone(cPtr)
@@ -34692,8 +36026,8 @@ public class LdapParams : LinphoneObject
 	
 	
 	/// Get the value from field. 
-	/// - Parameter key: The key string.   
-	/// - Returns: The Value associated to the key.   
+	/// - Parameter key: The key string.    
+	/// - Returns: The Value associated to the key.    
 	public func getCustomValue(key:String) -> String
 	{
 		let cstr = linphone_ldap_params_get_custom_value(cPtr, key)
@@ -34704,8 +36038,8 @@ public class LdapParams : LinphoneObject
 	
 	
 	/// Set custom field. 
-	/// - Parameter key: The key string.   
-	/// - Parameter value: The value string.   
+	/// - Parameter key: The key string.    
+	/// - Parameter value: The value string.    
 	public func setCustomValue(key:String, value:String?) 
 	{
 		linphone_ldap_params_set_custom_value(cPtr, key, value)
@@ -34760,7 +36094,7 @@ public class LoggingService : LinphoneObject
 	
 	/// Gets the singleton logging service object. 
 	/// The singleton is automatically instantiated if it hasn't been done yet.
-	/// - Returns: A pointer on the ``LoggingService`` singleton.   
+	/// - Returns: A pointer on the ``LoggingService`` singleton.    
 	static public var Instance: LoggingService
 	{
 	
@@ -34772,7 +36106,7 @@ public class LoggingService : LinphoneObject
 		
 	
 	/// Returns the current callbacks being called while iterating on callbacks. 
-	/// - Returns: A pointer to the current ``LoggingServiceDelegate`` object   
+	/// - Returns: A pointer to the current ``LoggingServiceDelegate`` object    
 	public var currentDelegate: LoggingServiceDelegate?
 	{
 	
@@ -34787,13 +36121,13 @@ public class LoggingService : LinphoneObject
 		
 	/// Set the domain where application logs are written (for example with
 	/// ``message(message:)``). 
-	/// - Parameter domain: The domain.   
+	/// - Parameter domain: The domain.    
 	/// - Note: The domain is mandatory to write logs. This needs to be set before
 	/// setting the log level. 
 	
 	/// Get the domain where application logs are written (for example with
 	/// ``message(message:)``). 
-	/// - Returns: The domain where application logs are written.   
+	/// - Returns: The domain where application logs are written.    
 	public var domain: String?
 	{
 	
@@ -34866,7 +36200,7 @@ public class LoggingService : LinphoneObject
 	
 	
 	/// Write a LinphoneLogLevelDebug message to the logs. 
-	/// - Parameter message: The log message.   
+	/// - Parameter message: The log message.    
 	public func debug(message:String) 
 	{
 		linphone_logging_service_debug(cPtr, message)
@@ -34875,7 +36209,7 @@ public class LoggingService : LinphoneObject
 	
 	
 	/// Write a LinphoneLogLevelError message to the logs. 
-	/// - Parameter message: The log message.   
+	/// - Parameter message: The log message.    
 	public func error(message:String) 
 	{
 		linphone_logging_service_error(cPtr, message)
@@ -34884,7 +36218,7 @@ public class LoggingService : LinphoneObject
 	
 	
 	/// Write a LinphoneLogLevelFatal message to the logs. 
-	/// - Parameter message: The log message.   
+	/// - Parameter message: The log message.    
 	public func fatal(message:String) 
 	{
 		linphone_logging_service_fatal(cPtr, message)
@@ -34893,7 +36227,7 @@ public class LoggingService : LinphoneObject
 	
 	
 	/// Write a LinphoneLogLevelMessage message to the logs. 
-	/// - Parameter message: The log message.   
+	/// - Parameter message: The log message.    
 	public func message(message:String) 
 	{
 		linphone_logging_service_message(cPtr, message)
@@ -34904,8 +36238,8 @@ public class LoggingService : LinphoneObject
 	/// Enables logging in a file. 
 	/// That function enables an internal log handler that writes log messages in
 	/// log-rotated files.
-	/// - Parameter dir: Directory where to create the distinct parts of the log.   
-	/// - Parameter filename: Name of the log file.   
+	/// - Parameter dir: Directory where to create the distinct parts of the log.    
+	/// - Parameter filename: Name of the log file.    
 	/// - Parameter maxSize: The maximal size of each part of the log. The log rotating
 	/// is triggered each time the currently opened log part reach that limit. 
 	public func setLogFile(dir:String, filename:String, maxSize:Int) 
@@ -34916,7 +36250,7 @@ public class LoggingService : LinphoneObject
 	
 	
 	/// Write a LinphoneLogLevelTrace message to the logs. 
-	/// - Parameter message: The log message.   
+	/// - Parameter message: The log message.    
 	public func trace(message:String) 
 	{
 		linphone_logging_service_trace(cPtr, message)
@@ -34925,7 +36259,7 @@ public class LoggingService : LinphoneObject
 	
 	
 	/// Write a LinphoneLogLevelWarning message to the logs. 
-	/// - Parameter message: The log message.   
+	/// - Parameter message: The log message.    
 	public func warning(message:String) 
 	{
 		linphone_logging_service_warning(cPtr, message)
@@ -34934,6 +36268,11 @@ public class LoggingService : LinphoneObject
 
 
 /// A ``MagicSearch`` is used to search for contacts from various sources: 
+/// -``FriendList``
+/// -Ldap connection (see ``Ldap``)
+/// -Remote CardDAV server (see ``CardDavParams``)
+/// -Call logs, conferences and existing chat rooms. - See also:
+/// ``getContactsListAsync(filter:domain:sourceFlags:aggregation:)`` 
 public class MagicSearch : LinphoneObject
 {
 	var delegateManagers : [MagicSearchDelegateManager] = []
@@ -35019,10 +36358,10 @@ public class MagicSearch : LinphoneObject
 		}
 	}	
 	
-	/// Gets the current LinphoneMagicSearchCbs. 
+	/// Gets the current ``MagicSearchDelegate``. 
 	/// This is meant only to be called from a callback to be able to get the user_data
 	/// associated with the ``MagicSearchDelegate`` that is calling the callback. 
-	/// - Returns: The ``MagicSearchDelegate`` that has called the last callback.   
+	/// - Returns: The ``MagicSearchDelegate`` that has called the last callback.    
 	public var currentDelegate: MagicSearchDelegate?
 	{
 	
@@ -35036,10 +36375,10 @@ public class MagicSearch : LinphoneObject
 	}
 		
 	/// Set the delimiter used to find matched filter word. 
-	/// - Parameter delimiter: delimiter (example "-_.,")   
+	/// - Parameter delimiter: delimiter (example "-_.,")    
 	
 	/// Get the delimiter used for the search. 
-	/// - Returns: the delimiter used to find matched filter word   
+	/// - Returns: the delimiter used to find matched filter word    
 	public var delimiter: String?
 	{
 	
@@ -35060,7 +36399,7 @@ public class MagicSearch : LinphoneObject
 	}
 		
 	
-	/// - Returns: sorted list of      
+	/// - Returns: sorted list of         
 	public var lastSearch: [SearchResult]
 	{
 	
@@ -35183,12 +36522,12 @@ public class MagicSearch : LinphoneObject
 	/// The last item list will be an address formed with "filter" if a proxy config
 	/// exist and requested in sourceFlags During the first search, a cache is created
 	/// and used for the next search Use ``resetSearchCache()`` to begin a new search 
-	/// - Parameter filter: word we search   
-	/// - Parameter domain: domain which we want to search only  
+	/// - Parameter filter: word we search    
+	/// - Parameter domain: domain which we want to search only   
 	/// - Parameter sourceFlags: Flags that specify where to search : ``Source`` 
 	/// - Parameter aggregation: a ``Aggregation`` mode to indicate how to merge
 	/// results 
-	/// - Returns: sorted list of      
+	/// - Returns: sorted list of         
 	public func getContactsList(filter:String?, domain:String?, sourceFlags:Int, aggregation:MagicSearch.Aggregation) -> [SearchResult]
 	{
 		var swiftList = [SearchResult]()
@@ -35212,8 +36551,8 @@ public class MagicSearch : LinphoneObject
 	/// a proxy config exist and requested in sourceFlags During the first search, a
 	/// cache is created and used for the next search Use ``resetSearchCache()`` to
 	/// begin a new search 
-	/// - Parameter filter: word we search   
-	/// - Parameter domain: domain which we want to search only  
+	/// - Parameter filter: word we search    
+	/// - Parameter domain: domain which we want to search only   
 	/// - Parameter sourceFlags: Flags that specify where to search : ``Source`` 
 	/// - Parameter aggregation: a ``Aggregation`` mode to indicate how to merge
 	/// results 
@@ -35267,12 +36606,12 @@ public class MessageWaitingIndication : LinphoneObject
 	/// Set the address of the message account concerned by this message waiting
 	/// indication. 
 	/// - Parameter address: The address of the message account concerned by this
-	/// message waiting indication.   
+	/// message waiting indication.    
 	
 	/// Get the address of the message account concerned by this message waiting
 	/// indication. 
 	/// - Returns: The address of the message account concerned by this message waiting
-	/// indication.   
+	/// indication.    
 	public var accountAddress: Address?
 	{
 	
@@ -35293,7 +36632,7 @@ public class MessageWaitingIndication : LinphoneObject
 		
 	
 	/// Get the message waiting indication summaries. 
-	/// - Returns: The message waiting indication summaries.    
+	/// - Returns: The message waiting indication summaries.      
 	public var summaries: [MessageWaitingIndicationSummary]
 	{
 	
@@ -35312,7 +36651,7 @@ public class MessageWaitingIndication : LinphoneObject
 	
 	
 	/// Instantiate a new message waiting indication with values from source. 
-	/// - Returns: The newly created ``MessageWaitingIndication`` object.   
+	/// - Returns: The newly created ``MessageWaitingIndication`` object.    
 	public func clone() -> MessageWaitingIndication?
 	{
 		let cPointer = linphone_message_waiting_indication_clone(cPtr)
@@ -35330,7 +36669,7 @@ public class MessageWaitingIndication : LinphoneObject
 	/// - Parameter contextClass: the ``ContextClass`` for which we want to get the
 	/// summary. 
 	/// - Returns: The ``MessageWaitingIndicationSummary`` for the given context class.
-	///   
+	///    
 	public func getSummary(contextClass:MessageWaitingIndication.ContextClass) -> MessageWaitingIndicationSummary?
 	{
 		let cPointer = linphone_message_waiting_indication_get_summary(cPtr, LinphoneMessageWaitingIndicationContextClass(rawValue: CUnsignedInt(contextClass.rawValue)))
@@ -35354,7 +36693,7 @@ public class MessageWaitingIndication : LinphoneObject
 	
 	/// Get a ``Content`` object to put in a NOTIFY message from a
 	/// ``MessageWaitingIndication`` object. 
-	/// - Returns: The ``Content`` to put in a NOTIFY message.     
+	/// - Returns: The ``Content`` to put in a NOTIFY message.       
 	public func toContent() -> Content?
 	{
 		let cPointer = linphone_message_waiting_indication_to_content(cPtr)
@@ -35458,7 +36797,7 @@ public class NatPolicy : LinphoneObject
 	
 	
 	/// Returns the ``Core`` object managing this nat policy, if any. 
-	/// - Returns: the ``Core`` object associated.   
+	/// - Returns: the ``Core`` object associated.    
 	public var core: Core?
 	{
 	
@@ -35497,12 +36836,12 @@ public class NatPolicy : LinphoneObject
 	/// candidate gathering. Using this method is useful when Liblinphone is used in a
 	/// server product, when the server does not own the public IP address. Used when
 	/// STUN or TURN are enabled. 
-	/// - Parameter v4Address: The STUN server to use with this NAT policy.   
+	/// - Parameter v4Address: The STUN server to use with this NAT policy.    
 	
 	/// Get the mandatory v4 IP address to use with this NAT policy as server-reflexive
 	/// candidate for ICE. 
 	/// Used when STUN or TURN are enabled. 
-	/// - Returns: the nat v4 address.   
+	/// - Returns: the nat v4 address.    
 	public var natV4Address: String?
 	{
 	
@@ -35528,12 +36867,12 @@ public class NatPolicy : LinphoneObject
 	/// candidate gathering. Using this method is useful when Liblinphone is used in a
 	/// server product, when the server does not own the public IP address. Used when
 	/// STUN or TURN are enabled. 
-	/// - Parameter v4Address: The STUN server to use with this NAT policy.   
+	/// - Parameter v4Address: The STUN server to use with this NAT policy.    
 	
 	/// Get the mandatory v6 IP address to use with this NAT policy as server-reflexive
 	/// candidate for ICE. 
 	/// Used when STUN or TURN are enabled. 
-	/// - Returns: the nat v4 address.   
+	/// - Returns: the nat v4 address.    
 	public var natV6Address: String?
 	{
 	
@@ -35574,11 +36913,11 @@ public class NatPolicy : LinphoneObject
 		
 	/// Set the STUN/TURN server to use with this NAT policy. 
 	/// Used when STUN or TURN are enabled. 
-	/// - Parameter stunServer: The STUN server to use with this NAT policy.   
+	/// - Parameter stunServer: The STUN server to use with this NAT policy.    
 	
 	/// Get the STUN/TURN server to use with this NAT policy. 
 	/// Used when STUN or TURN are enabled. 
-	/// - Returns: The STUN server used by this NAT policy.   
+	/// - Returns: The STUN server used by this NAT policy.    
 	public var stunServer: String?
 	{
 	
@@ -35601,15 +36940,15 @@ public class NatPolicy : LinphoneObject
 	/// Set the username used to authenticate with the STUN/TURN server. 
 	/// The authentication will search for a ``AuthInfo`` with this username. If it is
 	/// not set the username of the currently used ``ProxyConfig`` is used to search
-	/// for a LinphoneAuthInfo. 
+	/// for a ``AuthInfo``. 
 	/// - Parameter username: The username used to authenticate with the STUN/TURN
-	/// server.   
+	/// server.    
 	
 	/// Get the username used to authenticate with the STUN/TURN server. 
 	/// The authentication will search for a ``AuthInfo`` with this username. If it is
 	/// not set the username of the currently used ``ProxyConfig`` is used to search
-	/// for a LinphoneAuthInfo. 
-	/// - Returns: The username used to authenticate with the STUN/TURN server.   
+	/// for a ``AuthInfo``. 
+	/// - Returns: The username used to authenticate with the STUN/TURN server.    
 	public var stunServerUsername: String?
 	{
 	
@@ -35630,11 +36969,13 @@ public class NatPolicy : LinphoneObject
 	}
 		
 	/// Enable TCP TURN transport. 
-	/// Used when TURN is enabled. 
+	/// Used when TURN is enabled. - Warning: Enabling more than one transport (UDP,
+	/// TCP, TLS) at a time is currently not supported. 
 	/// - Parameter enable: Boolean value telling whether to enable TCP TURN transport. 
 	
 	/// Tells whether TCP TURN transport is enabled. 
-	/// Used when TURN is enabled. 
+	/// Used when TURN is enabled. - Warning: Enabling more than one transport (UDP,
+	/// TCP, TLS) at a time is currently not supported. 
 	/// - Returns: Boolean value telling whether TCP TURN transport is enabled. 
 	public var tcpTurnTransportEnabled: Bool
 	{
@@ -35650,11 +36991,13 @@ public class NatPolicy : LinphoneObject
 	}
 		
 	/// Enable TLS TURN transport. 
-	/// Used when TURN is enabled. 
+	/// Used when TURN is enabled. - Warning: Enabling more than one transport (UDP,
+	/// TCP, TLS) at a time is currently not supported. 
 	/// - Parameter enable: Boolean value telling whether to enable TLS TURN transport. 
 	
 	/// Tells whether TLS TURN transport is enabled. 
-	/// Used when TURN is enabled. 
+	/// Used when TURN is enabled. - Warning: Enabling more than one transport (UDP,
+	/// TCP, TLS) at a time is currently not supported. 
 	/// - Returns: Boolean value telling whether TLS TURN transport is enabled. 
 	public var tlsTurnTransportEnabled: Bool
 	{
@@ -35671,10 +37014,10 @@ public class NatPolicy : LinphoneObject
 		
 	/// Set the TURN configuration endpoint. 
 	/// - Parameter endpoint: The TURN configuration endpoint to use with this NAT
-	/// policy.   
+	/// policy.    
 	
 	/// Get the TURN configuration endpoint. 
-	/// - Returns: The TURN configuration endpoint used by this NAT policy.   
+	/// - Returns: The TURN configuration endpoint used by this NAT policy.    
 	public var turnConfigurationEndpoint: String?
 	{
 	
@@ -35714,11 +37057,13 @@ public class NatPolicy : LinphoneObject
 	}
 		
 	/// Enable UDP TURN transport. 
-	/// Used when TURN is enabled. 
+	/// Used when TURN is enabled. - Warning: Enabling more than one transport (UDP,
+	/// TCP, TLS) at a time is currently not supported. 
 	/// - Parameter enable: Boolean value telling whether to enable UDP TURN transport. 
 	
 	/// Tells whether UDP TURN transport is enabled. 
-	/// Used when TURN is enabled. 
+	/// Used when TURN is enabled. - Warning: Enabling more than one transport (UDP,
+	/// TCP, TLS) at a time is currently not supported. 
 	/// - Returns: Boolean value telling whether UDP TURN transport is enabled. 
 	public var udpTurnTransportEnabled: Bool
 	{
@@ -35754,10 +37099,10 @@ public class NatPolicy : LinphoneObject
 		
 	/// Assign a user pointer to the ``NatPolicy`` object. 
 	/// - Parameter userData: The user pointer to associate with the ``NatPolicy``
-	/// object.   
+	/// object.    
 	
 	/// Retrieve the user pointer associated with the ``NatPolicy`` object. 
-	/// - Returns: The user pointer associated with the ``NatPolicy`` object.   
+	/// - Returns: The user pointer associated with the ``NatPolicy`` object.    
 	public var userData: UnsafeMutableRawPointer?
 	{
 	
@@ -35782,7 +37127,7 @@ public class NatPolicy : LinphoneObject
 	
 	
 	/// Clone an existing ``NatPolicy`` object. 
-	/// - Returns: A clone of the original ``NatPolicy`` object.   
+	/// - Returns: A clone of the original ``NatPolicy`` object.    
 	public func clone() -> NatPolicy?
 	{
 		let cPointer = linphone_nat_policy_clone(cPtr)
@@ -35839,7 +37184,7 @@ public class Participant : LinphoneObject
 	
 	
 	/// Get the address of a conference participant. 
-	/// - Returns: The ``Address`` of the participant   
+	/// - Returns: The ``Address`` of the participant    
 	public var address: Address?
 	{
 	
@@ -35866,7 +37211,7 @@ public class Participant : LinphoneObject
 		
 	
 	/// Gets the list of devices from a chat room's participant. 
-	/// - Returns: List of devices.      
+	/// - Returns: List of devices.         
 	public var devices: [ParticipantDevice]
 	{
 	
@@ -35905,6 +37250,18 @@ public class Participant : LinphoneObject
 	}
 		
 	
+	/// Tells whether a participant is Me. 
+	/// If the default account is not defined then it will be true if the participant
+	/// is local. 
+	/// - Returns: true if the participant is me, false otherwise. 
+	public var isMe: Bool
+	{
+	
+						return linphone_participant_is_me(cPtr) != 0
+
+	}
+		
+	
 	/// Get the role of the participant within the conference. 
 	/// - Returns: role within the conference ``Role`` 
 	public var role: Participant.Role
@@ -35925,10 +37282,10 @@ public class Participant : LinphoneObject
 	}
 		
 	/// Assign a user pointer to the conference participant. 
-	/// - Parameter userData: The user pointer to associate with the participant.   
+	/// - Parameter userData: The user pointer to associate with the participant.    
 	
 	/// Retrieve the user pointer associated with the conference participant. 
-	/// - Returns: The user pointer associated with the participant.   
+	/// - Returns: The user pointer associated with the participant.    
 	public var userData: UnsafeMutableRawPointer?
 	{
 	
@@ -35945,8 +37302,8 @@ public class Participant : LinphoneObject
 	
 	
 	/// Find a device in the list of devices from a chat room's participant. 
-	/// - Parameter call: A ``Call`` object   
-	/// - Returns: a ``ParticipantDevice`` or nil if not found.   
+	/// - Parameter call: A ``Call`` object    
+	/// - Returns: a ``ParticipantDevice`` or nil if not found.    
 	public func findDevice(call:Call) -> ParticipantDevice?
 	{
 		let cPointer = linphone_participant_find_device_2(cPtr, call.cPtr)
@@ -35960,8 +37317,8 @@ public class Participant : LinphoneObject
 	
 	
 	/// Find a device in the list of devices from a chat room's participant. 
-	/// - Parameter address: A ``Address`` object   
-	/// - Returns: a ``ParticipantDevice`` or nil if not found.   
+	/// - Parameter address: A ``Address`` object    
+	/// - Returns: a ``ParticipantDevice`` or nil if not found.    
 	public func findDevice(address:Address) -> ParticipantDevice?
 	{
 		let cPointer = linphone_participant_find_device(cPtr, address.cPtr)
@@ -36082,7 +37439,7 @@ public class ParticipantDevice : LinphoneObject
 	}	
 	
 	/// Gets the address of a participant's device. 
-	/// - Returns: The ``Address`` of the participant's device   
+	/// - Returns: The ``Address`` of the participant's device    
 	public var address: Address?
 	{
 	
@@ -36096,9 +37453,9 @@ public class ParticipantDevice : LinphoneObject
 	}
 		
 	
-	/// Gets the current LinphoneParticipantDeviceCbs. 
-	/// - Returns: The LinphoneParticipantDeviceCbs that has called the last callback. 
-	///  
+	/// Gets the current ``ParticipantDeviceDelegate``. 
+	/// - Returns: The ``ParticipantDeviceDelegate`` that has called the last callback.
+	///    
 	public var currentDelegate: ParticipantDeviceDelegate?
 	{
 	
@@ -36123,7 +37480,7 @@ public class ParticipantDevice : LinphoneObject
 		
 	
 	/// Gets the disconnection reason. 
-	/// - Returns: disconnection reason   
+	/// - Returns: disconnection reason    
 	public var disconnectionReason: String?
 	{
 	
@@ -36144,6 +37501,16 @@ public class ParticipantDevice : LinphoneObject
 	{
 	
 						return linphone_participant_device_is_in_conference(cPtr) != 0
+
+	}
+		
+	
+	/// Tells whether the participant device is Me. 
+	/// - Returns: true if the participant is me, false otherwise. 
+	public var isMe: Bool
+	{
+	
+						return linphone_participant_device_is_me(cPtr) != 0
 
 	}
 		
@@ -36179,7 +37546,7 @@ public class ParticipantDevice : LinphoneObject
 		
 	
 	/// Returns the name of the device. 
-	/// - Returns: the name of the device or nil.   
+	/// - Returns: the name of the device or nil.    
 	public var name: String?
 	{
 	
@@ -36195,11 +37562,11 @@ public class ParticipantDevice : LinphoneObject
 		
 	/// Sets the the native window ID where video for this participant device is to be
 	/// rendered. 
-	/// - Parameter windowId: the window ID of the device   
+	/// - Parameter windowId: the window ID of the device    
 	
 	/// Gets the native window ID where video for this participant device is to be
 	/// rendered. 
-	/// - Returns: the window ID of the device   
+	/// - Returns: the window ID of the device    
 	public var nativeVideoWindowId: UnsafeMutableRawPointer?
 	{
 	
@@ -36215,7 +37582,7 @@ public class ParticipantDevice : LinphoneObject
 		
 	
 	/// Returns the ``Participant`` this ``ParticipantDevice`` belongs to. 
-	/// - Returns: the ``Participant`` this device belongs to   
+	/// - Returns: the ``Participant`` this device belongs to    
 	public var participant: Participant?
 	{
 	
@@ -36295,7 +37662,7 @@ public class ParticipantDevice : LinphoneObject
 		
 	
 	/// Gets the thumbnail stream label of the device. 
-	/// - Returns: the label of the thumbnail stream of the device   
+	/// - Returns: the label of the thumbnail stream of the device    
 	public var thumbnailStreamLabel: String?
 	{
 	
@@ -36334,10 +37701,10 @@ public class ParticipantDevice : LinphoneObject
 		
 	/// Assigns a user pointer to the participant's device. 
 	/// - Parameter userData: The user pointer to associate with the participant's
-	/// device.   
+	/// device.    
 	
 	/// Retrieves the user pointer associated with the participant's device. 
-	/// - Returns: The user pointer associated with the participant's device.   
+	/// - Returns: The user pointer associated with the participant's device.    
 	public var userData: UnsafeMutableRawPointer?
 	{
 	
@@ -36354,7 +37721,25 @@ public class ParticipantDevice : LinphoneObject
 	
 	
 	/// Creates a window ID and return it. 
-	/// - Returns: the window ID of the device   
+	/// - See also: ``Core/setNativeVideoWindowId(windowId:)`` for a general discussion
+	/// about window IDs.
+	/// A context can be used to prevent Linphone from allocating the container
+	/// (MSOglContextInfo for MSOGL). nil if not used.
+	/// A context can be used to prevent Linphone from allocating the container
+	/// (MSOglContextInfo for MSOGL). nil if not used.
+	/// - Parameter context: preallocated Window ID (Used only for MSOGL)    
+	/// - Returns: the native video window id (type may vary depending on platform).    
+	public func createNativeVideoWindowId(context:UnsafeMutableRawPointer?) throws -> UnsafeMutableRawPointer
+	{
+		return linphone_participant_device_create_native_video_window_id_2(cPtr, context)
+	}
+	
+	
+	
+	/// Creates a window ID and return it. 
+	/// - See also: ``Core/setNativeVideoWindowId(windowId:)`` for a general discussion
+	/// about window IDs.
+	/// - Returns: the native video window id (type may vary depending on platform).    
 	public func createNativeVideoWindowId() throws -> UnsafeMutableRawPointer
 	{
 		return linphone_participant_device_create_native_video_window_id(cPtr)
@@ -36387,8 +37772,8 @@ public class ParticipantDevice : LinphoneObject
 	
 	
 	/// Gets the stream capability of the device. 
-	/// The capability information represents the capability for the #ParticipantDevice
-	/// to handle a given stream type (audio, video or text). 
+	/// The capability information represents the capability for the
+	/// ``ParticipantDevice`` to handle a given stream type (audio, video or text). 
 	/// - Parameter streamType: A ``StreamType`` 
 	/// - Returns: the capability of stream of type stream_type of the device
 	/// ``MediaDirection`` 
@@ -36400,10 +37785,10 @@ public class ParticipantDevice : LinphoneObject
 	
 	
 	/// Gets the stream label of the device. 
-	/// The capability information represents the capability for the #ParticipantDevice
-	/// to handle a given stream type (audio, video or text). 
+	/// The capability information represents the capability for the
+	/// ``ParticipantDevice`` to handle a given stream type (audio, video or text). 
 	/// - Parameter streamType: A ``StreamType`` 
-	/// - Returns: the label of stream of type stream_type of the device   
+	/// - Returns: the label of stream of type stream_type of the device    
 	public func getStreamLabel(streamType:StreamType) -> String
 	{
 		let cstr = linphone_participant_device_get_stream_label(cPtr, LinphoneStreamType(rawValue: CUnsignedInt(streamType.rawValue)))
@@ -36434,7 +37819,7 @@ public class ParticipantDeviceIdentity : LinphoneObject
 	
 	
 	/// Get the address of the participant device. 
-	/// - Returns: the address.   
+	/// - Returns: the address.    
 	public var address: Address?
 	{
 	
@@ -36450,13 +37835,13 @@ public class ParticipantDeviceIdentity : LinphoneObject
 	/// Set the capability descriptor (currently +org.linphone.specs value) for this
 	/// participant device identity. 
 	/// - Parameter capabilityDescriptor: the capability descriptor string. 
-	/// - deprecated: 12/06/2023 Use
+	/// - Deprecated: 12/06/2023 Use
 	/// ``setCapabilityDescriptor(capabilityDescriptorList:)`` instead
 	
 	/// Get the capability descriptor (currently +org.linphone.specs value) for this
 	/// participant device identity. 
 	/// - Returns: the capability descriptor string. 
-	/// - deprecated: 12/06/2023 Use ``getCapabilityDescriptorList()`` instead
+	/// - Deprecated: 12/06/2023 Use ``getCapabilityDescriptorList()`` instead
 	public var capabilityDescriptor: String
 	{
 	@available(*, deprecated)
@@ -36476,7 +37861,7 @@ public class ParticipantDeviceIdentity : LinphoneObject
 		
 	/// Set the capability descriptor (currently +org.linphone.specs value) for this
 	/// participant device identity. 
-	/// - Parameter capabilityDescriptorList: the capability descriptor list.    
+	/// - Parameter capabilityDescriptorList: the capability descriptor list.      
 	
 	public var capabilityDescriptor2: [String] = []
 	{
@@ -36495,7 +37880,7 @@ public class ParticipantDeviceIdentity : LinphoneObject
 	
 	/// Get the capability descriptor (currently +org.linphone.specs value) for this
 	/// participant device identity. 
-	/// - Returns: the capability descriptor list.    
+	/// - Returns: the capability descriptor list.      
 	public var capabilityDescriptorList: [String]
 	{
 	
@@ -36536,8 +37921,8 @@ public class ParticipantImdnState : LinphoneObject
 	}
 	
 	
-	/// Get the participant concerned by a LinphoneParticipantImdnState. 
-	/// - Returns: The ``Participant`` concerned by the LinphoneParticipantImdnState   
+	/// Get the participant concerned by a ``ParticipantImdnState``. 
+	/// - Returns: The ``Participant`` concerned by the ``ParticipantImdnState``    
 	public var participant: Participant?
 	{
 	
@@ -36562,9 +37947,9 @@ public class ParticipantImdnState : LinphoneObject
 		
 	
 	/// Get the timestamp at which a participant has reached the state described by a
-	/// LinphoneParticipantImdnState. 
+	/// ``ParticipantImdnState``. 
 	/// - Returns: The timestamp at which the participant has reached the state
-	/// described in the LinphoneParticipantImdnState 
+	/// described in the ``ParticipantImdnState`` 
 	public var stateChangeTime: time_t
 	{
 	
@@ -36572,12 +37957,12 @@ public class ParticipantImdnState : LinphoneObject
 
 	}
 		
-	/// Assign a user pointer to a LinphoneParticipantImdnState. 
+	/// Assign a user pointer to a ``ParticipantImdnState``. 
 	/// - Parameter userData: The user pointer to associate with the
-	/// LinphoneParticipantImdnState.   
+	/// ``ParticipantImdnState``.    
 	
-	/// Retrieve the user pointer associated with a LinphoneParticipantImdnState. 
-	/// - Returns: The user pointer associated with the LinphoneParticipantImdnState.   
+	/// Retrieve the user pointer associated with a ``ParticipantImdnState``. 
+	/// - Returns: The user pointer associated with the ``ParticipantImdnState``.    
 	public var userData: UnsafeMutableRawPointer?
 	{
 	
@@ -36613,7 +37998,7 @@ public class ParticipantInfo : LinphoneObject
 	
 	
 	/// Get the address of the object ``ParticipantInfo``. 
-	/// - Returns: the ``Address`` of the ``ParticipantInfo`` object.   
+	/// - Returns: the ``Address`` of the ``ParticipantInfo`` object.    
 	public var address: Address?
 	{
 	
@@ -36626,11 +38011,28 @@ public class ParticipantInfo : LinphoneObject
 
 	}
 		
+	
+	/// Get the CCMP uri of the object ``ParticipantInfo``. 
+	/// - Returns: the CCMP uri of the ``ParticipantInfo`` or nil.    
+	public var ccmpUri: String?
+	{
+	
+			
+			let cPointer = linphone_participant_info_get_ccmp_uri(cPtr)
+			if (cPointer == nil) {
+				return nil
+			}
+			let result = charArrayToString(charPointer: cPointer)
+			return result
+
+	}
+		
 	/// Set the role of the object ``ParticipantInfo``. 
-	/// - Parameter role: the ``Participant.Role`` of the ``ParticipantInfo`` object.   
+	/// - Parameter role: the ``Participant.Role`` of the ``ParticipantInfo`` object.  
+	///  
 	
 	/// Get the role of the object ``ParticipantInfo``. 
-	/// - Returns: the ``Participant.Role`` of the ``ParticipantInfo`` object.   
+	/// - Returns: the ``Participant.Role`` of the ``ParticipantInfo`` object.    
 	public var role: Participant.Role
 	{
 	
@@ -36647,8 +38049,8 @@ public class ParticipantInfo : LinphoneObject
 	
 	
 	/// Set the a custom parameter to object ``ParticipantInfo``. 
-	/// - Parameter name: the name of the parameter.   
-	/// - Parameter value: the value of the parameter.   
+	/// - Parameter name: the name of the parameter.    
+	/// - Parameter value: the value of the parameter.    
 	public func addParameter(name:String, value:String) 
 	{
 		linphone_participant_info_add_parameter(cPtr, name, value)
@@ -36657,7 +38059,7 @@ public class ParticipantInfo : LinphoneObject
 	
 	
 	/// Clone an object ``ParticipantInfo``. 
-	/// - Returns: the cloned ``ParticipantInfo`` object.   
+	/// - Returns: the cloned ``ParticipantInfo`` object.    
 	public func clone() -> ParticipantInfo?
 	{
 		let cPointer = linphone_participant_info_clone(cPtr)
@@ -36672,8 +38074,8 @@ public class ParticipantInfo : LinphoneObject
 	
 	
 	/// Get the value of a custom parameter of the object ``ParticipantInfo``. 
-	/// - Parameter name: the name of the parameter.   
-	/// - Returns: value the value of the parameter.   
+	/// - Parameter name: the name of the parameter.    
+	/// - Returns: value the value of the parameter.    
 	public func getParameterValue(name:String) -> String
 	{
 		let cstr = linphone_participant_info_get_parameter_value(cPtr, name)
@@ -36684,7 +38086,7 @@ public class ParticipantInfo : LinphoneObject
 	
 	
 	/// Find whether a ``ParticipantInfo`` has a parameter. 
-	/// - Parameter name: the name of the parameter.   
+	/// - Parameter name: the name of the parameter.    
 	/// - Returns: true if the parameter is present, false otherwise 
 	public func hasParameter(name:String) -> Bool
 	{
@@ -36694,7 +38096,7 @@ public class ParticipantInfo : LinphoneObject
 	
 	
 	/// Find the value of a custom parameter of the object ``ParticipantInfo``. 
-	/// - Parameter name: the name of the parameter.   
+	/// - Parameter name: the name of the parameter.    
 	public func removeParameter(name:String) 
 	{
 		linphone_participant_info_remove_parameter(cPtr, name)
@@ -36743,7 +38145,7 @@ public class PayloadType : LinphoneObject
 	
 	/// Return a string describing a payload type. 
 	/// The format of the string is <mime_type>/<clock_rate>/<channels>. 
-	/// - Returns: The description of the payload type.   
+	/// - Returns: The description of the payload type.    
 	public var description: String
 	{
 	
@@ -36757,7 +38159,7 @@ public class PayloadType : LinphoneObject
 	
 	/// Get a description of the encoder used to provide a payload type. 
 	/// - Returns: The description of the encoder. Can be nil if the payload type is
-	/// not supported by Mediastreamer2.   
+	/// not supported by Mediastreamer2.    
 	public var encoderDescription: String?
 	{
 	
@@ -36794,7 +38196,7 @@ public class PayloadType : LinphoneObject
 		
 	
 	/// Get the mime type. 
-	/// - Returns: The mime type.   
+	/// - Returns: The mime type.    
 	public var mimeType: String
 	{
 	
@@ -36846,10 +38248,10 @@ public class PayloadType : LinphoneObject
 		
 	/// Set the format parameters for incoming streams. 
 	/// - Parameter recvFmtp: The new format parameters as string. The string will be
-	/// copied.   
+	/// copied.    
 	
 	/// Get the format parameters for incoming streams. 
-	/// - Returns: The format parameters as string.   
+	/// - Returns: The format parameters as string.    
 	public var recvFmtp: String?
 	{
 	
@@ -36871,10 +38273,10 @@ public class PayloadType : LinphoneObject
 		
 	/// Set the format parameters for outgoing streams. 
 	/// - Parameter sendFmtp: The new format parameters as string. The string will be
-	/// copied.   
+	/// copied.    
 	
 	/// Get the format parameters for outgoing streams. 
-	/// - Returns: The format parameters as string.   
+	/// - Returns: The format parameters as string.    
 	public var sendFmtp: String?
 	{
 	
@@ -36908,7 +38310,7 @@ public class PayloadType : LinphoneObject
 	
 	
 	/// Instantiates a new payload type with values from source. 
-	/// - Returns: The newly created ``PayloadType`` object.   
+	/// - Returns: The newly created ``PayloadType`` object.    
 	public func clone() -> PayloadType?
 	{
 		let cPointer = linphone_payload_type_clone(cPtr)
@@ -36943,7 +38345,7 @@ public class PayloadType : LinphoneObject
 	
 	/// Compare two payload types, and returns true if they are equal. 
 	/// Parameters (fmtp strings) are not compared, hence the name 'weak equals'. 
-	/// - Parameter otherPayloadType: another ``PayloadType`` object   
+	/// - Parameter otherPayloadType: another ``PayloadType`` object    
 	/// - Returns: true if the payload types are "almost" equals. 
 	public func weakEquals(otherPayloadType:PayloadType) -> Bool
 	{
@@ -37007,7 +38409,7 @@ public class Player : LinphoneObject
 	}	
 	
 	/// Returns the ``Core`` object managing this player's call, if any. 
-	/// - Returns: the ``Core`` object associated   
+	/// - Returns: the ``Core`` object associated    
 	public var core: Core?
 	{
 	
@@ -37022,7 +38424,7 @@ public class Player : LinphoneObject
 		
 	
 	/// Returns the current LinphonePlayerCbsCbs object. 
-	/// - Returns: The current ``PlayerDelegate`` object   
+	/// - Returns: The current ``PlayerDelegate`` object    
 	public var currentDelegate: PlayerDelegate?
 	{
 	
@@ -37076,10 +38478,10 @@ public class Player : LinphoneObject
 	}
 		
 	/// Assign a user pointer to the player. 
-	/// - Parameter userData: The user pointer to associate with the player.   
+	/// - Parameter userData: The user pointer to associate with the player.    
 	
 	/// Retrieve the user pointer associated with the player. 
-	/// - Returns: The user pointer associated with the player.   
+	/// - Returns: The user pointer associated with the player.    
 	public var userData: UnsafeMutableRawPointer?
 	{
 	
@@ -37112,7 +38514,7 @@ public class Player : LinphoneObject
 	}
 		
 	/// Sets a window id to be used to display video if any. 
-	/// - Parameter windowId: The window id pointer to use.   
+	/// - Parameter windowId: The window id pointer to use.    
 	
 	public var windowId: UnsafeMutableRawPointer?
 	{
@@ -37134,7 +38536,21 @@ public class Player : LinphoneObject
 	
 	
 	/// Create a window id to be used to display video if any. 
-	/// - Returns: window_id The window id pointer to use.   
+	/// A context can be used to prevent Linphone from allocating the container
+	/// (MSOglContextInfo for MSOGL). nil if not used.
+	/// A context can be used to prevent Linphone from allocating the container
+	/// (MSOglContextInfo for MSOGL). nil if not used.
+	/// - Parameter context: preallocated Window ID (Used only for MSOGL)    
+	/// - Returns: window_id The window id pointer to use.    
+	public func createWindowId(context:UnsafeMutableRawPointer?) throws -> UnsafeMutableRawPointer
+	{
+		return linphone_player_create_window_id_2(cPtr, context)
+	}
+	
+	
+	
+	/// Create a window id to be used to display video if any. 
+	/// - Returns: window_id The window id pointer to use.    
 	public func createWindowId() throws -> UnsafeMutableRawPointer
 	{
 		return linphone_player_create_window_id(cPtr)
@@ -37146,7 +38562,9 @@ public class Player : LinphoneObject
 	/// Actually, only WAVE and MKV/MKA file formats are supported and a limited set of
 	/// codecs depending of the selected format. Here are the list of working
 	/// combinations:
-	/// - Parameter filename: The path to the file to open   
+	/// -WAVE format: only PCM s16le codec is supported.
+	/// -MKV/MKA format:
+	/// - Parameter filename: The path to the file to open    
 	public func open(filename:String) throws 
 	{
 		let exception_result = linphone_player_open(cPtr, filename)
@@ -37283,7 +38701,7 @@ public class PresenceActivity : LinphoneObject
 	
 	/// Sets the description of a presence activity. 
 	/// - Parameter description: An additional description of the activity. Can be nil
-	/// if no additional description is to be added.   
+	/// if no additional description is to be added.    
 	/// - Returns: 0 if successful, a value < 0 in case of error. 
 	
 	/// Gets the description of a presence activity. 
@@ -37301,7 +38719,7 @@ public class PresenceActivity : LinphoneObject
 			return result
 
 	}
-	public func setDescription(newValue: String) throws
+	public func setDescription(newValue: String?) throws
 	{
 		let exception_result = linphone_presence_activity_set_description(cPtr, newValue)
 		guard exception_result == 0 else {
@@ -37330,10 +38748,10 @@ public class PresenceActivity : LinphoneObject
 	}
 		
 	/// Sets the user data of a ``PresenceActivity`` object. 
-	/// - Parameter userData: A pointer to the user data to set.   
+	/// - Parameter userData: A pointer to the user data to set.    
 	
 	/// Gets the user data of a ``PresenceActivity`` object. 
-	/// - Returns: A pointer to the user data.   
+	/// - Returns: A pointer to the user data.    
 	public var userData: UnsafeMutableRawPointer?
 	{
 	
@@ -37351,7 +38769,7 @@ public class PresenceActivity : LinphoneObject
 	
 	/// Gets the string representation of a presence activity. 
 	/// - Returns: A pointer a dynamically allocated string representing the given
-	/// activity.    
+	/// activity.      
 	/// The returned string is to be freed by calling ms_free(). 
 	public func toString() -> String
 	{
@@ -37389,10 +38807,11 @@ public class PresenceModel : LinphoneObject
 	/// - Parameter activity: The ``PresenceActivity.Kind`` to set for the created
 	/// presence model. 
 	/// - Parameter description: An additional description of the activity (mainly
-	/// useful for the 'other' activity). Set it to nil to not add a description.   
-	/// - Returns: The created ``PresenceModel``, or nil if an error occured.   
+	/// useful for the 'other' activity). Set it to nil to not add a description.    
+	/// - Returns: The created ``PresenceModel``, or nil if an error occured.    
 	/// - See also: linphone_presence_model_new,
-	/// ``newWithActivityAndNote(activity:description:note:lang:)``
+	/// ``newWithActivityAndNote(activity:description:note:lang:)``,
+	/// ``newWithConsolidatedPresence(presence:)``
 	/// The created presence model has the activity specified in the parameters. 
 	static public func newWithActivity(activity:PresenceActivity.Kind, description:String?) -> PresenceModel?
 	{
@@ -37411,14 +38830,15 @@ public class PresenceModel : LinphoneObject
 	/// - Parameter activity: The ``PresenceActivity.Kind`` to set for the created
 	/// presence model. 
 	/// - Parameter description: An additional description of the activity (mainly
-	/// useful for the 'other' activity). Set it to nil to not add a description.   
+	/// useful for the 'other' activity). Set it to nil to not add a description.    
 	/// - Parameter note: An additional note giving additional information about the
-	/// contact presence.   
+	/// contact presence.    
 	/// - Parameter lang: The language the note is written in. It can be set to nil in
-	/// order to not specify the language of the note.   
-	/// - Returns: The created ``PresenceModel``, or nil if an error occured.   
-	/// - See also: ``newWithActivity(activity:description:)``,
-	/// ``newWithActivityAndNote(activity:description:note:lang:)``
+	/// order to not specify the language of the note.    
+	/// - Returns: The created ``PresenceModel``, or nil if an error occured.    
+	/// - See also: linphone_presence_model_new,
+	/// ``newWithActivity(activity:description:)``,
+	/// ``newWithConsolidatedPresence(presence:)``
 	/// The created presence model has the activity and the note specified in the
 	/// parameters. 
 	static public func newWithActivityAndNote(activity:PresenceActivity.Kind, description:String?, note:String, lang:String?) -> PresenceModel?
@@ -37433,8 +38853,31 @@ public class PresenceModel : LinphoneObject
 	}
 	
 	
+	
+	/// Creates a presence model with a consolidated presence. 
+	/// - Parameter presence: The ``ConsolidatedPresence`` to set for the created
+	/// presence model. 
+	/// - Returns: The created ``PresenceModel``, or nil if an error occured.    
+	/// - Warning: This function will set the basic status of the model and it may
+	/// create an activity depending on the ``ConsolidatedPresence`` 
+	/// - See also: linphone_presence_model_new,
+	/// ``newWithActivity(activity:description:)``,
+	/// ``newWithActivityAndNote(activity:description:note:lang:)``
+	/// The created presence model has the activity specified in the parameters. 
+	static public func newWithConsolidatedPresence(presence:ConsolidatedPresence) -> PresenceModel?
+	{
+		let cPointer = linphone_presence_model_new_with_consolidated_presence(LinphoneConsolidatedPresence(rawValue: CUnsignedInt(presence.rawValue)))
+		if (cPointer == nil) {
+			return nil
+		}
+		let result = PresenceModel.getSwiftObject(cObject: cPointer!)
+		belle_sip_object_unref(UnsafeMutableRawPointer(cPointer))
+		return result
+	}
+	
+	
 	/// Gets the first activity of a presence model (there is usually only one). 
-	/// - Returns: A ``PresenceActivity`` object if successful, nil otherwise.   
+	/// - Returns: A ``PresenceActivity`` object if successful, nil otherwise.    
 	public var activity: PresenceActivity?
 	{
 	
@@ -37490,12 +38933,12 @@ public class PresenceModel : LinphoneObject
 	}
 		
 	/// Sets the contact of a presence model. 
-	/// - Parameter contact: The contact string to set.   
+	/// - Parameter contact: The contact string to set.    
 	/// - Returns: 0 if successful, a value < 0 in case of error. 
 	
 	/// Gets the contact of a presence model. 
 	/// - Returns: A pointer to a dynamically allocated string containing the contact,
-	/// or nil if no contact is found.     
+	/// or nil if no contact is found.      
 	/// The returned string is to be freed by calling ms_free(). 
 	public var contact: String?
 	{
@@ -37512,7 +38955,7 @@ public class PresenceModel : LinphoneObject
 			return result
 
 	}
-	public func setContact(newValue: String) throws
+	public func setContact(newValue: String?) throws
 	{
 		let exception_result = linphone_presence_model_set_contact(cPtr, newValue)
 		guard exception_result == 0 else {
@@ -37523,6 +38966,8 @@ public class PresenceModel : LinphoneObject
 	
 	/// Tells whether a presence model is considered online. 
 	/// It is any of theses cases:
+	/// -basic status is'open' and no activities
+	/// -explicit 'online' tag in the status 
 	public var isOnline: Bool
 	{
 	
@@ -37572,11 +39017,12 @@ public class PresenceModel : LinphoneObject
 	}
 		
 	/// Sets the presentity of a presence model. 
-	/// - Parameter presentity: The presentity address to set (presentity is copied).   
+	/// - Parameter presentity: The presentity address to set (presentity is copied).  
+	///  
 	/// - Returns: 0 if successful, a value < 0 in case of error. 
 	
 	/// Gets the presentity of a presence model. 
-	/// - Returns: A pointer to a const ``Address``, or nil if no contact is found.   
+	/// - Returns: A pointer to a const ``Address``, or nil if no contact is found.    
 	public var presentity: Address?
 	{
 	
@@ -37588,9 +39034,9 @@ public class PresenceModel : LinphoneObject
 			return result
 
 	}
-	public func setPresentity(newValue: Address) throws
+	public func setPresentity(newValue: Address?) throws
 	{
-		let exception_result = linphone_presence_model_set_presentity(cPtr, newValue.cPtr)
+		let exception_result = linphone_presence_model_set_presentity(cPtr, newValue?.cPtr)
 		guard exception_result == 0 else {
 			throw LinphoneError.exception(result: "username setter returned value \(exception_result)")
 		}
@@ -37607,10 +39053,10 @@ public class PresenceModel : LinphoneObject
 	}
 		
 	/// Sets the user data of a ``PresenceModel`` object. 
-	/// - Parameter userData: A pointer to the user data to set.   
+	/// - Parameter userData: A pointer to the user data to set.    
 	
 	/// Gets the user data of a ``PresenceModel`` object. 
-	/// - Returns: A pointer to the user data.   
+	/// - Returns: A pointer to the user data.    
 	public var userData: UnsafeMutableRawPointer?
 	{
 	
@@ -37627,7 +39073,7 @@ public class PresenceModel : LinphoneObject
 	
 	
 	/// Adds an activity to a presence model. 
-	/// - Parameter activity: The ``PresenceActivity`` object to add to the model.   
+	/// - Parameter activity: The ``PresenceActivity`` object to add to the model.    
 	/// - Returns: 0 if successful, a value < 0 in case of error. 
 	public func addActivity(activity:PresenceActivity) throws 
 	{
@@ -37640,7 +39086,7 @@ public class PresenceModel : LinphoneObject
 	
 	
 	/// Adds a note to a presence model. 
-	/// - Parameter noteContent: The note to be added to the presence model.   
+	/// - Parameter noteContent: The note to be added to the presence model.    
 	/// - Parameter lang: The language of the note to be added. Can be nil if no
 	/// language is to be specified for the note.    
 	/// - Returns: 0 if successful, a value < 0 in case of error.
@@ -37657,7 +39103,7 @@ public class PresenceModel : LinphoneObject
 	
 	
 	/// Adds a person to a presence model. 
-	/// - Parameter person: The ``PresencePerson`` object to add to the model.   
+	/// - Parameter person: The ``PresencePerson`` object to add to the model.    
 	/// - Returns: 0 if successful, a value < 0 in case of error. 
 	public func addPerson(person:PresencePerson) throws 
 	{
@@ -37670,7 +39116,7 @@ public class PresenceModel : LinphoneObject
 	
 	
 	/// Adds a service to a presence model. 
-	/// - Parameter service: The ``PresenceService`` object to add to the model.   
+	/// - Parameter service: The ``PresenceService`` object to add to the model.    
 	/// - Returns: 0 if successful, a value < 0 in case of error. 
 	public func addService(service:PresenceService) throws 
 	{
@@ -37744,9 +39190,9 @@ public class PresenceModel : LinphoneObject
 	/// Gets the first note of a presence model (there is usually only one). 
 	/// - Parameter lang: The language of the note to get. Can be nil to get a note
 	/// that has no language specified or to get the first note whatever language it is
-	/// written into.   
+	/// written into.    
 	/// - Returns: A pointer to a ``PresenceNote`` object if successful, nil otherwise.
-	///   
+	///    
 	public func getNote(lang:String?) -> PresenceNote?
 	{
 		let cPointer = linphone_presence_model_get_note(cPtr, lang)
@@ -37763,7 +39209,7 @@ public class PresenceModel : LinphoneObject
 	/// - Parameter index: The index of the activity to get (the first activity having
 	/// the index 0). 
 	/// - Returns: A pointer to a ``PresenceActivity`` object if successful, nil
-	/// otherwise.   
+	/// otherwise.    
 	public func getNthActivity(index:UInt) -> PresenceActivity?
 	{
 		let cPointer = linphone_presence_model_get_nth_activity(cPtr, CUnsignedInt(index))
@@ -37780,7 +39226,7 @@ public class PresenceModel : LinphoneObject
 	/// - Parameter index: The index of the person to get (the first person having the
 	/// index 0). 
 	/// - Returns: A pointer to a ``PresencePerson`` object if successful, nil
-	/// otherwise.   
+	/// otherwise.    
 	public func getNthPerson(index:UInt) -> PresencePerson?
 	{
 		let cPointer = linphone_presence_model_get_nth_person(cPtr, CUnsignedInt(index))
@@ -37797,7 +39243,7 @@ public class PresenceModel : LinphoneObject
 	/// - Parameter index: The index of the service to get (the first service having
 	/// the index 0). 
 	/// - Returns: A pointer to a ``PresenceService`` object if successful, nil
-	/// otherwise.   
+	/// otherwise.    
 	public func getNthService(index:UInt) -> PresenceService?
 	{
 		let cPointer = linphone_presence_model_get_nth_service(cPtr, CUnsignedInt(index))
@@ -37849,9 +39295,9 @@ public class PresenceModel : LinphoneObject
 	/// Sets the activity of a presence model (limits to only one activity). 
 	/// - Parameter activity: The ``PresenceActivity.Kind`` to set for the model. 
 	/// - Parameter description: An additional description of the activity to set for
-	/// the model. Can be nil if no additional description is to be added.   
+	/// the model. Can be nil if no additional description is to be added.    
 	/// - Returns: 0 if successful, a value < 0 in case of error.
-	/// WARNING: This function will modify the basic status of the model according to
+	/// - Warning: This function will modify the basic status of the model according to
 	/// the activity being set. If you don't want the basic status to be modified
 	/// automatically, you can use the combination of ``setBasicStatus(basicStatus:)``,
 	/// ``clearActivities()`` and ``addActivity(activity:)``. 
@@ -37884,11 +39330,11 @@ public class PresenceNote : LinphoneObject
 	}
 	
 	/// Sets the content of a presence note. 
-	/// - Parameter content: The content of the note.   
+	/// - Parameter content: The content of the note.    
 	/// - Returns: 0 if successful, a value < 0 in case of error. 
 	
 	/// Gets the content of a presence note. 
-	/// - Returns: A pointer to the content of the presence note.   
+	/// - Returns: A pointer to the content of the presence note.    
 	public var content: String
 	{
 	
@@ -37907,12 +39353,12 @@ public class PresenceNote : LinphoneObject
 	}
 		
 	/// Sets the language of a presence note. 
-	/// - Parameter lang: The language of the note.   
+	/// - Parameter lang: The language of the note.    
 	/// - Returns: 0 if successful, a value < 0 in case of error. 
 	
 	/// Gets the language of a presence note. 
 	/// - Returns: A pointer to the language string of the presence note, or nil if no
-	/// language is specified.   
+	/// language is specified.    
 	public var lang: String?
 	{
 	
@@ -37925,7 +39371,7 @@ public class PresenceNote : LinphoneObject
 			return result
 
 	}
-	public func setLang(newValue: String) throws
+	public func setLang(newValue: String?) throws
 	{
 		let exception_result = linphone_presence_note_set_lang(cPtr, newValue)
 		guard exception_result == 0 else {
@@ -37934,10 +39380,10 @@ public class PresenceNote : LinphoneObject
 	}
 		
 	/// Sets the user data of a ``PresenceNote`` object. 
-	/// - Parameter userData: A pointer to the user data to set.   
+	/// - Parameter userData: A pointer to the user data to set.    
 	
 	/// Gets the user data of a ``PresenceNote`` object. 
-	/// - Returns: A pointer to the user data.   
+	/// - Returns: A pointer to the user data.    
 	public var userData: UnsafeMutableRawPointer?
 	{
 	
@@ -37973,12 +39419,12 @@ public class PresencePerson : LinphoneObject
 	
 	/// Sets the id of a presence person. 
 	/// - Parameter id: The id string to set. Can be nil to generate it automatically. 
-	///  
+	///   
 	/// - Returns: 0 if successful, a value < 0 in case of error. 
 	
 	/// Gets the id of a presence person. 
 	/// - Returns: A pointer to a dynamically allocated string containing the id, or
-	/// nil in case of error.    
+	/// nil in case of error.      
 	/// The returned string is to be freed by calling ms_free(). 
 	public var id: String?
 	{
@@ -37995,7 +39441,7 @@ public class PresencePerson : LinphoneObject
 			return result
 
 	}
-	public func setId(newValue: String) throws
+	public func setId(newValue: String?) throws
 	{
 		let exception_result = linphone_presence_person_set_id(cPtr, newValue)
 		guard exception_result == 0 else {
@@ -38035,10 +39481,10 @@ public class PresencePerson : LinphoneObject
 	}
 		
 	/// Sets the user data of a ``PresencePerson`` object. 
-	/// - Parameter userData: A pointer to the user data to set.   
+	/// - Parameter userData: A pointer to the user data to set.    
 	
 	/// Gets the user data of a ``PresencePerson`` object. 
-	/// - Returns: A pointer to the user data.   
+	/// - Returns: A pointer to the user data.    
 	public var userData: UnsafeMutableRawPointer?
 	{
 	
@@ -38055,7 +39501,7 @@ public class PresencePerson : LinphoneObject
 	
 	
 	/// Adds an activities note to a presence person. 
-	/// - Parameter note: The ``PresenceNote`` object to add to the person.   
+	/// - Parameter note: The ``PresenceNote`` object to add to the person.    
 	/// - Returns: 0 if successful, a value < 0 in case of error. 
 	public func addActivitiesNote(note:PresenceNote) throws 
 	{
@@ -38068,7 +39514,7 @@ public class PresencePerson : LinphoneObject
 	
 	
 	/// Adds an activity to a presence person. 
-	/// - Parameter activity: The ``PresenceActivity`` object to add to the person.   
+	/// - Parameter activity: The ``PresenceActivity`` object to add to the person.    
 	/// - Returns: 0 if successful, a value < 0 in case of error. 
 	public func addActivity(activity:PresenceActivity) throws 
 	{
@@ -38081,7 +39527,7 @@ public class PresencePerson : LinphoneObject
 	
 	
 	/// Adds a note to a presence person. 
-	/// - Parameter note: The ``PresenceNote`` object to add to the person.   
+	/// - Parameter note: The ``PresenceNote`` object to add to the person.    
 	/// - Returns: 0 if successful, a value < 0 in case of error. 
 	public func addNote(note:PresenceNote) throws 
 	{
@@ -38133,7 +39579,7 @@ public class PresencePerson : LinphoneObject
 	/// - Parameter index: The index of the activities note to get (the first note
 	/// having the index 0). 
 	/// - Returns: A pointer to a ``PresenceNote`` object if successful, nil otherwise.
-	///   
+	///    
 	public func getNthActivitiesNote(index:UInt) -> PresenceNote?
 	{
 		let cPointer = linphone_presence_person_get_nth_activities_note(cPtr, CUnsignedInt(index))
@@ -38150,7 +39596,7 @@ public class PresencePerson : LinphoneObject
 	/// - Parameter index: The index of the activity to get (the first activity having
 	/// the index 0). 
 	/// - Returns: A pointer to a ``PresenceActivity`` object if successful, nil
-	/// otherwise.   
+	/// otherwise.    
 	public func getNthActivity(index:UInt) -> PresenceActivity?
 	{
 		let cPointer = linphone_presence_person_get_nth_activity(cPtr, CUnsignedInt(index))
@@ -38167,7 +39613,7 @@ public class PresencePerson : LinphoneObject
 	/// - Parameter index: The index of the note to get (the first note having the
 	/// index 0). 
 	/// - Returns: A pointer to a ``PresenceNote`` object if successful, nil otherwise.
-	///   
+	///    
 	public func getNthNote(index:UInt) -> PresenceNote?
 	{
 		let cPointer = linphone_presence_person_get_nth_note(cPtr, CUnsignedInt(index))
@@ -38226,7 +39672,7 @@ public class PresenceService : LinphoneObject
 	
 	/// Gets the contact of a presence service. 
 	/// - Returns: A pointer to a dynamically allocated string containing the contact,
-	/// or nil if no contact is found.     
+	/// or nil if no contact is found.      
 	/// The returned string is to be freed by calling ms_free(). 
 	public var contact: String?
 	{
@@ -38243,7 +39689,7 @@ public class PresenceService : LinphoneObject
 			return result
 
 	}
-	public func setContact(newValue: String) throws
+	public func setContact(newValue: String?) throws
 	{
 		let exception_result = linphone_presence_service_set_contact(cPtr, newValue)
 		guard exception_result == 0 else {
@@ -38253,12 +39699,12 @@ public class PresenceService : LinphoneObject
 		
 	/// Sets the id of a presence service. 
 	/// - Parameter id: The id string to set. Can be nil to generate it automatically. 
-	///  
+	///   
 	/// - Returns: 0 if successful, a value < 0 in case of error. 
 	
 	/// Gets the id of a presence service. 
 	/// - Returns: A pointer to a dynamically allocated string containing the id, or
-	/// nil in case of error.    
+	/// nil in case of error.      
 	/// The returned string is to be freed by calling ms_free(). 
 	public var id: String?
 	{
@@ -38275,7 +39721,7 @@ public class PresenceService : LinphoneObject
 			return result
 
 	}
-	public func setId(newValue: String) throws
+	public func setId(newValue: String?) throws
 	{
 		let exception_result = linphone_presence_service_set_id(cPtr, newValue)
 		guard exception_result == 0 else {
@@ -38294,11 +39740,11 @@ public class PresenceService : LinphoneObject
 	}
 		
 	/// Sets the service descriptions of a presence service. 
-	/// - Parameter descriptions: The service descriptions.    
+	/// - Parameter descriptions: The service descriptions.      
 	/// - Returns: 0 if successful, a value < 0 in case of error. 
 	
 	/// Gets the service descriptions of a presence service. 
-	/// - Returns: A  containing the services descriptions.    
+	/// - Returns: A   containing the services descriptions.      
 	/// The returned string is to be freed. 
 	public var serviceDescriptions: [String]
 	{
@@ -38329,10 +39775,10 @@ public class PresenceService : LinphoneObject
 	}
 		
 	/// Sets the user data of a ``PresenceService`` object. 
-	/// - Parameter userData: A pointer to the user data to set.   
+	/// - Parameter userData: A pointer to the user data to set.    
 	
 	/// Gets the user data of a ``PresenceService`` object. 
-	/// - Returns: A pointer to the user data.   
+	/// - Returns: A pointer to the user data.    
 	public var userData: UnsafeMutableRawPointer?
 	{
 	
@@ -38349,7 +39795,7 @@ public class PresenceService : LinphoneObject
 	
 	
 	/// Adds a note to a presence service. 
-	/// - Parameter note: The ``PresenceNote`` object to add to the service.   
+	/// - Parameter note: The ``PresenceNote`` object to add to the service.    
 	/// - Returns: 0 if successful, a value < 0 in case of error. 
 	public func addNote(note:PresenceNote) throws 
 	{
@@ -38377,7 +39823,7 @@ public class PresenceService : LinphoneObject
 	/// - Parameter index: The index of the note to get (the first note having the
 	/// index 0). 
 	/// - Returns: A pointer to a ``PresenceNote`` object if successful, nil otherwise.
-	///   
+	///    
 	public func getNthNote(index:UInt) -> PresenceNote?
 	{
 		let cPointer = linphone_presence_service_get_nth_note(cPtr, CUnsignedInt(index))
@@ -38400,7 +39846,7 @@ public class PresenceService : LinphoneObject
 /// survive the destruction of the ``Core`` and be available at the next start.
 /// The account set with ``Core/setDefaultProxyConfig(config:)`` will be used as
 /// default for outgoing calls & chat messages unless specified otherwise.
-/// - deprecated: 06/04/2020 Use ``Account`` object instead 
+/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 public class ProxyConfig : LinphoneObject
 {
 
@@ -38421,7 +39867,7 @@ public class ProxyConfig : LinphoneObject
 	
 	/// Indicates whether AVPF/SAVPF is being used for calls using this proxy config. 
 	/// - Returns: True if AVPF/SAVPF is enabled, false otherwise. 
-	/// - deprecated: 06/04/2020 Use ``Account`` object instead 
+	/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 	@available(*, deprecated)
 	public var avpfEnabled: Bool
 	{
@@ -38431,15 +39877,14 @@ public class ProxyConfig : LinphoneObject
 	}
 		
 	/// Enable the use of RTCP feedback (also known as AVPF profile). 
-	/// - Parameter mode: the enablement mode, which can be ``Default`` (use
-	/// LinphoneCore's mode), ``Enabled`` (avpf is enabled), or ``Disabled``
-	/// (disabled). 
-	/// - deprecated: 06/04/2020 Use ``Account`` object instead 
+	/// - Parameter mode: the enablement mode, which can be ``Default`` (use ``Core``'s
+	/// mode), ``Enabled`` (avpf is enabled), or ``Disabled`` (disabled). 
+	/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 	
 	/// Get enablement status of RTCP feedback (also known as AVPF profile). 
-	/// - Returns: the enablement mode, which can be ``Default`` (use LinphoneCore's
-	/// mode), ``Enabled`` (avpf is enabled), or ``Disabled`` (disabled). 
-	/// - deprecated: 06/04/2020 Use ``Account`` object instead 
+	/// - Returns: the enablement mode, which can be ``Default`` (use ``Core``'s mode),
+	/// ``Enabled`` (avpf is enabled), or ``Disabled`` (disabled). 
+	/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 	public var avpfMode: AVPFMode
 	{
 	@available(*, deprecated)
@@ -38456,11 +39901,11 @@ public class ProxyConfig : LinphoneObject
 		
 	/// Set the interval between regular RTCP reports when using AVPF/SAVPF. 
 	/// - Parameter interval: The interval in seconds (between 0 and 5 seconds). 
-	/// - deprecated: 06/04/2020 Use ``Account`` object instead 
+	/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 	
 	/// Get the interval between regular RTCP reports when using AVPF/SAVPF. 
 	/// - Returns: The interval in seconds. 
-	/// - deprecated: 06/04/2020 Use ``Account`` object instead 
+	/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 	public var avpfRrInterval: UInt8
 	{
 	@available(*, deprecated)
@@ -38476,12 +39921,12 @@ public class ProxyConfig : LinphoneObject
 	}
 		
 	/// Set the conference factory uri. 
-	/// - Parameter uri: The uri of the conference factory.   
-	/// - deprecated: 06/04/2020 Use ``Account`` object instead 
+	/// - Parameter uri: The uri of the conference factory.    
+	/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 	
 	/// Get the conference factory uri. 
-	/// - Returns: The uri of the conference factory.   
-	/// - deprecated: 06/04/2020 Use ``Account`` object instead 
+	/// - Returns: The uri of the conference factory.    
+	/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 	public var conferenceFactoryUri: String?
 	{
 	@available(*, deprecated)
@@ -38505,8 +39950,8 @@ public class ProxyConfig : LinphoneObject
 	
 	/// Return the contact address of the proxy config. 
 	/// - Returns: a ``Address`` correspong to the contact address of the proxy config.
-	///   
-	/// - deprecated: 06/04/2020 Use ``Account`` object instead 
+	///    
+	/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 	@available(*, deprecated)
 	public var contact: Address?
 	{
@@ -38523,16 +39968,21 @@ public class ProxyConfig : LinphoneObject
 	/// Set optional contact parameters that will be added to the contact information
 	/// sent in the registration. 
 	/// - Parameter contactParams: a string contaning the additional parameters in text
-	/// form, like "myparam=something;myparam2=something_else"  
+	/// form, like "myparam=something;myparam2=something_else"   
 	/// The main use case for this function is provide the proxy additional information
 	/// regarding the user agent, like for example unique identifier or apple push id.
 	/// As an example, the contact address in the SIP register sent will look like
 	/// <sip:joe@15.128.128.93:50421>;apple-push-id=43143-DFE23F-2323-FA2232. -
-	/// deprecated: 06/04/2020 Use ``Account`` object instead 
+	/// Deprecated: 06/04/2020 Use ``Account`` object instead 
+	/// The main use case for this function is provide the proxy additional information
+	/// regarding the user agent, like for example unique identifier or apple push id.
+	/// As an example, the contact address in the SIP register sent will look like
+	/// <sip:joe@15.128.128.93:50421>;apple-push-id=43143-DFE23F-2323-FA2232. -
+	/// Deprecated: 06/04/2020 Use ``Account`` object instead 
 	
 	/// Returns the contact parameters. 
-	/// - Returns: previously set contact parameters.   
-	/// - deprecated: 06/04/2020 Use ``Account`` object instead 
+	/// - Returns: previously set contact parameters.    
+	/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 	public var contactParameters: String?
 	{
 	@available(*, deprecated)
@@ -38556,16 +40006,21 @@ public class ProxyConfig : LinphoneObject
 	/// Set optional contact parameters that will be added to the contact information
 	/// sent in the registration, inside the URI. 
 	/// - Parameter contactUriParams: a string containing the additional parameters in
-	/// text form, like "myparam=something;myparam2=something_else"  
+	/// text form, like "myparam=something;myparam2=something_else"   
 	/// The main use case for this function is provide the proxy additional information
 	/// regarding the user agent, like for example unique identifier or apple push id.
 	/// As an example, the contact address in the SIP register sent will look like
 	/// <sip:joe@15.128.128.93:50421;apple-push-id=43143-DFE23F-2323-FA2232>. -
-	/// deprecated: 06/04/2020 Use ``Account`` object instead 
+	/// Deprecated: 06/04/2020 Use ``Account`` object instead 
+	/// The main use case for this function is provide the proxy additional information
+	/// regarding the user agent, like for example unique identifier or apple push id.
+	/// As an example, the contact address in the SIP register sent will look like
+	/// <sip:joe@15.128.128.93:50421;apple-push-id=43143-DFE23F-2323-FA2232>. -
+	/// Deprecated: 06/04/2020 Use ``Account`` object instead 
 	
 	/// Returns the contact URI parameters. 
-	/// - Returns: previously set contact URI parameters.   
-	/// - deprecated: 06/04/2020 Use ``Account`` object instead 
+	/// - Returns: previously set contact URI parameters.    
+	/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 	public var contactUriParameters: String?
 	{
 	@available(*, deprecated)
@@ -38588,8 +40043,8 @@ public class ProxyConfig : LinphoneObject
 		
 	
 	/// Get the ``Core`` object to which is associated the ``ProxyConfig``. 
-	/// - Returns: The ``Core`` object to which is associated the ``ProxyConfig``.   
-	/// - deprecated: 06/04/2020 Use ``Account`` object instead 
+	/// - Returns: The ``Core`` object to which is associated the ``ProxyConfig``.    
+	/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 	@available(*, deprecated)
 	public var core: Core?
 	{
@@ -38613,13 +40068,13 @@ public class ProxyConfig : LinphoneObject
 	/// (the 'dependency' one).
 	/// This mecanism must be enabled before the proxy configuration is added to the
 	/// core
-	/// - Parameter dependsOn: The ``ProxyConfig`` this one shall be depend on.   
-	/// - deprecated: 06/04/2020 Use ``Account`` object instead 
+	/// - Parameter dependsOn: The ``ProxyConfig`` this one shall be depend on.    
+	/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 	
 	/// Get the dependency of a ``ProxyConfig``. 
 	/// - Returns: The proxy config this one is dependent upon, or nil if not marked
-	/// dependent.   
-	/// - deprecated: 06/04/2020 Use ``Account`` object instead 
+	/// dependent.    
+	/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 	public var dependency: ProxyConfig?
 	{
 	@available(*, deprecated)
@@ -38643,12 +40098,12 @@ public class ProxyConfig : LinphoneObject
 	/// dialed numbers (passed to ``Core/invite(url:)`` ). 
 	/// - Parameter enable: true to replace + by the international prefix, false
 	/// otherwise. 
-	/// - deprecated: 06/04/2020 Use ``Account`` object instead 
+	/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 	
 	/// Returns whether or not the + should be replaced by 00. 
 	/// - Returns: whether liblinphone should replace "+" by "00" in dialed numbers
 	/// (passed to ``Core/invite(url:)``). 
-	/// - deprecated: 06/04/2020 Use ``Account`` object instead 
+	/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 	public var dialEscapePlus: Bool
 	{
 	@available(*, deprecated)
@@ -38666,12 +40121,12 @@ public class ProxyConfig : LinphoneObject
 	/// Sets a dialing prefix to be automatically prepended when inviting a number with
 	/// ``Core/invite(url:)``; This dialing prefix shall usually be the country code of
 	/// the country where the user is living, without "+". 
-	/// - Parameter prefix: the prefix to set (withouth the +)   
-	/// - deprecated: 06/04/2020 Use ``Account`` object instead 
+	/// - Parameter prefix: the prefix to set (withouth the +)    
+	/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 	
 	/// Gets the prefix set for this proxy config. 
-	/// - Returns: dialing prefix.   
-	/// - deprecated: 06/04/2020 Use ``Account`` object instead 
+	/// - Returns: dialing prefix.    
+	/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 	public var dialPrefix: String?
 	{
 	@available(*, deprecated)
@@ -38694,8 +40149,8 @@ public class ProxyConfig : LinphoneObject
 		
 	
 	/// Get the domain name of the given proxy config. 
-	/// - Returns: The domain name of the proxy config.   
-	/// - deprecated: 06/04/2020 Use ``Account`` object instead 
+	/// - Returns: The domain name of the proxy config.    
+	/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 	@available(*, deprecated)
 	public var domain: String?
 	{
@@ -38714,7 +40169,7 @@ public class ProxyConfig : LinphoneObject
 	/// Get the reason why registration failed when the proxy config state is
 	/// LinphoneRegistrationFailed. 
 	/// - Returns: The ``Reason`` why registration failed for this proxy config. 
-	/// - deprecated: 06/04/2020 Use ``Account`` object instead 
+	/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 	@available(*, deprecated)
 	public var error: Reason
 	{
@@ -38727,8 +40182,8 @@ public class ProxyConfig : LinphoneObject
 	/// Get detailed information why registration failed when the proxy config state is
 	/// LinphoneRegistrationFailed. 
 	/// - Returns: The ``ErrorInfo`` explaining why registration failed for this proxy
-	/// config.   
-	/// - deprecated: 06/04/2020 Use ``Account`` object instead 
+	/// config.    
+	/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 	@available(*, deprecated)
 	public var errorInfo: ErrorInfo?
 	{
@@ -38744,11 +40199,11 @@ public class ProxyConfig : LinphoneObject
 		
 	/// Sets the registration expiration time in seconds. 
 	/// - Parameter expires: the expiration time to set 
-	/// - deprecated: 06/04/2020 Use ``Account`` object instead 
+	/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 	
 	/// Gets the proxy config expires. 
 	/// - Returns: the duration of registration. 
-	/// - deprecated: 06/04/2020 Use ``Account`` object instead 
+	/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 	public var expires: Int
 	{
 	@available(*, deprecated)
@@ -38767,12 +40222,15 @@ public class ProxyConfig : LinphoneObject
 	/// This identity is normally formed with display name, username and domain, such
 	/// as: Alice <sip:alice@example.net> The REGISTER messages will have from and to
 	/// set to this identity. 
-	/// - Parameter identity: the ``Address`` of the identity to set   
-	/// - deprecated: 06/04/2020 Use ``Account`` object instead 
+	/// This identity is normally formed with display name, username and domain, such
+	/// as: Alice <sip:alice@example.net> The REGISTER messages will have from and to
+	/// set to this identity. 
+	/// - Parameter identity: the ``Address`` of the identity to set    
+	/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 	
 	/// Gets the identity addres of the proxy config. 
-	/// - Returns: the SIP identity that belongs to this proxy configuration.   
-	/// - deprecated: 06/04/2020 Use ``Account`` object instead 
+	/// - Returns: the SIP identity that belongs to this proxy configuration.    
+	/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 	@available(*, deprecated)
 	public var identityAddress: Address?
 	{
@@ -38786,9 +40244,9 @@ public class ProxyConfig : LinphoneObject
 
 	}
 	@available(*, deprecated)
-	public func setIdentityaddress(newValue: Address) throws
+	public func setIdentityaddress(newValue: Address?) throws
 	{
-		let exception_result = linphone_proxy_config_set_identity_address(cPtr, newValue.cPtr)
+		let exception_result = linphone_proxy_config_set_identity_address(cPtr, newValue?.cPtr)
 		guard exception_result == 0 else {
 			throw LinphoneError.exception(result: "username setter returned value \(exception_result)")
 		}
@@ -38799,12 +40257,12 @@ public class ProxyConfig : LinphoneObject
 	/// create a dependency relation between them. - See also:
 	/// linphone_proxy_config_set_depends_on()
 	/// - Parameter idkey: The idkey string to associate to the given ``ProxyConfig``. 
-	///  
-	/// - deprecated: 06/04/2020 Use ``Account`` object instead 
+	///   
+	/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 	
 	/// Get the idkey property of a ``ProxyConfig``. 
-	/// - Returns: The idkey string, or nil.   
-	/// - deprecated: 06/04/2020 Use ``Account`` object instead 
+	/// - Returns: The idkey string, or nil.    
+	/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 	public var idkey: String?
 	{
 	@available(*, deprecated)
@@ -38831,7 +40289,7 @@ public class ProxyConfig : LinphoneObject
 	/// For IOS, it indicates to VOIP push notification. 
 	/// - Returns: true if push notification informations should be added, false
 	/// otherwise. 
-	/// - deprecated: 06/04/2020 Use ``Account`` object instead 
+	/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 	@available(*, deprecated)
 	public var isPushNotificationAllowed: Bool
 	{
@@ -38843,7 +40301,7 @@ public class ProxyConfig : LinphoneObject
 	
 	/// Gets whether push notifications are available or not (Android & iOS only). 
 	/// - Returns: true if push notifications are available, false otherwise 
-	/// - deprecated: 06/04/2020 Use ``Account`` object instead 
+	/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 	@available(*, deprecated)
 	public var isPushNotificationAvailable: Bool
 	{
@@ -38858,7 +40316,7 @@ public class ProxyConfig : LinphoneObject
 	/// Default value is false. 
 	/// - Returns: true if remote push notification informations should be added, false
 	/// otherwise. 
-	/// - deprecated: 06/04/2020 Use ``Account`` object instead 
+	/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 	@available(*, deprecated)
 	public var isRemotePushNotificationAllowed: Bool
 	{
@@ -38870,16 +40328,16 @@ public class ProxyConfig : LinphoneObject
 	/// Set the policy to use to pass through NATs/firewalls when using this proxy
 	/// config. 
 	/// If it is set to nil, the default NAT policy from the core will be used instead. 
-	/// - Parameter policy: ``NatPolicy`` object.   
+	/// - Parameter policy: ``NatPolicy`` object.    
 	/// - See also: ``Core/setNatPolicy(policy:)`` 
-	/// - deprecated: 06/04/2020 Use ``Account`` object instead 
+	/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 	
 	/// Get The policy that is used to pass through NATs/firewalls when using this
 	/// proxy config. 
 	/// If it is set to nil, the default NAT policy from the core will be used instead. 
-	/// - Returns: ``NatPolicy`` object in use.   
+	/// - Returns: ``NatPolicy`` object in use.    
 	/// - See also: ``Core/getNatPolicy()`` 
-	/// - deprecated: 06/04/2020 Use ``Account`` object instead 
+	/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 	public var natPolicy: NatPolicy?
 	{
 	@available(*, deprecated)
@@ -38901,11 +40359,11 @@ public class ProxyConfig : LinphoneObject
 		
 	/// Set default privacy policy for all calls routed through this proxy. 
 	/// - Parameter privacy: ``Privacy`` to configure privacy 
-	/// - deprecated: 06/04/2020 Use ``Account`` object instead 
+	/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 	
 	/// Get default privacy policy for all calls routed through this proxy. 
 	/// - Returns: Privacy mode as LinphonePrivacyMask 
-	/// - deprecated: 06/04/2020 Use ``Account`` object instead 
+	/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 	public var privacy: UInt
 	{
 	@available(*, deprecated)
@@ -38924,11 +40382,11 @@ public class ProxyConfig : LinphoneObject
 	/// In case this ``ProxyConfig`` has been added to ``Core``, follows the ``edit()``
 	/// rule. 
 	/// - Parameter enable: if true, publish will be engaged 
-	/// - deprecated: 06/04/2020 Use ``Account`` object instead 
+	/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 	
 	/// Gets if the PUBLISH is enabled. 
 	/// - Returns: true if PUBLISH request is enabled for this proxy. 
-	/// - deprecated: 06/04/2020 Use ``Account`` object instead 
+	/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 	public var publishEnabled: Bool
 	{
 	@available(*, deprecated)
@@ -38945,12 +40403,12 @@ public class ProxyConfig : LinphoneObject
 		
 	/// Set the publish expiration time in second. 
 	/// - Parameter expires: in second 
-	/// - deprecated: 06/04/2020 Use ``Account`` object instead 
+	/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 	
 	/// get the publish expiration time in second. 
 	/// Default value is the registration expiration value. 
 	/// - Returns: expires in second 
-	/// - deprecated: 06/04/2020 Use ``Account`` object instead 
+	/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 	public var publishExpires: Int
 	{
 	@available(*, deprecated)
@@ -38970,7 +40428,7 @@ public class ProxyConfig : LinphoneObject
 	/// For IOS, it indicates to VOIP push notification. 
 	/// - Parameter allow: true to allow push notification information, false
 	/// otherwise. 
-	/// - deprecated: 06/04/2020 Use ``Account`` object instead 
+	/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 	
 	public var pushNotificationAllowed: Bool?
 	{
@@ -38983,12 +40441,12 @@ public class ProxyConfig : LinphoneObject
 	}
 		
 	/// Sets the push notification configuration. 
-	/// - Parameter pushCfg: ``PushNotificationConfig`` to set.   
-	/// - deprecated: 06/04/2020 Use ``Account`` object instead 
+	/// - Parameter pushCfg: ``PushNotificationConfig`` to set.    
+	/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 	
 	/// Retrieves the push notification configuration. 
-	/// - Returns: The ``PushNotificationConfig``.   
-	/// - deprecated: 06/04/2020 Use ``Account`` object instead 
+	/// - Returns: The ``PushNotificationConfig``.    
+	/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 	public var pushNotificationConfig: PushNotificationConfig?
 	{
 	@available(*, deprecated)
@@ -39014,16 +40472,16 @@ public class ProxyConfig : LinphoneObject
 	/// and will not receive any messages. If nil, reports will be send to the proxy
 	/// domain. 
 	/// - Parameter collector: route of the collector end-point, if nil PUBLISH will be
-	/// sent to the proxy domain.   
-	/// - deprecated: 06/04/2020 Use ``Account`` object instead 
+	/// sent to the proxy domain.    
+	/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 	
 	/// Get the route of the collector end-point when using quality reporting. 
 	/// This SIP address should be used on server-side to process packets directly
 	/// before discarding packets. Collector address should be a non existing account
 	/// and will not receive any messages. If nil, reports will be send to the proxy
 	/// domain. 
-	/// - Returns: The SIP address of the collector end-point.   
-	/// - deprecated: 06/04/2020 Use ``Account`` object instead 
+	/// - Returns: The SIP address of the collector end-point.    
+	/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 	public var qualityReportingCollector: String?
 	{
 	@available(*, deprecated)
@@ -39048,12 +40506,12 @@ public class ProxyConfig : LinphoneObject
 	/// collector according to RFC 6035. 
 	/// - Parameter enable: True to store quality statistics and send them to the
 	/// collector, false to disable it. 
-	/// - deprecated: 06/04/2020 Use ``Account`` object instead 
+	/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 	
 	/// Indicates whether quality statistics during call should be stored and sent to a
 	/// collector according to RFC 6035. 
 	/// - Returns: True if quality repotring is enabled, false otherwise. 
-	/// - deprecated: 06/04/2020 Use ``Account`` object instead 
+	/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 	public var qualityReportingEnabled: Bool
 	{
 	@available(*, deprecated)
@@ -39075,11 +40533,11 @@ public class ProxyConfig : LinphoneObject
 	/// Value must be 0 (disabled) or positive. 
 	/// - Parameter interval: The interval in seconds, 0 means interval reports are
 	/// disabled. 
-	/// - deprecated: 06/04/2020 Use ``Account`` object instead 
+	/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 	
 	/// Get the interval between interval reports when using quality reporting. 
 	/// - Returns: The interval in seconds, 0 means interval reports are disabled. 
-	/// - deprecated: 06/04/2020 Use ``Account`` object instead 
+	/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 	public var qualityReportingInterval: Int
 	{
 	@available(*, deprecated)
@@ -39095,12 +40553,12 @@ public class ProxyConfig : LinphoneObject
 	}
 		
 	/// Set the realm of the given proxy config. 
-	/// - Parameter realm: New realm value.   
-	/// - deprecated: 06/04/2020 Use ``Account`` object instead 
+	/// - Parameter realm: New realm value.    
+	/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 	
 	/// Get the realm of the given proxy config. 
-	/// - Returns: The realm of the proxy config.   
-	/// - deprecated: 06/04/2020 Use ``Account`` object instead 
+	/// - Returns: The realm of the proxy config.    
+	/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 	public var realm: String?
 	{
 	@available(*, deprecated)
@@ -39125,15 +40583,15 @@ public class ProxyConfig : LinphoneObject
 	/// The reference key can be for example an id to an external database. It is
 	/// stored in the config file, thus can survive to process exits/restarts.
 	/// - Parameter refkey: The reference key string to associate to the proxy config. 
-	///  
-	/// - deprecated: 06/04/2020 Use ``Account`` object instead 
+	///   
+	/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 	
 	/// Get the persistent reference key associated to the proxy config. 
 	/// The reference key can be for example an id to an external database. It is
 	/// stored in the config file, thus can survive to process exits/restarts.
 	/// - Returns: The reference key string that has been associated to the proxy
 	/// config, or nil if none has been associated.    
-	/// - deprecated: 06/04/2020 Use ``Account`` object instead 
+	/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 	public var refKey: String?
 	{
 	@available(*, deprecated)
@@ -39158,11 +40616,11 @@ public class ProxyConfig : LinphoneObject
 	/// In case this ``ProxyConfig`` has been added to ``Core``, follows the ``edit()``
 	/// rule. 
 	/// - Parameter enable: if true, registration will be engaged 
-	/// - deprecated: 06/04/2020 Use ``Account`` object instead 
+	/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 	
 	/// Returns whether the proxy config is enabled or not. 
 	/// - Returns: true if registration to the proxy is enabled. 
-	/// - deprecated: 06/04/2020 Use ``Account`` object instead 
+	/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 	public var registerEnabled: Bool
 	{
 	@available(*, deprecated)
@@ -39181,7 +40639,7 @@ public class ProxyConfig : LinphoneObject
 	/// information (IOS only). 
 	/// - Parameter allow: true to allow remote push notification information, false
 	/// otherwise. 
-	/// - deprecated: 06/04/2020 Use ``Account`` object instead 
+	/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 	
 	public var remotePushNotificationAllowed: Bool?
 	{
@@ -39196,9 +40654,9 @@ public class ProxyConfig : LinphoneObject
 	/// Sets a SIP route. 
 	/// When a route is set, all outgoing calls will go to the route's destination if
 	/// this proxy is the default one (see ``Core/setDefaultProxyConfig(config:)`` ). 
-	/// - Parameter route: the SIP route to set   
+	/// - Parameter route: the SIP route to set    
 	/// - Returns: -1 if route is invalid, 0 otherwise. 
-	/// - deprecated: 08/07/2020 use ``setRoutes(routes:)`` instead 
+	/// - Deprecated: 08/07/2020 use ``setRoutes(routes:)`` instead 
 	
 	@available(*, deprecated)
 	public func setRoute(newValue: String) throws
@@ -39212,13 +40670,13 @@ public class ProxyConfig : LinphoneObject
 	/// Sets a list of SIP route. 
 	/// When a route is set, all outgoing calls will go to the route's destination if
 	/// this proxy is the default one (see ``Core/setDefaultProxyConfig(config:)`` ). 
-	/// - Parameter routes: A  of routes   
+	/// - Parameter routes: A   of routes    
 	/// - Returns: -1 if routes are invalid, 0 otherwise. 
-	/// - deprecated: 06/04/2020 Use ``Account`` object instead 
+	/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 	
 	/// Gets the list of the routes set for this proxy config. 
-	/// - Returns: The list of routes as string.    
-	/// - deprecated: 06/04/2020 Use ``Account`` object instead 
+	/// - Returns: The list of routes as string.      
+	/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 	@available(*, deprecated)
 	public var routes: [String]
 	{
@@ -39250,12 +40708,15 @@ public class ProxyConfig : LinphoneObject
 		
 	/// Sets the proxy address. 
 	/// Examples of valid sip proxy address are:
-	/// - Parameter serverAddress: the proxy address to set.   
-	/// - deprecated: 06/04/2020 Use ``Account`` object instead 
+	/// -IP address: sip:87.98.157.38
+	/// -IP address with port: sip:87.98.157.38:5062
+	/// -hostnames : sip:sip.example.net
+	/// - Parameter serverAddress: the proxy address to set.    
+	/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 	
 	/// Gets the proxy config proxy address. 
-	/// - Returns: the proxy's SIP address.   
-	/// - deprecated: 06/04/2020 Use ``Account`` object instead 
+	/// - Returns: the proxy's SIP address.    
+	/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 	@available(*, deprecated)
 	public var serverAddr: String?
 	{
@@ -39270,7 +40731,7 @@ public class ProxyConfig : LinphoneObject
 
 	}
 	@available(*, deprecated)
-	public func setServeraddr(newValue: String) throws
+	public func setServeraddr(newValue: String?) throws
 	{
 		let exception_result = linphone_proxy_config_set_server_addr(cPtr, newValue)
 		guard exception_result == 0 else {
@@ -39281,7 +40742,7 @@ public class ProxyConfig : LinphoneObject
 	
 	/// Get the registration state of the given proxy config. 
 	/// - Returns: The ``RegistrationState`` of the proxy config. 
-	/// - deprecated: 06/04/2020 Use ``Account`` object instead 
+	/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 	@available(*, deprecated)
 	public var state: RegistrationState
 	{
@@ -39292,8 +40753,8 @@ public class ProxyConfig : LinphoneObject
 		
 	
 	/// Get the transport from either service route, route or addr. 
-	/// - Returns: The transport as a string (I.E udp, tcp, tls, dtls)   
-	/// - deprecated: 06/04/2020 Use ``Account`` object instead 
+	/// - Returns: The transport as a string (I.E udp, tcp, tls, dtls)    
+	/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 	@available(*, deprecated)
 	public var transport: String
 	{
@@ -39308,7 +40769,7 @@ public class ProxyConfig : LinphoneObject
 	
 	/// Return the unread chat message count for a given proxy config. 
 	/// - Returns: The unread chat message count. 
-	/// - deprecated: 06/04/2020 Use ``Account`` object instead 
+	/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 	@available(*, deprecated)
 	public var unreadChatMessageCount: Int
 	{
@@ -39318,10 +40779,10 @@ public class ProxyConfig : LinphoneObject
 	}
 		
 	/// Assign a user pointer to the proxy config. 
-	/// - Parameter userData: The user pointer to associate with the proxy config.   
+	/// - Parameter userData: The user pointer to associate with the proxy config.    
 	
 	/// Retrieve the user pointer associated with the proxy config. 
-	/// - Returns: The user pointer associated with the proxy config.   
+	/// - Returns: The user pointer associated with the proxy config.    
 	public var userData: UnsafeMutableRawPointer?
 	{
 	
@@ -39339,7 +40800,7 @@ public class ProxyConfig : LinphoneObject
 	
 	/// Commits modification made to the proxy configuration. 
 	/// - Returns: 0 if successful, -1 otherwise 
-	/// - deprecated: 06/04/2020 Use ``Account`` object instead 
+	/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 	@available(*, deprecated)
 	public func done() throws 
 	{
@@ -39356,7 +40817,7 @@ public class ProxyConfig : LinphoneObject
 	/// ``edit()`` before doing any attempts to modify proxy configuration (such as
 	/// identity, proxy address and so on). Once the modifications are done, then the
 	/// application must call ``done()`` to commit the changes. 
-	/// - deprecated: 06/04/2020 Use ``Account`` object instead 
+	/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 	@available(*, deprecated)
 	public func edit() 
 	{
@@ -39368,8 +40829,8 @@ public class ProxyConfig : LinphoneObject
 	/// Find authentication info matching proxy config, if any, similarly to
 	/// linphone_core_find_auth_info. 
 	/// - Returns: a ``AuthInfo`` matching proxy config criteria if possible, nil if
-	/// nothing can be found.   
-	/// - deprecated: 06/04/2020 Use ``Account`` object instead 
+	/// nothing can be found.    
+	/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 	@available(*, deprecated)
 	public func findAuthInfo() -> AuthInfo?
 	{
@@ -39385,9 +40846,9 @@ public class ProxyConfig : LinphoneObject
 	
 	/// Obtain the value of a header sent by the server in last answer to REGISTER. 
 	/// - Parameter headerName: the header name for which to fetch corresponding value 
-	///  
-	/// - Returns: the value of the queried header.   
-	/// - deprecated: 06/04/2020 Use ``Account`` object instead 
+	///   
+	/// - Returns: the value of the queried header.    
+	/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 	@available(*, deprecated)
 	public func getCustomHeader(headerName:String) -> String
 	{
@@ -39402,10 +40863,10 @@ public class ProxyConfig : LinphoneObject
 	/// 888-444-222 becomes 888444222 or +33888444222 depending on the ``ProxyConfig``
 	/// object. This function will always generate a normalized username if input is a
 	/// phone number. 
-	/// - Parameter username: the string to parse   
+	/// - Parameter username: the string to parse    
 	/// - Returns: nil if input is an invalid phone number, normalized phone number
-	/// from username input otherwise.      
-	/// - deprecated: 06/04/2020 Use ``Account`` object instead 
+	/// from username input otherwise.       
+	/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 	@available(*, deprecated)
 	public func normalizePhoneNumber(username:String) -> String
 	{
@@ -39419,13 +40880,18 @@ public class ProxyConfig : LinphoneObject
 	
 	
 	
-	/// Normalize a human readable sip uri into a fully qualified LinphoneAddress. 
+	/// Normalize a human readable sip uri into a fully qualified ``Address``. 
 	/// A sip address should look like DisplayName <sip:username@domain:port> .
 	/// Basically this function performs the following tasks
+	/// -if a phone number is entered, prepend country prefix and eventually escape the
+	/// '+' by 00 of the proxy config.
+	/// -if no domain part is supplied, append the domain name of the proxy config.
+	/// Returns nil if no proxy is provided at this point.
+	/// -if no sip: is present, prepend it.
 	/// The result is a syntactically correct SIP address. 
-	/// - Parameter username: the string to parse   
-	/// - Returns: nil if invalid input, normalized sip address otherwise.     
-	/// - deprecated: 06/04/2020 Use ``Account`` object instead 
+	/// - Parameter username: the string to parse    
+	/// - Returns: nil if invalid input, normalized sip address otherwise.       
+	/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 	@available(*, deprecated)
 	public func normalizeSipUri(username:String) -> Address?
 	{
@@ -39446,7 +40912,7 @@ public class ProxyConfig : LinphoneObject
 	/// linphone_core_set_network_reachable(lc,true) will always request the proxy
 	/// configs to refresh their registrations. The refreshing operations can be
 	/// resumed with ``refreshRegister()``. 
-	/// - deprecated: 06/04/2020 Use ``Account`` object instead 
+	/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 	@available(*, deprecated)
 	public func pauseRegister() 
 	{
@@ -39458,7 +40924,7 @@ public class ProxyConfig : LinphoneObject
 	/// Refresh a proxy registration. 
 	/// This is useful if for example you resuming from suspend, thus IP address may
 	/// have changed. 
-	/// - deprecated: 06/04/2020 Use ``Account`` object instead 
+	/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 	@available(*, deprecated)
 	public func refreshRegister() 
 	{
@@ -39468,9 +40934,9 @@ public class ProxyConfig : LinphoneObject
 	
 	
 	/// Set the value of a custom header sent to the server in REGISTERs request. 
-	/// - Parameter headerName: the header name   
-	/// - Parameter headerValue: the header's value   
-	/// - deprecated: 06/04/2020 Use ``Account`` object instead 
+	/// - Parameter headerName: the header name    
+	/// - Parameter headerValue: the header's value    
+	/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 	@available(*, deprecated)
 	public func setCustomHeader(headerName:String, headerValue:String?) 
 	{
@@ -39505,10 +40971,10 @@ public class PushNotificationConfig : LinphoneObject
 	/// Sets the bundle_identifier for "contact uri parameter". 
 	/// It's not necessary if param is set. See ``setParam(param:)``. 
 	/// - Parameter bundleIdentifier: The new bundle_identifier set for push
-	/// notification config.   
+	/// notification config.    
 	
 	/// Gets the app's bundle identifier for "contact uri parameter". 
-	/// - Returns: The app's bundle identifier if set, nil otherwise.   
+	/// - Returns: The app's bundle identifier if set, nil otherwise.    
 	public var bundleIdentifier: String?
 	{
 	
@@ -39530,10 +40996,10 @@ public class PushNotificationConfig : LinphoneObject
 		
 	/// Sets the call_snd for "contact uri parameter", specific for remote push
 	/// notification. 
-	/// - Parameter callSnd: The new call_snd set for push notification config.   
+	/// - Parameter callSnd: The new call_snd set for push notification config.    
 	
 	/// Gets the call_snd for "contact uri parameter". 
-	/// - Returns: The call_snd, default value "notes_of_the_optimistic.caf".   
+	/// - Returns: The call_snd, default value "notes_of_the_optimistic.caf".    
 	public var callSnd: String
 	{
 	
@@ -39552,10 +41018,10 @@ public class PushNotificationConfig : LinphoneObject
 		
 	/// Sets the call_str for "contact uri parameter", specific for remote push
 	/// notification. 
-	/// - Parameter callStr: The new call_str set for push notification config.   
+	/// - Parameter callStr: The new call_str set for push notification config.    
 	
 	/// Gets the call_str for "contact uri parameter". 
-	/// - Returns: The call_str, default value "IC_MSG".   
+	/// - Returns: The call_str, default value "IC_MSG".    
 	public var callStr: String
 	{
 	
@@ -39575,10 +41041,10 @@ public class PushNotificationConfig : LinphoneObject
 	/// Sets the group_chat_str for "contact uri parameter", specific for remote push
 	/// notification. 
 	/// - Parameter groupChatStr: The new group_chat_str set for push notification
-	/// config.   
+	/// config.    
 	
 	/// Gets the groupchat_str for "contact uri parameter". 
-	/// - Returns: The groupchat_str, default value "GC_MSG".   
+	/// - Returns: The groupchat_str, default value "GC_MSG".    
 	public var groupChatStr: String
 	{
 	
@@ -39597,10 +41063,10 @@ public class PushNotificationConfig : LinphoneObject
 		
 	/// Sets the msg_snd for "contact uri parameter", specific for remote push
 	/// notification. 
-	/// - Parameter msgSnd: The new msg_snd set for push notification config.   
+	/// - Parameter msgSnd: The new msg_snd set for push notification config.    
 	
 	/// Gets the msg_snd for "contact uri parameter". 
-	/// - Returns: The msg_snd, default value "msg.caf".   
+	/// - Returns: The msg_snd, default value "msg.caf".    
 	public var msgSnd: String
 	{
 	
@@ -39619,10 +41085,10 @@ public class PushNotificationConfig : LinphoneObject
 		
 	/// Sets the msg_str for "contact uri parameter", specific for remote push
 	/// notification. 
-	/// - Parameter msgStr: The new msg_str set for push notification config.   
+	/// - Parameter msgStr: The new msg_str set for push notification config.    
 	
 	/// Gets the msg_str for "contact uri parameter". 
-	/// - Returns: The msg_str, default value "IM_MSG".   
+	/// - Returns: The msg_str, default value "IM_MSG".    
 	public var msgStr: String
 	{
 	
@@ -39641,10 +41107,10 @@ public class PushNotificationConfig : LinphoneObject
 		
 	/// Sets the param for "contact uri parameter". 
 	/// If it's not set, "team_id.bundle_identifier.services" will be used. 
-	/// - Parameter param: The new param set for push notification config.   
+	/// - Parameter param: The new param set for push notification config.    
 	
 	/// Gets the param for "contact uri parameter". 
-	/// - Returns: The param if set, nil otherwise.   
+	/// - Returns: The param if set, nil otherwise.    
 	public var param: String?
 	{
 	
@@ -39666,10 +41132,10 @@ public class PushNotificationConfig : LinphoneObject
 		
 	/// Sets the prid for "contact uri parameter". 
 	/// If it's not set, "voip_token&remote_token" will be used. 
-	/// - Parameter prid: The new prid set for push notification config.   
+	/// - Parameter prid: The new prid set for push notification config.    
 	
 	/// Gets the prid for "contact uri parameter". 
-	/// - Returns: The prid if set, nil otherwise.   
+	/// - Returns: The prid if set, nil otherwise.    
 	public var prid: String?
 	{
 	
@@ -39692,10 +41158,10 @@ public class PushNotificationConfig : LinphoneObject
 	/// Sets the provider for "contact uri parameter". 
 	/// If not set, the default value will be used for "contact uri
 	/// parameter", "firebase" for android or "apns" for ios. 
-	/// - Parameter provider: The new provider set for push notification config.   
+	/// - Parameter provider: The new provider set for push notification config.    
 	
 	/// Gets the provider for "contact uri parameter". 
-	/// - Returns: The provider if set, nil otherwise.   
+	/// - Returns: The provider if set, nil otherwise.    
 	public var provider: String?
 	{
 	
@@ -39727,7 +41193,7 @@ public class PushNotificationConfig : LinphoneObject
 	/// will be sent. If specified the value must be in [0;30] If not specified
 	/// 'pn-call-remote-push-interval' will not be added to Contact header. 
 	/// - Parameter remotePushInterval: The new remote push interval set for push
-	/// notification config.   
+	/// notification config.    
 	
 	public var remotePushInterval: String = ""
 	{
@@ -39742,10 +41208,10 @@ public class PushNotificationConfig : LinphoneObject
 	/// notification. 
 	/// It's not necessary if prid is set. See ``setPrid(prid:)``. 
 	/// - Parameter remoteToken: The new remote_token set for push notification config.
-	///   
+	///    
 	
 	/// Gets the remote token for "contact uri parameter". 
-	/// - Returns: The remote token if set, nil otherwise.   
+	/// - Returns: The remote token if set, nil otherwise.    
 	public var remoteToken: String?
 	{
 	
@@ -39767,10 +41233,10 @@ public class PushNotificationConfig : LinphoneObject
 		
 	/// Sets the team id for "contact uri parameter". 
 	/// It's not necessary if param is set. See ``setParam(param:)``. 
-	/// - Parameter teamId: The new team id set for push notification config.   
+	/// - Parameter teamId: The new team id set for push notification config.    
 	
 	/// Gets the team id for "contact uri parameter". 
-	/// - Returns: The team id if set, nil otherwise.   
+	/// - Returns: The team id if set, nil otherwise.    
 	public var teamId: String?
 	{
 	
@@ -39793,10 +41259,10 @@ public class PushNotificationConfig : LinphoneObject
 	/// Sets the voip_token for "contact uri parameter", specific for voip push
 	/// notification. 
 	/// It's not necessary if prid is set. See ``setPrid(prid:)``. 
-	/// - Parameter voipToken: The new voip_token set for push notification config.   
+	/// - Parameter voipToken: The new voip_token set for push notification config.    
 	
 	/// Gets the voip token for "contact uri parameter". 
-	/// - Returns: The voip token if set, nil otherwise.   
+	/// - Returns: The voip token if set, nil otherwise.    
 	public var voipToken: String?
 	{
 	
@@ -39819,7 +41285,7 @@ public class PushNotificationConfig : LinphoneObject
 	
 	
 	/// Instantiate a new push notification parameters with values from source. 
-	/// - Returns: The newly created ``PushNotificationConfig`` object.   
+	/// - Returns: The newly created ``PushNotificationConfig`` object.    
 	public func clone() -> PushNotificationConfig?
 	{
 		let cPointer = linphone_push_notification_config_clone(cPtr)
@@ -39834,8 +41300,9 @@ public class PushNotificationConfig : LinphoneObject
 	
 	
 	/// Checks if two Push Notification Configurations are identical. 
-	/// - Parameter otherConfig: The ``PushNotificationConfig`` object to compare to.   
-	/// - Returns: True only if the two configurations are identical.   
+	/// - Parameter otherConfig: The ``PushNotificationConfig`` object to compare to.  
+	///  
+	/// - Returns: True only if the two configurations are identical.    
 	public func isEqual(otherConfig:PushNotificationConfig) -> Bool
 	{
 		return linphone_push_notification_config_is_equal(cPtr, otherConfig.cPtr) != 0
@@ -39867,7 +41334,7 @@ public class PushNotificationMessage : LinphoneObject
 	
 	
 	/// Gets the call id. 
-	/// - Returns: The call id.   
+	/// - Returns: The call id.    
 	public var callId: String
 	{
 	
@@ -39880,7 +41347,7 @@ public class PushNotificationMessage : LinphoneObject
 		
 	
 	/// Gets the from address. 
-	/// - Returns: The from ``Address``.   
+	/// - Returns: The from ``Address``.    
 	public var fromAddr: Address?
 	{
 	
@@ -39951,7 +41418,7 @@ public class PushNotificationMessage : LinphoneObject
 		
 	
 	/// Gets the local address. 
-	/// - Returns: The local ``Address``.   
+	/// - Returns: The local ``Address``.    
 	public var localAddr: Address?
 	{
 	
@@ -39966,7 +41433,7 @@ public class PushNotificationMessage : LinphoneObject
 		
 	
 	/// Gets the peer address. 
-	/// - Returns: The peer ``Address``.   
+	/// - Returns: The peer ``Address``.    
 	public var peerAddr: Address?
 	{
 	
@@ -39981,7 +41448,7 @@ public class PushNotificationMessage : LinphoneObject
 		
 	
 	/// Gets the reaction content. 
-	/// - Returns: The reaction content or nil.   
+	/// - Returns: The reaction content or nil.    
 	public var reactionContent: String?
 	{
 	
@@ -39997,7 +41464,7 @@ public class PushNotificationMessage : LinphoneObject
 		
 	
 	/// Gets the subject. 
-	/// - Returns: The subject or nil.   
+	/// - Returns: The subject or nil.    
 	public var subject: String?
 	{
 	
@@ -40013,7 +41480,7 @@ public class PushNotificationMessage : LinphoneObject
 		
 	
 	/// Gets the text content. 
-	/// - Returns: The text content or nil.   
+	/// - Returns: The text content or nil.    
 	public var textContent: String?
 	{
 	
@@ -40084,10 +41551,10 @@ public class Range : LinphoneObject
 	}
 		
 	/// Sets the user data in the ``Range`` object. 
-	/// - Parameter userData: the user data   
+	/// - Parameter userData: the user data    
 	
 	/// Gets the user data in the ``Range`` object. 
-	/// - Returns: the user data.   
+	/// - Returns: the user data.    
 	public var userData: UnsafeMutableRawPointer?
 	{
 	
@@ -40157,7 +41624,7 @@ public class Recorder : LinphoneObject
 		
 	
 	/// Gets the file used for recording. 
-	/// - Returns: the file used for the recording if any.   
+	/// - Returns: the file used for the recording if any.    
 	public var file: String?
 	{
 	
@@ -40172,10 +41639,10 @@ public class Recorder : LinphoneObject
 	}
 		
 	/// Sets the ``RecorderParams`` object. 
-	/// - Parameter params: The ``RecorderParams`` object to set.   
+	/// - Parameter params: The ``RecorderParams`` object to set.    
 	
 	/// Retrieves the ``RecorderParams`` object. 
-	/// - Returns: The ``RecorderParams`` object.   
+	/// - Returns: The ``RecorderParams`` object.    
 	public var params: RecorderParams?
 	{
 	
@@ -40205,10 +41672,10 @@ public class Recorder : LinphoneObject
 	}
 		
 	/// Sets the user data. 
-	/// - Parameter userData: The user data to set.   
+	/// - Parameter userData: The user data to set.    
 	
 	/// Retrieves the user data. 
-	/// - Returns: the user data to retrieve.   
+	/// - Returns: the user data to retrieve.    
 	public var userData: UnsafeMutableRawPointer?
 	{
 	
@@ -40235,7 +41702,7 @@ public class Recorder : LinphoneObject
 	/// Create a ``Content`` object from the recording, for example to send it within a
 	/// ``ChatMessage``. 
 	/// - Warning: Recorder must be in Closed state! 
-	/// - Returns: the ``Content`` matching the recording, or nil.   
+	/// - Returns: the ``Content`` matching the recording, or nil.    
 	public func createContent() throws -> Content
 	{
 		let cPointer = linphone_recorder_create_content(cPtr)
@@ -40252,7 +41719,7 @@ public class Recorder : LinphoneObject
 	/// Opens a file for recording. 
 	/// If the file already exists, it will open in append mode, otherwise it is
 	/// created.
-	/// - Parameter file: The path to the file to open.   
+	/// - Parameter file: The path to the file to open.    
 	public func open(file:String) throws 
 	{
 		let exception_result = linphone_recorder_open(cPtr, file)
@@ -40305,10 +41772,10 @@ public class RecorderParams : LinphoneObject
 	}
 	
 	/// Set the ``AudioDevice`` object. 
-	/// - Parameter device: The ``AudioDevice`` object to set.   
+	/// - Parameter device: The ``AudioDevice`` object to set.    
 	
 	/// Retrieve the ``AudioDevice`` object. 
-	/// - Returns: the ``AudioDevice`` object.   
+	/// - Returns: the ``AudioDevice`` object.    
 	public var audioDevice: AudioDevice?
 	{
 	
@@ -40327,13 +41794,13 @@ public class RecorderParams : LinphoneObject
 		}
 	}
 		
-	/// Set the #LinphoneRecorderFileFormat. 
+	/// Set the ``MediaFileFormat``. 
 	/// - See also: ``Core/getSupportedFileFormatsList()`` for information about
 	/// supported file formats. 
-	/// - Parameter format: The #LinphoneRecorderFileFormat to set. 
+	/// - Parameter format: The ``MediaFileFormat`` to set. 
 	
-	/// Retrieves the #LinphoneRecorderFileFormat. 
-	/// - Returns: the #LinphoneRecorderFileFormat. 
+	/// Retrieves the ``MediaFileFormat``. 
+	/// - Returns: the ``MediaFileFormat``. 
 	public var fileFormat: MediaFileFormat
 	{
 	
@@ -40348,10 +41815,10 @@ public class RecorderParams : LinphoneObject
 	}
 		
 	/// Set the video codec. 
-	/// - Parameter videoCodec: The video codec to set.   
+	/// - Parameter videoCodec: The video codec to set.    
 	
 	/// Retrieves the video codec. 
-	/// - Returns: the video codec.   
+	/// - Returns: the video codec.    
 	public var videoCodec: String?
 	{
 	
@@ -40372,10 +41839,10 @@ public class RecorderParams : LinphoneObject
 	}
 		
 	/// Set the webcam name. 
-	/// - Parameter webcamName: The webcam name to set.   
+	/// - Parameter webcamName: The webcam name to set.    
 	
 	/// Retrieves the webcam name. 
-	/// - Returns: the webcam name.   
+	/// - Returns: the webcam name.    
 	public var webcamName: String?
 	{
 	
@@ -40398,10 +41865,10 @@ public class RecorderParams : LinphoneObject
 	/// Sets the window id to use to display the camera preview. 
 	/// - See also: linphone_core_set_native_window_id() for a general discussion about
 	/// window ID types. 
-	/// - Parameter windowId: The window id to set.   
+	/// - Parameter windowId: The window id to set.    
 	
 	/// Retrieves the window id used to display the camera preview. 
-	/// - Returns: the window id.   
+	/// - Returns: the window id.    
 	public var windowId: UnsafeMutableRawPointer?
 	{
 	
@@ -40418,7 +41885,7 @@ public class RecorderParams : LinphoneObject
 	
 	
 	/// Clone a ``RecorderParams`` object. 
-	/// - Returns: the cloned ``RecorderParams`` object.   
+	/// - Returns: the cloned ``RecorderParams`` object.    
 	public func clone() -> RecorderParams?
 	{
 		let cPointer = linphone_recorder_params_clone(cPtr)
@@ -40452,24 +41919,24 @@ public class RemoteContactDirectory : LinphoneObject
 	}
 
 	
-	///Enum describing the type of #RemoteContactDirectory (currently CardDAV or
+	///Enum describing the type of ``RemoteContactDirectory`` (currently CardDAV or
 	///LDAP). 
 	public enum Kind:Int
 	{
 		
-		/// Remote contact directory will use #CardDavParams. 
+		/// Remote contact directory will use ``CardDavParams``. 
 		case CardDav = 0
-		/// Remote contact directory will use #LdapParams. 
+		/// Remote contact directory will use ``LdapParams``. 
 		case Ldap = 1
 	}
 	
 	
-	/// Gets the CardDAV params if ``getType()`` returns CardDAV. 
-	/// - Returns: the ``CardDavParams`` or nil if not of CardDAV type.   
-	public var cardDavParams: CardDavParams?
+	/// Gets the CardDAV remote contact directory if ``getType()`` returns CardDAV. 
+	/// - Returns: the ``CardDavParams`` or nil if not of CardDAV type.    
+	public var cardDavRemoteContactDirectory: CardDavParams?
 	{
 	
-						let cPointer = linphone_remote_contact_directory_get_card_dav_params(cPtr)
+						let cPointer = linphone_remote_contact_directory_get_card_dav_remote_contact_directory(cPtr)
 			if (cPointer == nil) {
 				return nil
 			}
@@ -40478,13 +41945,33 @@ public class RemoteContactDirectory : LinphoneObject
 
 	}
 		
+	/// Set the delay between each search in milliseconds. 
+	/// Only available for ``Ldap`` Default value : 500.
+	/// - Parameter milliseconds: The timeout in milliseconds. 
 	
-	/// Gets the LDAP params if ``getType()`` returns LDAP. 
-	/// - Returns: the ``LdapParams`` or nil if not of LDAP type.   
-	public var ldapParams: LdapParams?
+	/// Get the delay between each search in milliseconds. 
+	/// Only available for ``Ldap`` 
+	/// - Returns: The delay in milliseconds. 
+	public var delay: Int
 	{
 	
-						let cPointer = linphone_remote_contact_directory_get_ldap_params(cPtr)
+		get
+		{ 
+						return Int(linphone_remote_contact_directory_get_delay(cPtr))
+		}
+		set
+		{
+			linphone_remote_contact_directory_set_delay(cPtr, CInt(newValue))
+		}
+	}
+		
+	
+	/// Gets the LDAP remote contact directory if ``getType()`` returns LDAP. 
+	/// - Returns: the ``LdapParams`` or nil if not of LDAP type.    
+	public var ldapRemoteContactDirectory: LdapParams?
+	{
+	
+						let cPointer = linphone_remote_contact_directory_get_ldap_remote_contact_directory(cPtr)
 			if (cPointer == nil) {
 				return nil
 			}
@@ -40533,10 +42020,10 @@ public class RemoteContactDirectory : LinphoneObject
 	}
 		
 	/// Sets the server URL to use to reach the remote contact directory server. 
-	/// - Parameter serverUrl: the remote contact directory server URL.   
+	/// - Parameter serverUrl: the remote contact directory server URL.    
 	
 	/// Gets the configured remote contact directory server URL. 
-	/// - Returns: the remote contact directory server URL.   
+	/// - Returns: the remote contact directory server URL.    
 	public var serverUrl: String?
 	{
 	
@@ -40585,7 +42072,27 @@ public class RemoteContactDirectory : LinphoneObject
 						return RemoteContactDirectory.Kind(rawValue: Int(linphone_remote_contact_directory_get_type(cPtr).rawValue))!
 
 	}
+		
+	
+	
+	/// Enable this remote contact directory, ie make it usable for searches with the
+	/// ``MagicSearch`` object. 
+	/// - Parameter value: A boolean. 
+	public func enable(value:Bool) 
+	{
+		linphone_remote_contact_directory_enable(cPtr, value==true ? 1:0)
 	}
+	
+	
+	
+	/// Returns whether this remote contact directory is enabled, i.e. 
+	/// usable for searches with the ``MagicSearch`` . 
+	/// - Returns: a boolean. 
+	public func enabled() -> Bool
+	{
+		return linphone_remote_contact_directory_enabled(cPtr) != 0
+	}
+}
 
 
 /// The ``SearchResult`` object represents a result of a search initiated from a
@@ -40609,7 +42116,7 @@ public class SearchResult : LinphoneObject
 	
 	
 	/// Gets the address of the search result if any. 
-	/// - Returns: The associed ``Address`` or nil.   
+	/// - Returns: The associed ``Address`` or nil.    
 	public var address: Address?
 	{
 	
@@ -40634,7 +42141,7 @@ public class SearchResult : LinphoneObject
 		
 	
 	/// Gets the friend of the search result if any. 
-	/// - Returns: The associated ``Friend`` or nil.   
+	/// - Returns: The associated ``Friend`` or nil.    
 	public var friend: Friend?
 	{
 	
@@ -40649,7 +42156,7 @@ public class SearchResult : LinphoneObject
 		
 	
 	/// Gets the phone number of the search result if any. 
-	/// - Returns: The associed phone number or nil.   
+	/// - Returns: The associed phone number or nil.    
 	public var phoneNumber: String?
 	{
 	
@@ -40691,6 +42198,16 @@ public class SearchResult : LinphoneObject
 	public func hasCapability(capability:Friend.Capability) -> Bool
 	{
 		return linphone_search_result_has_capability(cPtr, LinphoneFriendCapability(rawValue: CUnsignedInt(capability.rawValue))) != 0
+	}
+	
+	
+	
+	/// Returns whether or not the search result has the given source flag. 
+	/// - Parameter source: the ``MagicSearch.Source`` to check 
+	/// - Returns: true if it has the source flag, false otherwise. 
+	public func hasSourceFlag(source:MagicSearch.Source) -> Bool
+	{
+		return linphone_search_result_has_source_flag(cPtr, LinphoneMagicSearchSource(rawValue: CInt(source.rawValue))) != 0
 	}
 }
 
@@ -40887,10 +42404,10 @@ public class Transports : LinphoneObject
 	}
 		
 	/// Sets the user data in the ``Transports`` object. 
-	/// - Parameter userData: the user data   
+	/// - Parameter userData: the user data    
 	
 	/// Gets the user data in the ``Transports`` object. 
-	/// - Returns: the user data.   
+	/// - Returns: the user data.    
 	public var userData: UnsafeMutableRawPointer?
 	{
 	
@@ -40951,11 +42468,11 @@ public class Tunnel : LinphoneObject
 		
 	/// Set the domain. 
 	/// Required for tunnel TLS client authentification. Certificate Altname or CName
-	/// should be sip:<tunnel_username><tunnel_domain> 
-	/// - Parameter domain: The domain.   
+	/// should be sip:<tunnel_username>\<tunnel_domain> 
+	/// - Parameter domain: The domain.    
 	
 	/// Get the domain. 
-	/// - Returns: The domain.   
+	/// - Returns: The domain.    
 	public var domain: String?
 	{
 	
@@ -41020,7 +42537,7 @@ public class Tunnel : LinphoneObject
 		
 	
 	/// Get added servers. 
-	/// - Returns: The list of servers.    
+	/// - Returns: The list of servers.      
 	public var servers: [TunnelConfig]
 	{
 	
@@ -41058,11 +42575,11 @@ public class Tunnel : LinphoneObject
 		
 	/// Set the username. 
 	/// Required for tunnel TLS client authentification. Certificate Altname or CName
-	/// should be sip:<tunnel_username><tunnel_domain> 
-	/// - Parameter username: The username.   
+	/// should be sip:<tunnel_username>\<tunnel_domain> 
+	/// - Parameter username: The username.    
 	
 	/// Get the username. 
-	/// - Returns: The username.   
+	/// - Returns: The username.    
 	public var username: String?
 	{
 	
@@ -41085,7 +42602,7 @@ public class Tunnel : LinphoneObject
 	
 	
 	/// Add a tunnel server configuration. 
-	/// - Parameter tunnelConfig: ``TunnelConfig`` object   
+	/// - Parameter tunnelConfig: ``TunnelConfig`` object    
 	public func addServer(tunnelConfig:TunnelConfig) 
 	{
 		linphone_tunnel_add_server(cPtr, tunnelConfig.cPtr)
@@ -41124,7 +42641,7 @@ public class Tunnel : LinphoneObject
 	
 	
 	/// Remove a tunnel server configuration. 
-	/// - Parameter tunnelConfig: ``TunnelConfig`` object   
+	/// - Parameter tunnelConfig: ``TunnelConfig`` object    
 	public func removeServer(tunnelConfig:TunnelConfig) 
 	{
 		linphone_tunnel_remove_server(cPtr, tunnelConfig.cPtr)
@@ -41133,12 +42650,12 @@ public class Tunnel : LinphoneObject
 	
 	
 	/// Set an optional http proxy to go through when connecting to tunnel server. 
-	/// - Parameter host: http proxy host   
+	/// - Parameter host: http proxy host    
 	/// - Parameter port: http proxy port 
 	/// - Parameter username: Optional http proxy username if the proxy request
 	/// authentication. Currently only basic authentication is supported. Use nil if
-	/// not needed.   
-	/// - Parameter passwd: Optional http proxy password. Use nil if not needed.   
+	/// not needed.    
+	/// - Parameter passwd: Optional http proxy password. Use nil if not needed.    
 	public func setHttpProxy(host:String, port:Int, username:String?, passwd:String?) 
 	{
 		linphone_tunnel_set_http_proxy(cPtr, host, CInt(port), username, passwd)
@@ -41147,8 +42664,8 @@ public class Tunnel : LinphoneObject
 	
 	
 	/// Set authentication info for the http proxy. 
-	/// - Parameter username: User name   
-	/// - Parameter passwd: Password   
+	/// - Parameter username: User name    
+	/// - Parameter passwd: Password    
 	public func setHttpProxyAuthInfo(username:String?, passwd:String?) 
 	{
 		linphone_tunnel_set_http_proxy_auth_info(cPtr, username, passwd)
@@ -41194,10 +42711,10 @@ public class TunnelConfig : LinphoneObject
 	}
 		
 	/// Set the IP address or hostname of the tunnel server. 
-	/// - Parameter host: The tunnel server IP address or hostname.   
+	/// - Parameter host: The tunnel server IP address or hostname.    
 	
 	/// Get the IP address or hostname of the tunnel server. 
-	/// - Returns: The tunnel server IP address or hostname.   
+	/// - Returns: The tunnel server IP address or hostname.    
 	public var host: String?
 	{
 	
@@ -41219,11 +42736,11 @@ public class TunnelConfig : LinphoneObject
 		
 	/// Set the IP address or hostname of the second tunnel server when using dual
 	/// tunnel client. 
-	/// - Parameter host: The tunnel server IP address or hostname.   
+	/// - Parameter host: The tunnel server IP address or hostname.    
 	
 	/// Get the IP address or hostname of the second tunnel server when using dual
 	/// tunnel client. 
-	/// - Returns: The tunnel server IP address or hostname.   
+	/// - Returns: The tunnel server IP address or hostname.    
 	public var host2: String?
 	{
 	
@@ -41304,10 +42821,10 @@ public class TunnelConfig : LinphoneObject
 	}
 		
 	/// Store a user data in the tunnel config object. 
-	/// - Parameter userData: the user data.   
+	/// - Parameter userData: the user data.    
 	
 	/// Retrieve user data from the tunnel config. 
-	/// - Returns: the user data.   
+	/// - Returns: the user data.    
 	public var userData: UnsafeMutableRawPointer?
 	{
 	
@@ -41342,10 +42859,10 @@ public class Vcard : LinphoneObject
 	}
 	
 	/// Sets the eTAG of the vCard. 
-	/// - Parameter etag: the eTAG.   
+	/// - Parameter etag: the eTAG.    
 	
 	/// Gets the eTag of the vCard. 
-	/// - Returns: the eTag of the vCard in the CardDAV server, otherwise nil.   
+	/// - Returns: the eTag of the vCard in the CardDAV server, otherwise nil.    
 	public var etag: String?
 	{
 	
@@ -41366,11 +42883,11 @@ public class Vcard : LinphoneObject
 	}
 		
 	/// Sets the family name in the N attribute of the vCard. 
-	/// - Parameter name: the family name to set for the vCard   
+	/// - Parameter name: the family name to set for the vCard    
 	
 	/// Returns the family name in the N attribute of the vCard, or nil if it isn't set
 	/// yet. 
-	/// - Returns: the family name of the vCard, or nil   
+	/// - Returns: the family name of the vCard, or nil    
 	public var familyName: String?
 	{
 	
@@ -41391,10 +42908,10 @@ public class Vcard : LinphoneObject
 	}
 		
 	/// Sets the FN attribute of the vCard (which is mandatory). 
-	/// - Parameter name: the display name to set for the vCard   
+	/// - Parameter name: the display name to set for the vCard    
 	
 	/// Returns the FN attribute of the vCard, or nil if it isn't set yet. 
-	/// - Returns: the display name of the vCard, or nil.   
+	/// - Returns: the display name of the vCard, or nil.    
 	public var fullName: String?
 	{
 	
@@ -41415,11 +42932,11 @@ public class Vcard : LinphoneObject
 	}
 		
 	/// Sets the given name in the N attribute of the vCard. 
-	/// - Parameter name: the given name to set for the vCard   
+	/// - Parameter name: the given name to set for the vCard    
 	
 	/// Returns the given name in the N attribute of the vCard, or nil if it isn't set
 	/// yet. 
-	/// - Returns: the given name of the vCard, or nil   
+	/// - Returns: the given name of the vCard, or nil    
 	public var givenName: String?
 	{
 	
@@ -41440,10 +42957,10 @@ public class Vcard : LinphoneObject
 	}
 		
 	/// Fills the Title field of the vCard. 
-	/// - Parameter jobTitle: the job title.   
+	/// - Parameter jobTitle: the job title.    
 	
 	/// Gets the Title of the vCard. 
-	/// - Returns: the Title of the vCard or nil.   
+	/// - Returns: the Title of the vCard or nil.    
 	public var jobTitle: String?
 	{
 	
@@ -41464,10 +42981,10 @@ public class Vcard : LinphoneObject
 	}
 		
 	/// Fills the Organization field of the vCard. 
-	/// - Parameter organization: the Organization.   
+	/// - Parameter organization: the Organization.    
 	
 	/// Gets the Organization of the vCard. 
-	/// - Returns: the Organization of the vCard or nil.   
+	/// - Returns: the Organization of the vCard or nil.    
 	public var organization: String?
 	{
 	
@@ -41489,7 +43006,7 @@ public class Vcard : LinphoneObject
 		
 	
 	/// Returns the list of phone numbers in the vCard (all the TEL attributes) or nil. 
-	/// - Returns: The phone numbers as string.      
+	/// - Returns: The phone numbers as string.         
 	public var phoneNumbers: [String]
 	{
 	
@@ -41507,7 +43024,7 @@ public class Vcard : LinphoneObject
 		
 	
 	/// Returns the list of phone numbers in the vCard (all the TEL attributes) or nil. 
-	/// - Returns: The phone numbers as ``FriendPhoneNumber``.      
+	/// - Returns: The phone numbers as ``FriendPhoneNumber``.         
 	public var phoneNumbersWithLabel: [FriendPhoneNumber]
 	{
 	
@@ -41529,7 +43046,7 @@ public class Vcard : LinphoneObject
 	/// as ``removePhoto()``.    
 	
 	/// Returns the first PHOTO property or nil. 
-	/// - Returns: The picture URI as string or nil if none has been set.   
+	/// - Returns: The picture URI as string or nil if none has been set.    
 	public var photo: String?
 	{
 	
@@ -41552,7 +43069,7 @@ public class Vcard : LinphoneObject
 	
 	/// Returns the list of SIP addresses in the vCard (all the IMPP attributes that
 	/// has an URI value starting by "sip:") or nil. 
-	/// - Returns: The SIP addresses.    
+	/// - Returns: The SIP addresses.      
 	public var sipAddresses: [Address]
 	{
 	
@@ -41569,10 +43086,10 @@ public class Vcard : LinphoneObject
 	}
 		
 	/// Sets the unique ID of the vCard. 
-	/// - Parameter uid: the unique id   
+	/// - Parameter uid: the unique id    
 	
 	/// Gets the UID of the vCard. 
-	/// - Returns: the UID of the vCard, otherwise nil.   
+	/// - Returns: the UID of the vCard, otherwise nil.    
 	public var uid: String?
 	{
 	
@@ -41593,10 +43110,10 @@ public class Vcard : LinphoneObject
 	}
 		
 	/// Sets the URL of the vCard. 
-	/// - Parameter url: the URL.   
+	/// - Parameter url: the URL.    
 	
 	/// Gets the URL of the vCard. 
-	/// - Returns: the URL of the vCard in the CardDAV server, otherwise nil.   
+	/// - Returns: the URL of the vCard in the CardDAV server, otherwise nil.    
 	public var url: String?
 	{
 	
@@ -41619,8 +43136,8 @@ public class Vcard : LinphoneObject
 	
 	
 	/// Adds an extended property to the vCard. 
-	/// - Parameter name: the name of the extended property to add   
-	/// - Parameter value: the value of the extended property to add   
+	/// - Parameter name: the name of the extended property to add    
+	/// - Parameter value: the value of the extended property to add    
 	public func addExtendedProperty(name:String, value:String) 
 	{
 		linphone_vcard_add_extended_property(cPtr, name, value)
@@ -41629,7 +43146,7 @@ public class Vcard : LinphoneObject
 	
 	
 	/// Adds a phone number in the vCard, using the TEL property. 
-	/// - Parameter phone: the phone number to add   
+	/// - Parameter phone: the phone number to add    
 	public func addPhoneNumber(phone:String) 
 	{
 		linphone_vcard_add_phone_number(cPtr, phone)
@@ -41638,7 +43155,7 @@ public class Vcard : LinphoneObject
 	
 	
 	/// Adds a ``FriendPhoneNumber`` in the vCard, using the TEL property. 
-	/// - Parameter phoneNumber: the ``FriendPhoneNumber`` to add   
+	/// - Parameter phoneNumber: the ``FriendPhoneNumber`` to add    
 	public func addPhoneNumberWithLabel(phoneNumber:FriendPhoneNumber) 
 	{
 		linphone_vcard_add_phone_number_with_label(cPtr, phoneNumber.cPtr)
@@ -41647,7 +43164,7 @@ public class Vcard : LinphoneObject
 	
 	
 	/// Adds a SIP address in the vCard, using the IMPP property. 
-	/// - Parameter sipAddress: the SIP address to add   
+	/// - Parameter sipAddress: the SIP address to add    
 	public func addSipAddress(sipAddress:String) 
 	{
 		linphone_vcard_add_sip_address(cPtr, sipAddress)
@@ -41655,8 +43172,8 @@ public class Vcard : LinphoneObject
 	
 	
 	
-	/// Returns the vCard4 representation of the LinphoneVcard. 
-	/// - Returns: a const char * that represents the vCard.   
+	/// Returns the vCard4 representation of the ``Vcard``. 
+	/// - Returns: a const char * that represents the vCard.    
 	public func asVcard4String() -> String
 	{
 		let cstr = linphone_vcard_as_vcard4_string(cPtr)
@@ -41666,9 +43183,9 @@ public class Vcard : LinphoneObject
 	
 	
 	
-	/// Returns the vCard4 representation of the LinphoneVcard, but if a local file is
+	/// Returns the vCard4 representation of the ``Vcard``, but if a local file is
 	/// detected in a PHOTO field, it will be converted to base64. 
-	/// - Returns: a const char * that represents the vCard.   
+	/// - Returns: a const char * that represents the vCard.    
 	public func asVcard4StringWithBase64Picture() -> String
 	{
 		let cstr = linphone_vcard_as_vcard4_string_with_base_64_picture(cPtr)
@@ -41679,7 +43196,7 @@ public class Vcard : LinphoneObject
 	
 	
 	/// Clone a ``Vcard``. 
-	/// - Returns: a new ``Vcard`` object   
+	/// - Returns: a new ``Vcard`` object    
 	public func clone() -> Vcard?
 	{
 		let cPointer = linphone_vcard_clone(cPtr)
@@ -41695,7 +43212,7 @@ public class Vcard : LinphoneObject
 	
 	/// Edits the preferred SIP address in the vCard (or the first one), using the IMPP
 	/// property. 
-	/// - Parameter sipAddress: the new SIP address   
+	/// - Parameter sipAddress: the new SIP address    
 	public func editMainSipAddress(sipAddress:String) 
 	{
 		linphone_vcard_edit_main_sip_address(cPtr, sipAddress)
@@ -41715,8 +43232,8 @@ public class Vcard : LinphoneObject
 	
 	
 	/// Get the vCard extended properties values per property name. 
-	/// - Parameter name: the name to filter the extended properties on.   
-	/// - Returns: The extended properties values as string.      
+	/// - Parameter name: the name to filter the extended properties on.    
+	/// - Returns: The extended properties values as string.         
 	public func getExtendedPropertiesValuesByName(name:String) -> [String]
 	{
 		var swiftList = [String]()
@@ -41733,7 +43250,7 @@ public class Vcard : LinphoneObject
 	
 	
 	/// Remove all the extend properties per property name. 
-	/// - Parameter name: the name to remove the extended properties on.   
+	/// - Parameter name: the name to remove the extended properties on.    
 	public func removeExtentedPropertiesByName(name:String) 
 	{
 		linphone_vcard_remove_extented_properties_by_name(cPtr, name)
@@ -41758,7 +43275,7 @@ public class Vcard : LinphoneObject
 	
 	
 	/// Removes a phone number in the vCard (if it exists), using the TEL property. 
-	/// - Parameter phone: the phone number to remove   
+	/// - Parameter phone: the phone number to remove    
 	public func removePhoneNumber(phone:String) 
 	{
 		linphone_vcard_remove_phone_number(cPtr, phone)
@@ -41768,7 +43285,7 @@ public class Vcard : LinphoneObject
 	
 	/// Removes a ``FriendPhoneNumber`` in the vCard (if it exists), using the TEL
 	/// property. 
-	/// - Parameter phoneNumber: the ``FriendPhoneNumber`` to remove   
+	/// - Parameter phoneNumber: the ``FriendPhoneNumber`` to remove    
 	public func removePhoneNumberWithLabel(phoneNumber:FriendPhoneNumber) 
 	{
 		linphone_vcard_remove_phone_number_with_label(cPtr, phoneNumber.cPtr)
@@ -41785,7 +43302,7 @@ public class Vcard : LinphoneObject
 	
 	
 	/// Removes a SIP address in the vCard (if it exists), using the IMPP property. 
-	/// - Parameter sipAddress: the SIP address to remove   
+	/// - Parameter sipAddress: the SIP address to remove    
 	public func removeSipAddress(sipAddress:String) 
 	{
 		linphone_vcard_remove_sip_address(cPtr, sipAddress)
@@ -41874,10 +43391,10 @@ public class VideoActivationPolicy : LinphoneObject
 	}
 		
 	/// Sets the user data in the ``VideoActivationPolicy`` object. 
-	/// - Parameter userData: the user data   
+	/// - Parameter userData: the user data    
 	
 	/// Gets the user data in the ``VideoActivationPolicy`` object. 
-	/// - Returns: the user data   
+	/// - Returns: the user data    
 	public var userData: UnsafeMutableRawPointer?
 	{
 	
@@ -41895,7 +43412,7 @@ public class VideoActivationPolicy : LinphoneObject
 	
 	/// Instantiates a new ``VideoActivationPolicy`` object with same values as the
 	/// source. 
-	/// - Returns: the newly created ``VideoActivationPolicy`` object   
+	/// - Returns: the newly created ``VideoActivationPolicy`` object    
 	public func clone() -> VideoActivationPolicy?
 	{
 		let cPointer = linphone_video_activation_policy_clone(cPtr)
@@ -41961,10 +43478,10 @@ public class VideoDefinition : LinphoneObject
 	}
 		
 	/// Set the name of the video definition. 
-	/// - Parameter name: The name of the video definition   
+	/// - Parameter name: The name of the video definition    
 	
 	/// Get the name of the video definition. 
-	/// - Returns: The name of the video definition   
+	/// - Returns: The name of the video definition    
 	public var name: String?
 	{
 	
@@ -41986,10 +43503,10 @@ public class VideoDefinition : LinphoneObject
 		
 	/// Assign a user pointer to the video definition. 
 	/// - Parameter userData: The user pointer to associate with the video definition. 
-	///  
+	///   
 	
 	/// Retrieve the user pointer associated with the video definition. 
-	/// - Returns: The user pointer associated with the video definition.   
+	/// - Returns: The user pointer associated with the video definition.    
 	public var userData: UnsafeMutableRawPointer?
 	{
 	
@@ -42024,7 +43541,7 @@ public class VideoDefinition : LinphoneObject
 	
 	
 	/// Clone a video definition. 
-	/// - Returns: The new clone of the video definition   
+	/// - Returns: The new clone of the video definition    
 	public func clone() -> VideoDefinition?
 	{
 		let cPointer = linphone_video_definition_clone(cPtr)
@@ -42040,7 +43557,7 @@ public class VideoDefinition : LinphoneObject
 	
 	/// Tells whether two ``VideoDefinition`` objects are equal (the widths and the
 	/// heights are the same but can be switched). 
-	/// - Parameter videoDefinition2: ``VideoDefinition`` object   
+	/// - Parameter videoDefinition2: ``VideoDefinition`` object    
 	/// - Returns: A boolean value telling whether the two ``VideoDefinition`` objects
 	/// are equal. 
 	public func equals(videoDefinition2:VideoDefinition) -> Bool
@@ -42062,7 +43579,7 @@ public class VideoDefinition : LinphoneObject
 	
 	/// Tells whether two ``VideoDefinition`` objects are strictly equal (the widths
 	/// are the same and the heights are the same). 
-	/// - Parameter videoDefinition2: ``VideoDefinition`` object   
+	/// - Parameter videoDefinition2: ``VideoDefinition`` object    
 	/// - Returns: A boolean value telling whether the two ``VideoDefinition`` objects
 	/// are strictly equal. 
 	public func strictEquals(videoDefinition2:VideoDefinition) -> Bool
@@ -42094,7 +43611,7 @@ public class VideoSourceDescriptor : LinphoneObject
 	/// Setting a ``VideoSourceDescriptor`` with a call will require the lib to have
 	/// two calls running at the same time. To do so the media resource mode has to be
 	/// set to LinphoneSharedMediaResources with ``Core/setMediaResourceMode(mode:)``.
-	/// - Parameter call: The ``Call`` that will be used as a video source.   
+	/// - Parameter call: The ``Call`` that will be used as a video source.    
 	
 	/// Gets the call of a ``VideoSourceDescriptor``. 
 	/// - Returns: The ``Call`` of the video source descriptor if it's type is
@@ -42118,7 +43635,7 @@ public class VideoSourceDescriptor : LinphoneObject
 	}
 		
 	/// Sets the source of a ``VideoSourceDescriptor`` with a camera id. 
-	/// - Parameter cameraId: The camera id that will be used as a video source.   
+	/// - Parameter cameraId: The camera id that will be used as a video source.    
 	
 	/// Gets the camera id of a ``VideoSourceDescriptor``. 
 	/// - Returns: The camera id of the video source descriptor if it's type is
@@ -42143,7 +43660,7 @@ public class VideoSourceDescriptor : LinphoneObject
 	}
 		
 	/// Sets the source of a ``VideoSourceDescriptor`` with an image path. 
-	/// - Parameter imagePath: The image path that will be used as a video source.   
+	/// - Parameter imagePath: The image path that will be used as a video source.    
 	
 	/// Gets the image path of a ``VideoSourceDescriptor``. 
 	/// - Returns: The image path of the video source descriptor if it's type is
@@ -42169,7 +43686,7 @@ public class VideoSourceDescriptor : LinphoneObject
 		
 	
 	/// Gets the screen sharing description of a ``VideoSourceDescriptor``. 
-	/// - Returns: The native screen sharing description   
+	/// - Returns: The native screen sharing description    
 	public var screenSharing: UnsafeMutableRawPointer?
 	{
 	
@@ -42202,7 +43719,7 @@ public class VideoSourceDescriptor : LinphoneObject
 	
 	
 	/// Instantiate a new video source descriptor with values from source. 
-	/// - Returns: The newly created ``VideoSourceDescriptor`` object.   
+	/// - Returns: The newly created ``VideoSourceDescriptor`` object.    
 	public func clone() -> VideoSourceDescriptor?
 	{
 		let cPointer = linphone_video_source_descriptor_clone(cPtr)
@@ -42217,10 +43734,20 @@ public class VideoSourceDescriptor : LinphoneObject
 	
 	
 	/// Sets the source of a ``VideoSourceDescriptor`` as screen sharing. 
-	/// native_data depends of the type and the current platform:
-	/// - Parameter type: The ``VideoSourceScreenSharingType`` type of native_data.   
+	/// native_data depends on the type and the current platform:
+	/// native_data depends on the type and the current platform:
+	/// -Linux : uintptr_t The index of the screen ordered by XineramaQueryScreens.
+	/// -Mac : CGDirectDisplayID The display identification that can be retrieved from
+	/// SCShareableContent.
+	/// -Windows : uintptr_t The index of the screen ordered by
+	/// IDXGIAdapter->EnumOutputs.
+	/// -Linux : Window The Window object that can be retrieved from XQueryPointer.
+	/// -Mac : CGWindowID The window identification that can be retrieved from NSEvent.
+	/// -Windows : HWND The window handle that can be retrieved from WindowFromPoint.
+	/// -not yet supported.
+	/// - Parameter type: The ``VideoSourceScreenSharingType`` type of native_data.    
 	/// - Parameter nativeData: The screen handle that will be used as a video source. 
-	///  
+	///   
 	public func setScreenSharing(type:VideoSourceScreenSharingType, nativeData:UnsafeMutableRawPointer?) 
 	{
 		linphone_video_source_descriptor_set_screen_sharing(cPtr, LinphoneVideoSourceScreenSharingType(rawValue: CUnsignedInt(type.rawValue)), nativeData)
@@ -42270,7 +43797,7 @@ public class XmlRpcRequest : LinphoneObject
 	}	
 	
 	/// Get the content of the XML-RPC request. 
-	/// - Returns: The string representation of the content of the XML-RPC request.   
+	/// - Returns: The string representation of the content of the XML-RPC request.    
 	public var content: String?
 	{
 	
@@ -42286,9 +43813,9 @@ public class XmlRpcRequest : LinphoneObject
 		
 	
 	/// Get the current ``XmlRpcRequestDelegate`` object associated with a
-	/// LinphoneXmlRpcRequest. 
+	/// ``XmlRpcRequest``. 
 	/// - Returns: The current ``XmlRpcRequestDelegate`` object associated with the
-	/// LinphoneXmlRpcRequest.   
+	/// ``XmlRpcRequest``.    
 	public var currentDelegate: XmlRpcRequestDelegate?
 	{
 	
@@ -42315,7 +43842,7 @@ public class XmlRpcRequest : LinphoneObject
 	
 	/// Get the response to an XML-RPC request sent with
 	/// ``XmlRpcSession/sendRequest(request:)`` and returning a string response. 
-	/// - Returns: A list of all string responses in the XML-RPC request.    
+	/// - Returns: A list of all string responses in the XML-RPC request.      
 	public var listResponse: [String]
 	{
 	
@@ -42333,7 +43860,7 @@ public class XmlRpcRequest : LinphoneObject
 	
 	/// Get the raw response to an XML-RPC request sent with
 	/// ``XmlRpcSession/sendRequest(request:)`` and returning http body as string. 
-	/// - Returns: The string response to the XML-RPC request.   
+	/// - Returns: The string response to the XML-RPC request.    
 	public var rawResponse: String?
 	{
 	
@@ -42360,7 +43887,7 @@ public class XmlRpcRequest : LinphoneObject
 	
 	/// Get the response to an XML-RPC request sent with
 	/// ``XmlRpcSession/sendRequest(request:)`` and returning a string response. 
-	/// - Returns: The string response to the XML-RPC request.   
+	/// - Returns: The string response to the XML-RPC request.    
 	public var stringResponse: String?
 	{
 	
@@ -42375,10 +43902,11 @@ public class XmlRpcRequest : LinphoneObject
 	}
 		
 	/// Assign a user pointer to the XML-RPC request. 
-	/// - Parameter userData: The user pointer to associate with the XML-RPC request.   
+	/// - Parameter userData: The user pointer to associate with the XML-RPC request.  
+	///  
 	
 	/// Retrieve the user pointer associated with the XML-RPC request. 
-	/// - Returns: The user pointer associated with the XML-RPC request.   
+	/// - Returns: The user pointer associated with the XML-RPC request.    
 	public var userData: UnsafeMutableRawPointer?
 	{
 	
@@ -42404,7 +43932,7 @@ public class XmlRpcRequest : LinphoneObject
 	
 	
 	/// Add a string argument to an XML-RPC request. 
-	/// - Parameter value: The string value of the added argument.   
+	/// - Parameter value: The string value of the added argument.    
 	public func addStringArg(value:String) 
 	{
 		linphone_xml_rpc_request_add_string_arg(cPtr, value)
@@ -42432,10 +43960,11 @@ public class XmlRpcSession : LinphoneObject
 	}
 	
 	/// Assign a user pointer to the XML-RPC session. 
-	/// - Parameter userData: The user pointer to associate with the XML-RPC session.   
+	/// - Parameter userData: The user pointer to associate with the XML-RPC session.  
+	///  
 	
 	/// Retrieve the user pointer associated with the XML-RPC session. 
-	/// - Returns: The user pointer associated with the XML-RPC session.   
+	/// - Returns: The user pointer associated with the XML-RPC session.    
 	public var userData: UnsafeMutableRawPointer?
 	{
 	
@@ -42453,8 +43982,8 @@ public class XmlRpcSession : LinphoneObject
 	
 	/// Creates a ``XmlRpcRequest`` from a ``XmlRpcSession``. 
 	/// - Parameter returnType: the return type of the request as a ``XmlRpcArgType`` 
-	/// - Parameter method: the function name to call   
-	/// - Returns: a ``XmlRpcRequest`` object   
+	/// - Parameter method: the function name to call    
+	/// - Returns: a ``XmlRpcRequest`` object    
 	public func createRequest(returnType:XmlRpcArgType, method:String) throws -> XmlRpcRequest
 	{
 		let cPointer = linphone_xml_rpc_session_create_request(cPtr, LinphoneXmlRpcArgType(rawValue: CUnsignedInt(returnType.rawValue)), method)
@@ -42478,7 +44007,7 @@ public class XmlRpcSession : LinphoneObject
 	
 	
 	/// Send an XML-RPC request. 
-	/// - Parameter request: The ``XmlRpcRequest`` to be sent.   
+	/// - Parameter request: The ``XmlRpcRequest`` to be sent.    
 	public func sendRequest(request:XmlRpcRequest) 
 	{
 		linphone_xml_rpc_session_send_request(cPtr, request.cPtr)
