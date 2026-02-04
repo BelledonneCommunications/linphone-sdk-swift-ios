@@ -20,8 +20,8 @@
 
 # Build information
 
-version : 5.5.0-beta.2+907e6bafba
-branch : pipelines/107454
+version : 5.5.0-beta.3+cce1bf097f
+branch : pipelines/107732
 architecture : arm64 x86_64
 
 Enabled features:
@@ -50,7 +50,6 @@ Enabled features:
  * SRTP, SRTP media encryption support.
  * ZRTP, Build with ZRTP support (needs ENABLE_SRTP=ON).
  * GoClear, Build with ZRTP GoClear message support (RFC 6189 - section 5.11) (needs ENABLE_ZRTP=ON).
- * CSharp wrapper, Build the C# wrapper from Liblinphone.
  * Swift wrapper, Build the Swift wrapper sources from Liblinphone.
 
 
@@ -88,8 +87,8 @@ Ensure it contains:
 - from terminal navigate to <build folder>/linphone-sdk-swift-ios
 - git init
 - git add .
-- git commit -a -m "Swift package 5.5.0-beta.2+907e6bafba"
-- git tag -a 5.5.0-beta.2+907e6bafba -m "linphone-sdk 5.5.0-beta.2+907e6bafba"
+- git commit -a -m "Swift package 5.5.0-beta.3+cce1bf097f"
+- git tag -a 5.5.0-beta.3+cce1bf097f -m "linphone-sdk 5.5.0-beta.3+cce1bf097f"
 - Open your Xcode Project
 - Menu File -> Add Package Dependencies
 - On top right entry field enter file://<build folder>/linphone-sdk-swift-ios
