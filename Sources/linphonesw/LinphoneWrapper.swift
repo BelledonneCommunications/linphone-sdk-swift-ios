@@ -3739,10 +3739,6 @@ class ConferenceSchedulerDelegateManager
 public protocol CoreDelegate : AnyObject {
 	
 	
-	/// Gets the on alert callback. 
-	/// - Returns: The LinphoneCoreCbsNewAlertTriggeredCb callback called. 
-	func onNewAlertTriggered(core: Core, alert: Alert)
-	
 	/// Get the global state changed callback. 
 	/// - Returns: The callback. 
 	func onGlobalStateChanged(core: Core, state: GlobalState, message: String)
@@ -4007,11 +4003,13 @@ public protocol CoreDelegate : AnyObject {
 	/// Gets the message retracted callback. 
 	/// - Returns: The LinphoneCoreCbsMessageRetractedCb callback called. 
 	func onMessageRetracted(core: Core, chatRoom: ChatRoom, message: ChatMessage)
+	
+	/// Gets the on alert callback. 
+	/// - Returns: The LinphoneCoreCbsNewAlertTriggeredCb callback called. 
+	func onNewAlertTriggered(core: Core, alert: Alert)
 }
 
 public extension CoreDelegate {
-	
-	func onNewAlertTriggered(core: Core, alert: Alert) {}
 	
 	func onGlobalStateChanged(core: Core, state: GlobalState, message: String) {}
 	
@@ -4144,11 +4142,12 @@ public extension CoreDelegate {
 	func onMessageContentEdited(core: Core, chatRoom: ChatRoom, message: ChatMessage) {}
 	
 	func onMessageRetracted(core: Core, chatRoom: ChatRoom, message: ChatMessage) {}
+	
+	func onNewAlertTriggered(core: Core, alert: Alert) {}
 }
 
 public final class CoreDelegateStub : CoreDelegate
 {
-	var _onNewAlertTriggered: ((Core, Alert) -> Void)?
 	var _onGlobalStateChanged: ((Core, GlobalState, String) -> Void)?
 	var _onRegistrationStateChanged: ((Core, ProxyConfig, RegistrationState, String) -> Void)?
 	var _onConferenceInfoReceived: ((Core, ConferenceInfo) -> Void)?
@@ -4215,9 +4214,8 @@ public final class CoreDelegateStub : CoreDelegate
 	var _onSnapshotTaken: ((Core, String) -> Void)?
 	var _onMessageContentEdited: ((Core, ChatRoom, ChatMessage) -> Void)?
 	var _onMessageRetracted: ((Core, ChatRoom, ChatMessage) -> Void)?
+	var _onNewAlertTriggered: ((Core, Alert) -> Void)?
 
-	
-	public func onNewAlertTriggered(core: Core, alert: Alert){_onNewAlertTriggered.map{$0(core, alert)}}
 	
 	public func onGlobalStateChanged(core: Core, state: GlobalState, message: String){_onGlobalStateChanged.map{$0(core, state, message)}}
 	
@@ -4350,9 +4348,10 @@ public final class CoreDelegateStub : CoreDelegate
 	public func onMessageContentEdited(core: Core, chatRoom: ChatRoom, message: ChatMessage){_onMessageContentEdited.map{$0(core, chatRoom, message)}}
 	
 	public func onMessageRetracted(core: Core, chatRoom: ChatRoom, message: ChatMessage){_onMessageRetracted.map{$0(core, chatRoom, message)}}
+	
+	public func onNewAlertTriggered(core: Core, alert: Alert){_onNewAlertTriggered.map{$0(core, alert)}}
 
 	public init (
-		onNewAlertTriggered: ((Core, Alert) -> Void)? = nil,
 		onGlobalStateChanged: ((Core, GlobalState, String) -> Void)? = nil,
 		onRegistrationStateChanged: ((Core, ProxyConfig, RegistrationState, String) -> Void)? = nil,
 		onConferenceInfoReceived: ((Core, ConferenceInfo) -> Void)? = nil,
@@ -4418,9 +4417,9 @@ public final class CoreDelegateStub : CoreDelegate
 		onMessageWaitingIndicationChanged: ((Core, Event, MessageWaitingIndication) -> Void)? = nil,
 		onSnapshotTaken: ((Core, String) -> Void)? = nil,
 		onMessageContentEdited: ((Core, ChatRoom, ChatMessage) -> Void)? = nil,
-		onMessageRetracted: ((Core, ChatRoom, ChatMessage) -> Void)? = nil
+		onMessageRetracted: ((Core, ChatRoom, ChatMessage) -> Void)? = nil,
+		onNewAlertTriggered: ((Core, Alert) -> Void)? = nil
 	) {
-		self._onNewAlertTriggered = onNewAlertTriggered
 		self._onGlobalStateChanged = onGlobalStateChanged
 		self._onRegistrationStateChanged = onRegistrationStateChanged
 		self._onConferenceInfoReceived = onConferenceInfoReceived
@@ -4487,6 +4486,7 @@ public final class CoreDelegateStub : CoreDelegate
 		self._onSnapshotTaken = onSnapshotTaken
 		self._onMessageContentEdited = onMessageContentEdited
 		self._onMessageRetracted = onMessageRetracted
+		self._onNewAlertTriggered = onNewAlertTriggered
 	}
 }
 
@@ -4501,14 +4501,6 @@ class CoreDelegateManager
 			data in
 			if (data != nil) {
 				Unmanaged<CoreDelegateManager>.fromOpaque(data!).release()
-			}
-		})
-
-		linphone_core_cbs_set_new_alert_triggered(cPtr, { (core, alert) -> Void in
-			if (core != nil) {
-				let sObject = Core.getSwiftObject(cObject: core!)
-				let delegate = sObject.currentDelegate
-				delegate?.onNewAlertTriggered(core: sObject, alert: Alert.getSwiftObject(cObject: alert!))
 			}
 		})
 
@@ -5045,6 +5037,14 @@ class CoreDelegateManager
 				let sObject = Core.getSwiftObject(cObject: core!)
 				let delegate = sObject.currentDelegate
 				delegate?.onMessageRetracted(core: sObject, chatRoom: ChatRoom.getSwiftObject(cObject: chatRoom!), message: ChatMessage.getSwiftObject(cObject: message!))
+			}
+		})
+
+		linphone_core_cbs_set_new_alert_triggered(cPtr, { (core, alert) -> Void in
+			if (core != nil) {
+				let sObject = Core.getSwiftObject(cObject: core!)
+				let delegate = sObject.currentDelegate
+				delegate?.onNewAlertTriggered(core: sObject, alert: Alert.getSwiftObject(cObject: alert!))
 			}
 		})
 	}
@@ -6536,65 +6536,6 @@ public class AccountCreator : LinphoneObject
 	}
 
 	
-	///Enum describing the status of server request, used by the ``AccountCreator``. 
-	public enum Status:Int
-	{
-		
-		/// Request status. 
-		case RequestOk = 0
-		/// Request failed. 
-		case RequestFailed = 1
-		/// Request failed due to missing argument(s) 
-		case MissingArguments = 2
-		/// Request failed due to missing callback(s) 
-		case MissingCallbacks = 3
-		/// Account status. 
-		case AccountCreated = 4
-		/// Account not created. 
-		case AccountNotCreated = 5
-		/// Account exist. 
-		case AccountExist = 6
-		/// Account exist with alias. 
-		case AccountExistWithAlias = 7
-		/// Account not exist. 
-		case AccountNotExist = 8
-		/// Account was created with Alias. 
-		case AliasIsAccount = 9
-		/// Alias exist. 
-		case AliasExist = 10
-		/// Alias not exist. 
-		case AliasNotExist = 11
-		/// Account activated. 
-		case AccountActivated = 12
-		/// Account already activated. 
-		case AccountAlreadyActivated = 13
-		/// Account not activated. 
-		case AccountNotActivated = 14
-		/// Account linked. 
-		case AccountLinked = 15
-		/// Account not linked. 
-		case AccountNotLinked = 16
-		/// Server. 
-		case ServerError = 17
-		/// Error cannot send SMS. 
-		case PhoneNumberInvalid = 18
-		/// Error key doesn't match. 
-		case WrongActivationCode = 19
-		/// Error too many SMS sent. 
-		case PhoneNumberOverused = 20
-		/// Error algo isn't MD5 or SHA-256. 
-		case AlgoNotSupported = 21
-		/// Generic error. 
-		case UnexpectedError = 22
-		/// This API isn't implemented in the current backend. 
-		case NotImplementedError = 23
-		/// Request has been denied, probably due to invalid auth token. 
-		case RequestNotAuthorized = 24
-		/// Request has been denied, due to too many requests sent in given period. 
-		case RequestTooManyRequests = 25
-	}
-
-	
 	///Enum describing transport checking, used by the ``AccountCreator``. 
 	public enum TransportStatus:Int
 	{
@@ -6724,6 +6665,65 @@ public class AccountCreator : LinphoneObject
 		case InvalidCountryCode = 8
 		/// Phone number invalid. 
 		case Invalid = 16
+	}
+
+	
+	///Enum describing the status of server request, used by the ``AccountCreator``. 
+	public enum Status:Int
+	{
+		
+		/// Request status. 
+		case RequestOk = 0
+		/// Request failed. 
+		case RequestFailed = 1
+		/// Request failed due to missing argument(s) 
+		case MissingArguments = 2
+		/// Request failed due to missing callback(s) 
+		case MissingCallbacks = 3
+		/// Account status. 
+		case AccountCreated = 4
+		/// Account not created. 
+		case AccountNotCreated = 5
+		/// Account exist. 
+		case AccountExist = 6
+		/// Account exist with alias. 
+		case AccountExistWithAlias = 7
+		/// Account not exist. 
+		case AccountNotExist = 8
+		/// Account was created with Alias. 
+		case AliasIsAccount = 9
+		/// Alias exist. 
+		case AliasExist = 10
+		/// Alias not exist. 
+		case AliasNotExist = 11
+		/// Account activated. 
+		case AccountActivated = 12
+		/// Account already activated. 
+		case AccountAlreadyActivated = 13
+		/// Account not activated. 
+		case AccountNotActivated = 14
+		/// Account linked. 
+		case AccountLinked = 15
+		/// Account not linked. 
+		case AccountNotLinked = 16
+		/// Server. 
+		case ServerError = 17
+		/// Error cannot send SMS. 
+		case PhoneNumberInvalid = 18
+		/// Error key doesn't match. 
+		case WrongActivationCode = 19
+		/// Error too many SMS sent. 
+		case PhoneNumberOverused = 20
+		/// Error algo isn't MD5 or SHA-256. 
+		case AlgoNotSupported = 21
+		/// Generic error. 
+		case UnexpectedError = 22
+		/// This API isn't implemented in the current backend. 
+		case NotImplementedError = 23
+		/// Request has been denied, probably due to invalid auth token. 
+		case RequestNotAuthorized = 24
+		/// Request has been denied, due to too many requests sent in given period. 
+		case RequestTooManyRequests = 25
 	}
 	
 	
@@ -19923,9 +19923,11 @@ public class ConferenceScheduler : LinphoneObject
 		}
 	}	
 	/// Set the ``Account`` to use for the conference scheduler. 
-	/// - Parameter account: The ``Account`` to use, or nil if none has been selected.
-	/// The ``ConferenceScheduler`` keeps a reference to it and removes the previous
-	/// one, if any.    
+	/// - Warning: The ``ConferenceScheduler`` doesn't keep a reference to the account,
+	/// therefore the application must guarantee that the ``Account`` has been added to
+	/// the list held by the core prior to calling this function. 
+	/// - Parameter account: The ``Account`` to use, or nil if none has been selected. 
+	///   
 	
 	/// Get the ``Account`` that is used for the conference scheduler. 
 	/// - Returns: The selected ``Account`` for the call, or nil if none has been
@@ -22285,24 +22287,6 @@ public class Core : LinphoneObject
 		}
 	}
 		
-	/// Special function to enable the callkit. 
-	/// - Parameter enabled: true to enable callkit, false to disable it. 
-	
-	/// Special function to check if the callkit is enabled, False by default. 
-	/// - Returns: true if callkit is enabled, false otherwise. 
-	public var callkitEnabled: Bool
-	{
-	
-		get
-		{ 
-						return linphone_core_callkit_enabled(cPtr) != 0
-		}
-		set
-		{
-			linphone_core_enable_callkit(cPtr, newValue==true ? 1:0)
-		}
-	}
-		
 	
 	/// Gets the current list of calls. 
 	/// Note that this list is read-only and might be changed by the core after a
@@ -24296,20 +24280,6 @@ public class Core : LinphoneObject
 				listTemp = UnsafePointer<bctbx_list_t>(listTemp!.pointee.next)
 			}
 			return swiftList
-
-	}
-		
-	
-	/// Special function to check if the local network permission has been granted by
-	/// the user (useful for iOS). 
-	/// The test performed by this function may popup the local network permission
-	/// dialog, for that reason it could be a good idea to check it twice to conclude
-	/// that the user has deny the permission. 
-	/// - Returns: true if local permission request is granted, false otherwise. 
-	public var localPermissionEnabled: Bool
-	{
-	
-						return linphone_core_local_permission_enabled(cPtr) != 0
 
 	}
 		
@@ -27246,17 +27216,6 @@ public class Core : LinphoneObject
 	
 	
 	
-	/// Special function to indicate if the audio session is activated. 
-	/// Must be called when ProviderDelegate of the callkit notifies that the audio
-	/// session is activated or deactivated. 
-	/// - Parameter activated: true to activate the audio session, false to disable it. 
-	public func activateAudioSession(activated:Bool) 
-	{
-		linphone_core_activate_audio_session(cPtr, activated==true ? 1:0)
-	}
-	
-	
-	
 	/// Adds an account. 
 	/// This will start registration on the proxy, if registration is enabled. 
 	/// - Parameter account: the ``Account`` to add    
@@ -27412,17 +27371,6 @@ public class Core : LinphoneObject
 	
 	
 	
-	/// Special function to indicate if the audio route is changed. 
-	/// Must be called in the callback of AVAudioSessionRouteChangeNotification. 
-	/// - Deprecated: 07/01/2020 now handled in the linphone SDK directly 
-	@available(*, deprecated)
-	public func audioRouteChanged() 
-	{
-		linphone_core_audio_route_changed(cPtr)
-	}
-	
-	
-	
 	/// Check whether ringing of calls is disabled. 
 	/// - Returns: true if call ringing is disabled 
 	public func callRingingDisabled() -> Bool
@@ -27535,16 +27483,6 @@ public class Core : LinphoneObject
 		guard exception_result == 0 else {
 			throw LinphoneError.exception(result: "configSync returned value \(exception_result)")
 		}
-	}
-	
-	
-	
-	/// Special function to configure audio session with default settings. 
-	/// Must be called in ProviderDelegate's callbacks when answer an incoming call and
-	/// start an outgoing call. 
-	public func configureAudioSession() 
-	{
-		linphone_core_configure_audio_session(cPtr)
 	}
 	
 	
