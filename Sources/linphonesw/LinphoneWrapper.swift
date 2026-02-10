@@ -5970,7 +5970,7 @@ public class Account : LinphoneObject
 	
 	/// Returns the list of call logs for a given account. 
 	/// This list must be freed after use. 
-	/// - Returns: The list of call logs  .       
+	/// - Returns: The list of call logs A list of ``CallLog`` objects.   .       
 	public var callLogs: [CallLog]
 	{
 	
@@ -5989,7 +5989,7 @@ public class Account : LinphoneObject
 		
 	
 	/// Returns the list of chat rooms for a given account. 
-	/// - Returns: The list of chat rooms  .    
+	/// - Returns: The list of chat rooms A list of ``ChatRoom`` objects.   .    
 	public var chatRooms: [ChatRoom]
 	{
 	
@@ -6008,7 +6008,7 @@ public class Account : LinphoneObject
 	
 	/// Returns the list of conference information stored locally for a given account. 
 	/// This list must be freed after use. 
-	/// - Returns: The list of call logs  .    
+	/// - Returns: The list of call logs A list of ``ConferenceInfo`` objects.   .    
 	/// - Warning: This method also start the synchronization with the CCMP server,
 	/// should it be defined in the ``AccountParams``. The application may want to wait
 	/// for the callback conference_information_updated to get an up-to-date list of
@@ -6340,7 +6340,7 @@ public class Account : LinphoneObject
 	/// Returns a filtered list of chat rooms for a given account. 
 	/// - Parameter filter: the criteria a chat room must meet somehow (subject,
 	/// participant address, friend's name).    
-	/// - Returns: The list of chat rooms  .       
+	/// - Returns: The list of chat rooms A list of ``ChatRoom`` objects.   .       
 	public func filterChatRooms(filter:String) -> [ChatRoom]
 	{
 		var swiftList = [ChatRoom]()
@@ -6376,7 +6376,8 @@ public class Account : LinphoneObject
 	/// Returns the list of call logs for a given account. 
 	/// This list must be freed after use. 
 	/// - Parameter remoteAddress: the ``Address`` object to filter call logs.    
-	/// - Returns: The list of filtered call logs  .       
+	/// - Returns: The list of filtered call logs A list of ``CallLog`` objects.   .   
+	///    
 	public func getCallLogsForAddress(remoteAddress:Address) -> [CallLog]
 	{
 		var swiftList = [CallLog]()
@@ -9042,11 +9043,11 @@ public class AccountParams : LinphoneObject
 	/// this account is the default one (see ``Core/setDefaultAccount(account:)``).
 	/// - Warning: This function shall not be used in conjunction with
 	/// ``enableOutboundProxy(enable:)``. 
-	/// - Parameter routes: A list of routes.      
+	/// - Parameter routes: A list of routes. A list of ``Address`` objects.       
 	/// - Returns: -1 if routes are invalid, 0 otherwise. 
 	
 	/// Gets the list of the routes set for this account params. 
-	/// - Returns: The list of routes.      
+	/// - Returns: The list of routes. A list of ``Address`` objects.       
 	public var routesAddresses: [Address]
 	{
 	
@@ -9203,10 +9204,11 @@ public class AccountParams : LinphoneObject
 	}
 		
 	/// Sets the list of supported tags. 
-	/// - Parameter supportedTags: The list of supported tags  .    
+	/// - Parameter supportedTags: The list of supported tags A list of char * objects.
+	///   .    
 	
 	/// Gets the list of supported tags. 
-	/// - Returns: The list of supported tags  .    
+	/// - Returns: The list of supported tags A list of char * objects.   .    
 	public var supportedTagsList: [String]
 	{
 	
@@ -10346,10 +10348,12 @@ public class AuthInfo : LinphoneObject
 	}
 		
 	/// Sets the available algorithms list without testing unicity. 
-	/// - Parameter algorithms: The available algorithms list.      
+	/// - Parameter algorithms: The available algorithms list. A list of const char *
+	/// objects.       
 	
 	/// Gets all available algorithms. 
-	/// - Returns: A list of available algorithms.      
+	/// - Returns: A list of available algorithms. A list of const char * objects.     
+	///  
 	public var availableAlgorithms: [String]
 	{
 	
@@ -11811,8 +11815,8 @@ public class Call : LinphoneObject
 	
 	/// Returns a list of 4 remote ZRTP authentication tokens. 
 	/// The user needs to select one. 
-	/// - Returns: the authentication tokens to verify or nil if ZRTP isn't enabled.   
-	///   
+	/// - Returns: the authentication tokens to verify or nil if ZRTP isn't enabled. A
+	/// list of char * objects.       
 	public var remoteAuthenticationTokens: [String]
 	{
 	
@@ -13356,7 +13360,8 @@ public class CallParams : LinphoneObject
 		
 	
 	/// Gets a list of ``Content`` set if exists. 
-	/// - Returns: A list of ``Content`` set if exists, nil otherwise.         
+	/// - Returns: A list of ``Content`` set if exists, nil otherwise. A list of
+	/// ``Content`` objects.          
 	public var customContents: [Content]
 	{
 	
@@ -14686,15 +14691,15 @@ public class CardDavParams : LinphoneObject
 	/// Sets the list of vCard RFC fields to use to match the domain filter on. 
 	/// For example, you can use "IMPP". 
 	/// - Parameter list: the list of vCard RFC fields to use to match the domain
-	/// filter on.      
+	/// filter on. A list of const char * objects.       
 	/// - Warning: DO NOT USE ANYMORE, it won't have any effect. 
 	/// - Deprecated: 06/10/2025 domain filter will be applied locally instead of using
 	/// a CardDAV prop filter XML tag. 
 	
 	/// Gets the list of vCard RFC fields to use to match the domain filter on. 
 	/// For example, you can use "IMPP". 
-	/// - Returns: The list of vCard fields to make the query on using domain filter.  
-	///       
+	/// - Returns: The list of vCard fields to make the query on using domain filter. A
+	/// list of char * objects.          
 	/// - Warning: DO NOT USE ANYMORE, it won't have any effect. 
 	/// - Deprecated: 06/10/2025 domain filter will be applied locally instead of using
 	/// a CardDAV prop filter XML tag. 
@@ -14750,12 +14755,12 @@ public class CardDavParams : LinphoneObject
 	/// Sets the list of vCard RFC fields to use to match user input text on. 
 	/// For example, you can use "FN", "N", "IMPP", "ORG", etc... 
 	/// - Parameter list: the list of vCard RFC fields to use to match user input text
-	/// on.      
+	/// on. A list of char * objects.       
 	
 	/// Gets the list of vCard RFC fields to use to match user input text on. 
 	/// For example, you can use "FN", "N", "IMPP", "ORG", etc... 
-	/// - Returns: The list of vCard fields to make the query on using user input.     
-	///    
+	/// - Returns: The list of vCard fields to make the query on using user input. A
+	/// list of char * objects.          
 	public var userInputFields: [String]
 	{
 	
@@ -14979,7 +14984,7 @@ public class ChatMessage : LinphoneObject
 		
 	
 	/// Returns the list of contents in the message. 
-	/// - Returns: The list of ``Content``.      
+	/// - Returns: The list of ``Content``. A list of ``Content`` objects.       
 	public var contents: [Content]
 	{
 	
@@ -15366,7 +15371,8 @@ public class ChatMessage : LinphoneObject
 	/// Gets the list of reactions received for this chat message. 
 	/// Warning: list is ordered by content of reaction message, not by received
 	/// timestamp! 
-	/// - Returns: The sorted list of reaction if any.         
+	/// - Returns: The sorted list of reaction if any. A list of
+	/// ``ChatMessageReaction`` objects.          
 	public var reactions: [ChatMessageReaction]
 	{
 	
@@ -15661,7 +15667,8 @@ public class ChatMessage : LinphoneObject
 	/// - Parameter state: The ``State`` the imdn have reached (only use
 	/// LinphoneChatMessageStateDelivered, LinphoneChatMessageStateDeliveredToUser,
 	/// LinphoneChatMessageStateDisplayed and LinphoneChatMessageStateNotDelivered) 
-	/// - Returns: The list of participants.         
+	/// - Returns: The list of participants. A list of ``ParticipantImdnState``
+	/// objects.          
 	public func getParticipantsByImdnState(state:ChatMessage.State) -> [ParticipantImdnState]
 	{
 		var swiftList = [ParticipantImdnState]()
@@ -16266,7 +16273,8 @@ public class ChatRoom : LinphoneObject
 		
 	
 	/// Gets the list of participants that are currently composing. 
-	/// - Returns: List of addresses that are in the is_composing state.   
+	/// - Returns: List of addresses that are in the is_composing state. A list of
+	/// ``Address`` objects.    
 	public var composingAddresses: [Address]
 	{
 	
@@ -16285,7 +16293,7 @@ public class ChatRoom : LinphoneObject
 	
 	/// Gets the list of participants that are currently composing. 
 	/// - Returns: List of ``ComposingParticipant`` that are in the is_composing state.
-	///   
+	/// A list of ``ComposingParticipant`` objects.    
 	public var composingParticipants: [ComposingParticipant]
 	{
 	
@@ -16411,7 +16419,8 @@ public class ChatRoom : LinphoneObject
 	
 	/// Gets all contents for which content-type starts with either text/ or
 	/// application/. 
-	/// - Returns: A list of contents considered as "document".      
+	/// - Returns: A list of contents considered as "document". A list of ``Content``
+	/// objects.       
 	public var documentContents: [Content]
 	{
 	
@@ -16671,7 +16680,8 @@ public class ChatRoom : LinphoneObject
 	
 	/// Gets all contents for which content-type starts with either video/, audio/ or
 	/// image/. 
-	/// - Returns: A list of contents considered as "media".      
+	/// - Returns: A list of contents considered as "media". A list of ``Content``
+	/// objects.       
 	public var mediaContents: [Content]
 	{
 	
@@ -16749,7 +16759,7 @@ public class ChatRoom : LinphoneObject
 		
 	
 	/// Gets the list of participants of a chat room. 
-	/// - Returns: A   of the participants       
+	/// - Returns: A A list of ``Participant`` objects.    of the participants       
 	public var participants: [Participant]
 	{
 	
@@ -16870,7 +16880,8 @@ public class ChatRoom : LinphoneObject
 		
 	
 	/// Gets all unread messages for this chat room, sorted from oldest to most recent. 
-	/// - Returns: A list of unread chat messages.      
+	/// - Returns: A list of unread chat messages. A list of ``ChatMessage`` objects.  
+	///     
 	public var unreadHistory: [ChatMessage]
 	{
 	
@@ -16931,7 +16942,8 @@ public class ChatRoom : LinphoneObject
 	/// Adds several participants to a chat room at once. 
 	/// This may fail if this type of chat room does not handle participants. Use
 	/// ``canHandleParticipants()`` to know if this chat room handles participants. 
-	/// - Parameter addresses: The participants to add.      
+	/// - Parameter addresses: The participants to add. A list of ``Address`` objects. 
+	///      
 	/// - Returns: true if everything is OK, false otherwise 
 	public func addParticipants(addresses:[Address]) -> Bool
 	{
@@ -17226,7 +17238,8 @@ public class ChatRoom : LinphoneObject
 	/// content has index 0. 
 	/// - Parameter end: The last content of the range to be retrieved. Oldest content
 	/// has index of size (use ``getDocumentContentsSize()`` to retrieve size) 
-	/// - Returns: A list of contents considered as "document".      
+	/// - Returns: A list of contents considered as "document". A list of ``Content``
+	/// objects.       
 	public func getDocumentContentsRange(begin:Int, end:Int) -> [Content]
 	{
 		var swiftList = [Content]()
@@ -17248,7 +17261,7 @@ public class ChatRoom : LinphoneObject
 	/// - Parameter nbMessage: Number of events to retrieve. 0 means everything. 
 	/// - Parameter filters: The LinphoneChatRoomHistoryFilterMask mask to filter the
 	/// results with ``HistoryFilter`` 
-	/// - Returns: A list of      
+	/// - Returns: A list of A list of ``EventLog`` objects.       
 	public func getHistory(nbMessage:Int, filters:UInt) -> [EventLog]
 	{
 		var swiftList = [EventLog]()
@@ -17268,7 +17281,7 @@ public class ChatRoom : LinphoneObject
 	/// Gets nb_message most recent messages from chat_room chat room, sorted from
 	/// oldest to most recent. 
 	/// - Parameter nbMessage: Number of message to retrieve. 0 means everything. 
-	/// - Returns: A list of      
+	/// - Returns: A list of A list of ``ChatMessage`` objects.       
 	/// - Deprecated: 30/07/2024. Use ``getHistory(nbMessage:filters:)`` instead. 
 	@available(*, deprecated)
 	public func getHistory(nbMessage:Int) -> [ChatMessage]
@@ -17290,7 +17303,8 @@ public class ChatRoom : LinphoneObject
 	/// Gets nb_events most recent events from chat_room chat room, sorted from oldest
 	/// to most recent. 
 	/// - Parameter nbEvents: Number of events to retrieve. 0 means everything. 
-	/// - Returns: The list of the most recent events.      
+	/// - Returns: The list of the most recent events. A list of ``EventLog`` objects. 
+	///      
 	public func getHistoryEvents(nbEvents:Int) -> [EventLog]
 	{
 		var swiftList = [EventLog]()
@@ -17310,7 +17324,7 @@ public class ChatRoom : LinphoneObject
 	/// Gets nb_events most recent chat message events from chat_room chat room, sorted
 	/// from oldest to most recent. 
 	/// - Parameter nbEvents: Number of events to retrieve. 0 means everything. 
-	/// - Returns: A list      
+	/// - Returns: A list A list of ``EventLog`` objects.       
 	public func getHistoryMessageEvents(nbEvents:Int) -> [EventLog]
 	{
 		var swiftList = [EventLog]()
@@ -17336,7 +17350,7 @@ public class ChatRoom : LinphoneObject
 	/// history size) 
 	/// - Parameter filters: The LinphoneChatRoomHistoryFilterMask mask to filter the
 	/// results with ``HistoryFilter`` 
-	/// - Returns: A list of      
+	/// - Returns: A list of A list of ``EventLog`` objects.       
 	public func getHistoryRange(begin:Int, end:Int, filters:UInt) -> [EventLog]
 	{
 		var swiftList = [EventLog]()
@@ -17360,7 +17374,7 @@ public class ChatRoom : LinphoneObject
 	/// - Parameter end: The last message of the range to be retrieved. History oldest
 	/// message has index of history size (use ``getHistorySize()`` to retrieve history
 	/// size) 
-	/// - Returns: A list of chat messages.      
+	/// - Returns: A list of chat messages. A list of ``ChatMessage`` objects.       
 	/// - Deprecated: 30/07/2024. Use ``getHistoryRange(begin:end:filters:)`` instead. 
 	@available(*, deprecated)
 	public func getHistoryRange(begin:Int, end:Int) -> [ChatMessage]
@@ -17386,7 +17400,8 @@ public class ChatRoom : LinphoneObject
 	/// - Parameter lastEvent: The ``EventLog`` object corresponding to the event.    
 	/// - Parameter filters: The LinphoneChatRoomHistoryFilterMask mask to filter the
 	/// results with ``HistoryFilter`` 
-	/// - Returns: A list of   between the two provided events, if any.    
+	/// - Returns: A list of A list of ``EventLog`` objects.    between the two
+	/// provided events, if any.    
 	public func getHistoryRangeBetween(firstEvent:EventLog?, lastEvent:EventLog?, filters:UInt) -> [EventLog]
 	{
 		var swiftList = [EventLog]()
@@ -17409,7 +17424,7 @@ public class ChatRoom : LinphoneObject
 	/// recent event has index 0. 
 	/// - Parameter end: The last event of the range to be retrieved. History oldest
 	/// event has index of history size 
-	/// - Returns: The list of the found events.      
+	/// - Returns: The list of the found events. A list of ``EventLog`` objects.       
 	public func getHistoryRangeEvents(begin:Int, end:Int) -> [EventLog]
 	{
 		var swiftList = [EventLog]()
@@ -17432,7 +17447,8 @@ public class ChatRoom : LinphoneObject
 	/// recent event has index 0. 
 	/// - Parameter end: The last event of the range to be retrieved. History oldest
 	/// event has index of history size 
-	/// - Returns: The list of chat message events.      
+	/// - Returns: The list of chat message events. A list of ``EventLog`` objects.    
+	///   
 	public func getHistoryRangeMessageEvents(begin:Int, end:Int) -> [EventLog]
 	{
 		var swiftList = [EventLog]()
@@ -17458,7 +17474,8 @@ public class ChatRoom : LinphoneObject
 	/// - Parameter event: The ``EventLog`` object corresponding to the event.    
 	/// - Parameter filters: The LinphoneChatRoomHistoryFilterMask mask to filter the
 	/// results with ``HistoryFilter`` 
-	/// - Returns: A list of   near the event provided included.    
+	/// - Returns: A list of A list of ``EventLog`` objects.    near the event provided
+	/// included.    
 	public func getHistoryRangeNear(before:UInt, after:UInt, event:EventLog?, filters:UInt) -> [EventLog]
 	{
 		var swiftList = [EventLog]()
@@ -17492,7 +17509,8 @@ public class ChatRoom : LinphoneObject
 	/// content has index 0. 
 	/// - Parameter end: The last content of the range to be retrieved. Oldest content
 	/// has index of size (use ``getMediaContentsSize()`` to retrieve size) 
-	/// - Returns: A list of contents considered as "media".      
+	/// - Returns: A list of contents considered as "media". A list of ``Content``
+	/// objects.       
 	public func getMediaContentsRange(begin:Int, end:Int) -> [Content]
 	{
 		var swiftList = [Content]()
@@ -17589,7 +17607,8 @@ public class ChatRoom : LinphoneObject
 	
 	
 	/// Removes several participants of a chat room at once. 
-	/// - Parameter participants: The participants to remove.      
+	/// - Parameter participants: The participants to remove. A list of ``Participant``
+	/// objects.       
 	public func removeParticipants(participants:[Participant]) 
 	{
 		linphone_chat_room_remove_participants(cPtr, ObjectArrayToBctbxList(list: participants))
@@ -17647,7 +17666,7 @@ public class ChatRoom : LinphoneObject
 	/// shall not by used by client applications. 
 	/// - Parameter participantAddress: The participant address    
 	/// - Parameter deviceIdentities: List of the participant devices to be used by the
-	/// group chat room      
+	/// group chat room A list of ``ParticipantDeviceIdentity`` objects.       
 	public func setParticipantDevices(participantAddress:Address, deviceIdentities:[ParticipantDeviceIdentity]) 
 	{
 		linphone_chat_room_set_participant_devices(cPtr, participantAddress.cPtr, ObjectArrayToBctbxList(list: deviceIdentities))
@@ -18408,7 +18427,8 @@ public class Conference : LinphoneObject
 		
 	
 	/// Get list of all participant devices of a conference including me if it is in. 
-	/// - Returns: The list of participant devices of the conference.         
+	/// - Returns: The list of participant devices of the conference. A list of
+	/// ``ParticipantDevice`` objects.          
 	public var participantDeviceList: [ParticipantDevice]
 	{
 	
@@ -18428,7 +18448,8 @@ public class Conference : LinphoneObject
 	
 	/// Get list of all participants of a conference. 
 	/// - Warning: The returned list does not include me. 
-	/// - Returns: The list of participants of the conference.         
+	/// - Returns: The list of participants of the conference. A list of
+	/// ``Participant`` objects.          
 	public var participantList: [Participant]
 	{
 	
@@ -18450,8 +18471,8 @@ public class Conference : LinphoneObject
 	/// contains URIs of all participants. 
 	/// That list must be freed after use and each URI must be unref with
 	/// linphone_address_unref - Warning: The returned list does not include me. 
-	/// - Returns: The list of the participants' address active in the conference.     
-	///    
+	/// - Returns: The list of the participants' address active in the conference. A
+	/// list of ``Address`` objects.          
 	/// - Deprecated: 10/07/2020 Use ``getParticipantList()`` instead. 
 	@available(*, deprecated)
 	public var participants: [Address]
@@ -18668,7 +18689,8 @@ public class Conference : LinphoneObject
 	/// If the conference is in the state LinphoneConferenceStateCreationPending, then
 	/// the conference will start on the input and output audio devices used for the
 	/// currently active call, if any 
-	/// - Parameter calls: A list of calls to add to the conference.      
+	/// - Parameter calls: A list of calls to add to the conference. A list of ``Call``
+	/// objects.       
 	public func addParticipants(calls:[Call]) throws 
 	{
 		let exception_result = linphone_conference_add_participants(cPtr, ObjectArrayToBctbxList(list: calls))
@@ -18680,7 +18702,8 @@ public class Conference : LinphoneObject
 	
 	
 	/// Add participants to the conference, by supplying a list of ``Address``. 
-	/// - Parameter addresses: A list of calls to add to the conference.      
+	/// - Parameter addresses: A list of calls to add to the conference. A list of
+	/// ``Address`` objects.       
 	public func addParticipants(addresses:[Address]) throws 
 	{
 		let exception_result = linphone_conference_add_participants_2(cPtr, ObjectArrayToBctbxList(list: addresses))
@@ -18745,7 +18768,8 @@ public class Conference : LinphoneObject
 	/// On the other hand, if the conference is created on a server, this method will
 	/// allow to create either a chat only conference or an ad-hoc audio video
 	/// conference 
-	/// - Parameter addresses: A list of SIP addresses to invite.      
+	/// - Parameter addresses: A list of SIP addresses to invite. A list of ``Address``
+	/// objects.       
 	/// - Parameter params: ``CallParams`` to use for inviting the participants.    
 	/// - Warning: The ``CallParams`` are only honored by conference servers and
 	/// devices that host the conference locally. 
@@ -19136,10 +19160,12 @@ public class ConferenceInfo : LinphoneObject
 	}
 		
 	/// Sets the list of participants. 
-	/// - Parameter participantInfos: The list of participant informations to set.      
+	/// - Parameter participantInfos: The list of participant informations to set. A
+	/// list of ``ParticipantInfo`` objects.       
 	
 	/// Retrieve the list of participants as list of participant infos. 
-	/// - Returns: The list of participant informations.      
+	/// - Returns: The list of participant informations. A list of ``ParticipantInfo``
+	/// objects.       
 	public var participantInfos: [ParticipantInfo]
 	{
 	
@@ -19168,12 +19194,13 @@ public class ConferenceInfo : LinphoneObject
 	}
 		
 	/// Sets the list of participants. 
-	/// - Parameter participants: The list of participants to set.      
+	/// - Parameter participants: The list of participants to set. A list of
+	/// ``Address`` objects.       
 	/// - Deprecated: 24/08/2023 use linphone_conference_info_set_participant_infos
 	/// instead 
 	
 	/// Retrieve the list of participants as list of addresses. 
-	/// - Returns: The list of participants.      
+	/// - Returns: The list of participants. A list of ``Address`` objects.       
 	/// - Deprecated: 24/08/2023 use linphone_conference_info_get_participant_infos
 	/// instead 
 	public var participants: [Address]
@@ -19318,7 +19345,8 @@ public class ConferenceInfo : LinphoneObject
 	
 	
 	/// Add a list of participants. 
-	/// - Parameter participantInfos: The list of participant informations to add.      
+	/// - Parameter participantInfos: The list of participant informations to add. A
+	/// list of ``ParticipantInfo`` objects.       
 	public func addParticipantInfos(participantInfos:[ParticipantInfo]?) 
 	{
 		linphone_conference_info_add_participant_infos(cPtr, ObjectArrayToBctbxList(list: participantInfos))
@@ -20168,7 +20196,7 @@ public class Config : LinphoneObject
 		
 	
 	/// Returns the list of sections' names in the ``Config``. 
-	/// - Returns: A list of strings.      
+	/// - Returns: A list of strings. A list of char * objects.       
 	public var sectionsNamesList: [String]
 	{
 	
@@ -20344,7 +20372,7 @@ public class Config : LinphoneObject
 	
 	/// Returns the list of keys' names for a section in the ``Config``. 
 	/// - Parameter section: The section name    
-	/// - Returns: A list of strings.      
+	/// - Returns: A list of strings. A list of char * objects.       
 	public func getKeysNamesList(section:String) -> [String]
 	{
 		var swiftList = [String]()
@@ -20427,8 +20455,9 @@ public class Config : LinphoneObject
 	/// The default value is returned if the config item is not found. 
 	/// - Parameter section: The section from which to retrieve a configuration item    
 	/// - Parameter key: The name of the configuration item to retrieve    
-	/// - Parameter defaultList: The list to return when the key doesn't exist.      
-	/// - Returns: A list of strings.      
+	/// - Parameter defaultList: The list to return when the key doesn't exist. A list
+	/// of const char * objects.       
+	/// - Returns: A list of strings. A list of const char * objects.       
 	public func getStringList(section:String, key:String, defaultList:[String]?) -> [String]
 	{
 		var swiftList = [String]()
@@ -20649,7 +20678,7 @@ public class Config : LinphoneObject
 	/// - Parameter section: The name of the section to put the configuration item into
 	///    
 	/// - Parameter key: The name of the configuration item to set    
-	/// - Parameter value: The value to set.      
+	/// - Parameter value: The value to set. A list of const char * objects.       
 	public func setStringList(section:String, key:String, value:[String]?) 
 	{
 		linphone_config_set_string_list(cPtr, section, key, StringArrayToBctbxList(list:value))
@@ -20961,7 +20990,8 @@ public class Content : LinphoneObject
 		
 	
 	/// Get all the parts from a multipart content. 
-	/// - Returns: A   object holding the part if found, nil otherwise.       
+	/// - Returns: A A list of ``Content`` objects.    object holding the part if
+	/// found, nil otherwise.       
 	public var parts: [Content]
 	{
 	
@@ -21619,7 +21649,7 @@ public class Core : LinphoneObject
 		
 	
 	/// Returns an unmodifiable list of entered accounts. 
-	/// - Returns:      
+	/// - Returns: A list of ``Account`` objects.       
 	public var accountList: [Account]
 	{
 	
@@ -21752,7 +21782,8 @@ public class Core : LinphoneObject
 	
 	/// Returns a list of audio devices, with only the first device for each type To
 	/// have the list of all audio devices, use ``getExtendedAudioDevices()`` 
-	/// - Returns:   A list with the first ``AudioDevice`` of each type       
+	/// - Returns: A list of ``AudioDevice`` objects.    A list with the first
+	/// ``AudioDevice`` of each type       
 	public var audioDevices: [AudioDevice]
 	{
 	
@@ -21893,10 +21924,12 @@ public class Core : LinphoneObject
 	/// Removing specific payload types from the original list has no effect too:
 	/// missing payload types will be automatically added. In order to disable a
 	/// specific codec, applications shall use ``PayloadType/enable(enabled:)`` instead.
-	/// - Parameter payloadTypes: The new list of payload types.      
+	/// - Parameter payloadTypes: The new list of payload types. A list of
+	/// ``PayloadType`` objects.       
 	
 	/// Returns the list of the available audio payload types. 
-	/// - Returns: A freshly allocated list of the available payload types.         
+	/// - Returns: A freshly allocated list of the available payload types. A list of
+	/// ``PayloadType`` objects.          
 	public var audioPayloadTypes: [PayloadType]
 	{
 	
@@ -21964,7 +21997,7 @@ public class Core : LinphoneObject
 		
 	
 	/// Returns an unmodifiable list of currently entered ``AuthInfo``. 
-	/// - Returns: A list of ``AuthInfo``.      
+	/// - Returns: A list of ``AuthInfo``. A list of ``AuthInfo`` objects.       
 	public var authInfoList: [AuthInfo]
 	{
 	
@@ -22193,7 +22226,7 @@ public class Core : LinphoneObject
 		
 	
 	/// Get the list of call logs (past calls). 
-	/// - Returns: A list of ``CallLog``.      
+	/// - Returns: A list of ``CallLog``. A list of ``CallLog`` objects.       
 	public var callLogs: [CallLog]
 	{
 	
@@ -22309,7 +22342,7 @@ public class Core : LinphoneObject
 	/// function call to ``iterate()``. Similarly the ``Call`` objects inside it might
 	/// be destroyed without prior notice. To hold references to ``Call`` object into
 	/// your program, you must use linphone_call_ref. 
-	/// - Returns: A list of ``Call``      
+	/// - Returns: A list of ``Call`` A list of ``Call`` objects.       
 	public var calls: [Call]
 	{
 	
@@ -22496,7 +22529,7 @@ public class Core : LinphoneObject
 		
 	
 	/// Returns a list of chat rooms. 
-	/// - Returns: List of chat rooms.      
+	/// - Returns: List of chat rooms. A list of ``ChatRoom`` objects.       
 	public var chatRooms: [ChatRoom]
 	{
 	
@@ -22606,7 +22639,8 @@ public class Core : LinphoneObject
 		
 	
 	/// Retrieve the list of conference information on DB. 
-	/// - Returns: The list of conference infos  .       
+	/// - Returns: The list of conference infos A list of ``ConferenceInfo`` objects.  
+	/// .       
 	public var conferenceInformationList: [ConferenceInfo]
 	{
 	
@@ -23150,9 +23184,9 @@ public class Core : LinphoneObject
 	/// Forces liblinphone to use the supplied list of dns servers, instead of system's
 	/// ones. 
 	/// - Parameter servers: A list of strings containing the IP addresses of DNS
-	/// servers to be used.   Setting to nil restores default behaviour, which is to
-	/// use the DNS server list provided by the system. The list is copied internally. 
-	///   
+	/// servers to be used. A list of const char * objects.    Setting to nil restores
+	/// default behaviour, which is to use the DNS server list provided by the system.
+	/// The list is copied internally.    
 	
 	public var dnsServers: [String] = []
 	{
@@ -23173,9 +23207,9 @@ public class Core : LinphoneObject
 	/// list. 
 	/// - See also: ``getDnsSetByApp()`` 
 	/// - Parameter servers: A list of strings containing the IP addresses of DNS
-	/// servers to be used.   Setting to nil restores default behaviour, which is to
-	/// use the DNS server list provided by the system. The list is copied internally. 
-	///   
+	/// servers to be used. A list of const char * objects.    Setting to nil restores
+	/// default behaviour, which is to use the DNS server list provided by the system.
+	/// The list is copied internally.    
 	
 	public var dnsServersApp: [String] = []
 	{
@@ -23436,7 +23470,8 @@ public class Core : LinphoneObject
 		
 	
 	/// Returns the list of all audio devices. 
-	/// - Returns:   A list of all ``AudioDevice``       
+	/// - Returns: A list of ``AudioDevice`` objects.    A list of all ``AudioDevice`` 
+	///      
 	public var extendedAudioDevices: [AudioDevice]
 	{
 	
@@ -23577,7 +23612,7 @@ public class Core : LinphoneObject
 		
 	
 	/// Retrieves the list of ``FriendList`` from the core. 
-	/// - Returns: A list of ``FriendList``.      
+	/// - Returns: A list of ``FriendList``. A list of ``FriendList`` objects.       
 	public var friendsLists: [FriendList]
 	{
 	
@@ -23595,7 +23630,8 @@ public class Core : LinphoneObject
 		
 	
 	/// Retrieve the list of future conference information on DB. 
-	/// - Returns: The list of future conference infos  .       
+	/// - Returns: The list of future conference infos A list of ``ConferenceInfo``
+	/// objects.   .       
 	public var futureConferenceInformationList: [ConferenceInfo]
 	{
 	
@@ -24174,7 +24210,7 @@ public class Core : LinphoneObject
 	
 	/// Returns a list of entered LDAPs. 
 	/// Items must be freed with linphone_ldap_unref 
-	/// - Returns:         
+	/// - Returns: A list of ``Ldap`` objects.          
 	/// - Deprecated: 18/11/2024 use ``getRemoteContactDirectories()`` instead. 
 	@available(*, deprecated)
 	public var ldapList: [Ldap]
@@ -24249,13 +24285,14 @@ public class Core : LinphoneObject
 	/// does not need to set this information, that is automatically assigned at
 	/// ``Core`` start. Setting this is mainly for internal tests of backward
 	/// compatibility. 
-	/// - Parameter specs: The list of string specs to set.      
+	/// - Parameter specs: The list of string specs to set. A list of char * objects.  
+	///     
 	
 	/// Get the list of linphone specs string values representing what functionalities
 	/// the linphone client supports. 
 	/// - See also: ``setLinphoneSpecsList(specs:)`` 
 	/// - Returns: A list of supported specs. The list must be freed with
-	/// bctbx_list_free() after usage.         
+	/// bctbx_list_free() after usage. A list of char * objects.          
 	public var linphoneSpecsList: [String]
 	{
 	
@@ -24284,7 +24321,7 @@ public class Core : LinphoneObject
 		
 	
 	/// Return the list of loaded plugins. 
-	/// - Returns: the list of loaded plugins      
+	/// - Returns: the list of loaded plugins A list of char * objects.       
 	public var loadedPlugins: [String]
 	{
 	
@@ -25306,7 +25343,7 @@ public class Core : LinphoneObject
 		
 	
 	/// Returns an unmodifiable list of entered proxy configurations. 
-	/// - Returns: A list of ``ProxyConfig``.      
+	/// - Returns: A list of ``ProxyConfig``. A list of ``ProxyConfig`` objects.       
 	/// - Deprecated: 04/09/2024 Use ``getAccountList()`` 
 	@available(*, deprecated)
 	public var proxyConfigList: [ProxyConfig]
@@ -25556,7 +25593,7 @@ public class Core : LinphoneObject
 	/// Gets the list of currently configured LDAP or CardDAV remote servers used by
 	/// ``MagicSearch``. 
 	/// - Returns: the list of ``RemoteContactDirectory`` currently configured, if any.
-	///         
+	/// A list of ``RemoteContactDirectory`` objects.          
 	public var remoteContactDirectories: [RemoteContactDirectory]
 	{
 	
@@ -26011,7 +26048,8 @@ public class Core : LinphoneObject
 	
 	/// Gets the list of the available sound devices. 
 	/// - Returns: An unmodifiable array of strings contanining the names of the
-	/// available sound devices that is nil terminated.         
+	/// available sound devices that is nil terminated. A list of char * objects.      
+	///    
 	/// - Deprecated: 10/04/2021 Use ``getAudioDevices()`` instead.
 	@available(*, deprecated)
 	public var soundDevicesList: [String]
@@ -26129,8 +26167,8 @@ public class Core : LinphoneObject
 	
 	/// Returns a list of strings containing the file format types supported for call
 	/// recording. 
-	/// - Returns: The supported formats, typically 'wav', 'mka', 'mkv', 'smff'.       
-	///  
+	/// - Returns: The supported formats, typically 'wav', 'mka', 'mkv', 'smff'. A list
+	/// of char * objects.          
 	public var supportedFileFormatsList: [String]
 	{
 	
@@ -26203,10 +26241,12 @@ public class Core : LinphoneObject
 	}
 		
 	/// Redefines the list of the available payload types for real-time text. 
-	/// - Parameter payloadTypes: The new list of payload types.      
+	/// - Parameter payloadTypes: The new list of payload types. A list of
+	/// ``PayloadType`` objects.       
 	
 	/// Returns the list of the available real-time text payload types. 
-	/// - Returns: A freshly allocated list of the available payload types.         
+	/// - Returns: A freshly allocated list of the available payload types. A list of
+	/// ``PayloadType`` objects.          
 	public var textPayloadTypes: [PayloadType]
 	{
 	
@@ -26809,7 +26849,8 @@ public class Core : LinphoneObject
 	
 	/// Gets the list of the available video capture devices. 
 	/// - Returns: An unmodifiable array of strings contanining the names of the
-	/// available video capture devices that is nil terminated.         
+	/// available video capture devices that is nil terminated. A list of char *
+	/// objects.          
 	public var videoDevicesList: [String]
 	{
 	
@@ -27012,11 +27053,12 @@ public class Core : LinphoneObject
 	/// when LinphoneCodecPriorityPolicyAuto is selected, by definition.
 	/// - See also: ``setVideoCodecPriorityPolicy(policy:)`` 
 	/// - Parameter payloadTypes: The new list of codecs. The core does not take
-	/// ownership on it.      
+	/// ownership on it. A list of ``PayloadType`` objects.       
 	
 	/// Returns the list of the available video payload types (codecs), in their order
 	/// of preference. 
-	/// - Returns: A freshly allocated list of the available payload types.         
+	/// - Returns: A freshly allocated list of the available payload types. A list of
+	/// ``PayloadType`` objects.          
 	public var videoPayloadTypes: [PayloadType]
 	{
 	
@@ -27741,8 +27783,8 @@ public class Core : LinphoneObject
 	
 	/// Create a chat room. 
 	/// - Parameter params: The chat room creation parameters ``ConferenceParams``    
-	/// - Parameter participants: The initial list of participants of the chat room.   
-	///   
+	/// - Parameter participants: The initial list of participants of the chat room. A
+	/// list of ``Address`` objects.       
 	/// - Returns: The newly created chat room (can be an existing one if backend is
 	/// Basic) or nil.    
 	public func createChatRoom(params:ConferenceParams, participants:[Address]) throws -> ChatRoom
@@ -27763,8 +27805,8 @@ public class Core : LinphoneObject
 	/// - Parameter localAddr: ``Address`` representing the local proxy configuration
 	/// to use for the chat room creation    
 	/// - Parameter subject: The subject of the group chat room    
-	/// - Parameter participants: The initial list of participants of the chat room    
-	///  
+	/// - Parameter participants: The initial list of participants of the chat room A
+	/// list of ``Address`` objects.       
 	/// - Returns: The newly created chat room.    
 	/// - Deprecated: 02/07/2020, use ``createChatRoom(params:participants:)`` instead
 	@available(*, deprecated)
@@ -27784,8 +27826,8 @@ public class Core : LinphoneObject
 	/// Create a chat room. 
 	/// - Parameter params: The chat room creation parameters ``ChatRoomParams``    
 	/// - Parameter subject: The subject of the group chat room    
-	/// - Parameter participants: The initial list of participants of the chat room.   
-	///   
+	/// - Parameter participants: The initial list of participants of the chat room. A
+	/// list of ``Address`` objects.       
 	/// - Returns: The newly created chat room.    
 	/// - Deprecated: 02/07/2020, use ``createChatRoom(params:participants:)`` instead
 	@available(*, deprecated)
@@ -27803,8 +27845,8 @@ public class Core : LinphoneObject
 	
 	
 	/// - Parameter subject: The subject of the group chat room    
-	/// - Parameter participants: The initial list of participants of the chat room.   
-	///   
+	/// - Parameter participants: The initial list of participants of the chat room. A
+	/// list of ``Address`` objects.       
 	/// - Returns: The newly created chat room.    
 	/// - Deprecated: 02/07/2020, use ``createChatRoom(params:participants:)`` instead
 	@available(*, deprecated)
@@ -27863,8 +27905,8 @@ public class Core : LinphoneObject
 	/// Create a chat room. 
 	/// - Parameter params: The chat room creation parameters ``ChatRoomParams``    
 	/// - Parameter localAddr: ``Address`` of a local ``Account`` identity or nil    
-	/// - Parameter participants: The initial list of participants of the chat room.   
-	///   
+	/// - Parameter participants: The initial list of participants of the chat room. A
+	/// list of ``Address`` objects.       
 	/// - Returns: The newly created chat room (can be an existing one if backend is
 	/// Basic) or nil.    
 	/// - Deprecated: 22/10/2024, use ``createChatRoom(params:participants:)`` instead
@@ -29008,7 +29050,7 @@ public class Core : LinphoneObject
 	/// - Parameter filter: Chars used for the filter*    
 	/// - Parameter sipOnly: Only sip address or not 
 	/// - Returns: A list of filtered ``Address`` + the ``Address`` created with the
-	/// filter.      
+	/// filter. A list of ``Address`` objects.       
 	public func findContactsByChar(filter:String, sipOnly:Bool) -> [Address]
 	{
 		var swiftList = [Address]()
@@ -29058,7 +29100,8 @@ public class Core : LinphoneObject
 	
 	/// Searches all ``Friend`` matching an address. 
 	/// - Parameter address: The address to use to search the friends.    
-	/// - Returns: A list of ``Friend`` corresponding to the given address.         
+	/// - Returns: A list of ``Friend`` corresponding to the given address. A list of
+	/// ``Friend`` objects.          
 	public func findFriends(address:Address) -> [Friend]
 	{
 		var swiftList = [Friend]()
@@ -29169,7 +29212,7 @@ public class Core : LinphoneObject
 	/// ENABLE_DB_STORAGE to work. 
 	/// - Parameter peerAddress: The remote ``Address`` object.    
 	/// - Parameter localAddress: The local ``Address`` object    
-	/// - Returns: A list of ``CallLog``.         
+	/// - Returns: A list of ``CallLog``. A list of ``CallLog`` objects.          
 	public func getCallHistory(peerAddress:Address, localAddress:Address) -> [CallLog]
 	{
 		var swiftList = [CallLog]()
@@ -29256,7 +29299,8 @@ public class Core : LinphoneObject
 	
 	/// Retrieve the list of conference information on DB after a certain time. 
 	/// - Parameter time: Time to retrieve conference info. 
-	/// - Returns: The list of conference infos  .       
+	/// - Returns: The list of conference infos A list of ``ConferenceInfo`` objects.  
+	/// .       
 	public func getConferenceInformationListAfterTime(time:time_t) -> [ConferenceInfo]
 	{
 		var swiftList = [ConferenceInfo]()
@@ -29276,8 +29320,9 @@ public class Core : LinphoneObject
 	/// Retrieve the list of conference information on DB where the address passed as
 	/// argument is either the organizer or a participant. 
 	/// - Parameter uri: ``Address`` of the participant.    
-	/// - Returns: The list of conference infos   where the address passed as argument
-	/// is either the organizer or a participant.       
+	/// - Returns: The list of conference infos A list of ``ConferenceInfo`` objects.  
+	///  where the address passed as argument is either the organizer or a participant.
+	///       
 	public func getConferenceInformationsWithParticipant(uri:Address) -> [ConferenceInfo]
 	{
 		var swiftList = [ConferenceInfo]()
@@ -30068,7 +30113,7 @@ public class Core : LinphoneObject
 	/// - Parameter localAddr: ``Address`` of a local ``Account`` identity or nil    
 	/// - Parameter remoteAddr: ``Address`` to search for or nil    
 	/// - Parameter participants: The participants that must be present in the chat
-	/// room to find.      
+	/// room to find. A list of ``Address`` objects.       
 	/// - Returns: A matching chat room or nil if none matches.    
 	/// - Deprecated: 22/10/2024, use
 	/// ``searchChatRoom(params:localAddr:remoteAddr:participants:)`` instead
@@ -30091,7 +30136,7 @@ public class Core : LinphoneObject
 	/// - Parameter localAddr: ``Address`` of a local ``Account`` identity or nil    
 	/// - Parameter remoteAddr: ``Address`` to search for or nil    
 	/// - Parameter participants: The participants that must be present in the chat
-	/// room to find.      
+	/// room to find. A list of ``Address`` objects.       
 	/// - Returns: A matching chat room or nil if none matches.    
 	public func searchChatRoom(params:ConferenceParams?, localAddr:Address?, remoteAddr:Address?, participants:[Address]?) -> ChatRoom?
 	{
@@ -30127,7 +30172,7 @@ public class Core : LinphoneObject
 	/// or nil    
 	/// - Parameter remoteAddr: ``Address`` to search for or nil    
 	/// - Parameter participants: The participants that must be present in the chat
-	/// room to find      
+	/// room to find A list of ``Address`` objects.       
 	/// - Returns: A pointer on ``Conference`` satisfying the non-nil function
 	/// arguments or nil if none matches    
 	public func searchConference(params:ConferenceParams?, localAddr:Address?, remoteAddr:Address?, participants:[Address]?) -> Conference?
@@ -30583,7 +30628,8 @@ public class DialPlan : LinphoneObject
 	
 	
 	/// Returns a list of all known dial plans. 
-	/// - Returns: The list of all known dial plans.         
+	/// - Returns: The list of all known dial plans. A list of ``DialPlan`` objects.   
+	///       
 	static public var getAllList: [DialPlan]
 	{
 	
@@ -30764,7 +30810,8 @@ public class Dictionary : LinphoneObject
 	
 	
 	/// Returns the list of keys present in the dictionary. 
-	/// - Returns: the   of keys inside the dictionary.       
+	/// - Returns: the A list of const char * objects.    of keys inside the
+	/// dictionary.       
 	public var keys: [String]
 	{
 	
@@ -32254,7 +32301,7 @@ public class Factory : LinphoneObject
 		
 	
 	/// Returns a bctbx_list_t of all DialPlans. 
-	/// - Returns: A list of ``DialPlan``      
+	/// - Returns: A list of ``DialPlan`` A list of ``DialPlan`` objects.       
 	public var dialPlans: [DialPlan]
 	{
 	
@@ -32447,7 +32494,8 @@ public class Factory : LinphoneObject
 	/// This list is suitable for a widest set of hardware for all video codec
 	/// implementations, and thus excludes some very high definition formats that are
 	/// unlikely to work unless specific hardware or codecs are used. 
-	/// - Returns: A list of video definitions.      
+	/// - Returns: A list of video definitions. A list of ``VideoDefinition`` objects. 
+	///      
 	public var recommendedVideoDefinitions: [VideoDefinition]
 	{
 	
@@ -32513,7 +32561,8 @@ public class Factory : LinphoneObject
 		
 	
 	/// Get the list of standard video definitions supported by Linphone. 
-	/// - Returns: A list of video definitions.      
+	/// - Returns: A list of video definitions. A list of ``VideoDefinition`` objects. 
+	///      
 	public var supportedVideoDefinitions: [VideoDefinition]
 	{
 	
@@ -33484,7 +33533,7 @@ public class Friend : LinphoneObject
 		
 	
 	/// Returns a list of ``Address`` for this friend. 
-	/// - Returns: A list of ``Address``.      
+	/// - Returns: A list of ``Address``. A list of ``Address`` objects.       
 	public var addresses: [Address]
 	{
 	
@@ -33555,7 +33604,8 @@ public class Friend : LinphoneObject
 		
 	
 	/// Returns a list of ``FriendDevice`` for this friend, for all known addresses. 
-	/// - Returns: A list of ``FriendDevice``.         
+	/// - Returns: A list of ``FriendDevice``. A list of ``FriendDevice`` objects.     
+	///     
 	public var devices: [FriendDevice]
 	{
 	
@@ -33787,7 +33837,8 @@ public class Friend : LinphoneObject
 		
 	
 	/// Returns a list of phone numbers for this friend. 
-	/// - Returns: A list of phone numbers as string.         
+	/// - Returns: A list of phone numbers as string. A list of char * objects.        
+	///  
 	public var phoneNumbers: [String]
 	{
 	
@@ -33805,7 +33856,8 @@ public class Friend : LinphoneObject
 		
 	
 	/// Returns a list of ``FriendPhoneNumber`` for this friend. 
-	/// - Returns: A list of phone numbers as string.         
+	/// - Returns: A list of phone numbers as string. A list of ``FriendPhoneNumber``
+	/// objects.          
 	public var phoneNumbersWithLabel: [FriendPhoneNumber]
 	{
 	
@@ -34085,7 +34137,8 @@ public class Friend : LinphoneObject
 	
 	/// Returns a list of ``FriendDevice`` for this friend and a specific address. 
 	/// - Parameter address: ``Address`` object    
-	/// - Returns: A list of ``FriendDevice``.         
+	/// - Returns: A list of ``FriendDevice``. A list of ``FriendDevice`` objects.     
+	///     
 	public func getDevicesForAddress(address:Address) -> [FriendDevice]
 	{
 		var swiftList = [FriendDevice]()
@@ -34478,7 +34531,7 @@ public class FriendList : LinphoneObject
 		
 	
 	/// Retrieves the list of ``Friend`` from this ``FriendList``. 
-	/// - Returns: A list of ``Friend``      
+	/// - Returns: A list of ``Friend`` A list of ``Friend`` objects.       
 	public var friends: [Friend]
 	{
 	
@@ -34776,7 +34829,8 @@ public class FriendList : LinphoneObject
 	/// Find all friends in the friend list using a ``Address``. 
 	/// - Parameter address: ``Address`` object of the friends we want to search for.  
 	///  
-	/// - Returns: A list of ``Friend`` if found, nil otherwise.      
+	/// - Returns: A list of ``Friend`` if found, nil otherwise. A list of ``Friend``
+	/// objects.       
 	public func findFriendsByAddress(address:Address) -> [Friend]
 	{
 		var swiftList = [Friend]()
@@ -34796,7 +34850,8 @@ public class FriendList : LinphoneObject
 	/// Find all friends in the friend list using an URI string. 
 	/// - Parameter uri: A string containing the URI of the friends we want to search
 	/// for.    
-	/// - Returns: A list of ``Friend`` if found, nil otherwise.      
+	/// - Returns: A list of ``Friend`` if found, nil otherwise. A list of ``Friend``
+	/// objects.       
 	public func findFriendsByUri(uri:String) -> [Friend]
 	{
 		var swiftList = [Friend]()
@@ -34872,7 +34927,7 @@ public class FriendList : LinphoneObject
 	/// Missing friends from the source friends will be added. Extra friends from the
 	/// local friendlist will be removed. 
 	/// - Parameter sourceFriends: the list of ``Friend`` whose data will be copied.
-	/// (not a ``FriendList`` !)      
+	/// (not a ``FriendList`` !) A list of ``Friend`` objects.       
 	/// - Returns: true if the friendlist has been modified, false if no change
 	/// happened 
 	public func synchronizeFriendsWith(sourceFriends:[Friend]) -> Bool
@@ -36399,7 +36454,7 @@ public class MagicSearch : LinphoneObject
 	}
 		
 	
-	/// - Returns: sorted list of         
+	/// - Returns: sorted list of A list of ``SearchResult`` objects.          
 	public var lastSearch: [SearchResult]
 	{
 	
@@ -36527,7 +36582,7 @@ public class MagicSearch : LinphoneObject
 	/// - Parameter sourceFlags: Flags that specify where to search : ``Source`` 
 	/// - Parameter aggregation: a ``Aggregation`` mode to indicate how to merge
 	/// results 
-	/// - Returns: sorted list of         
+	/// - Returns: sorted list of A list of ``SearchResult`` objects.          
 	public func getContactsList(filter:String?, domain:String?, sourceFlags:Int, aggregation:MagicSearch.Aggregation) -> [SearchResult]
 	{
 		var swiftList = [SearchResult]()
@@ -36632,7 +36687,8 @@ public class MessageWaitingIndication : LinphoneObject
 		
 	
 	/// Get the message waiting indication summaries. 
-	/// - Returns: The message waiting indication summaries.      
+	/// - Returns: The message waiting indication summaries. A list of
+	/// ``MessageWaitingIndicationSummary`` objects.       
 	public var summaries: [MessageWaitingIndicationSummary]
 	{
 	
@@ -37211,7 +37267,7 @@ public class Participant : LinphoneObject
 		
 	
 	/// Gets the list of devices from a chat room's participant. 
-	/// - Returns: List of devices.         
+	/// - Returns: List of devices. A list of ``ParticipantDevice`` objects.          
 	public var devices: [ParticipantDevice]
 	{
 	
@@ -37861,7 +37917,8 @@ public class ParticipantDeviceIdentity : LinphoneObject
 		
 	/// Set the capability descriptor (currently +org.linphone.specs value) for this
 	/// participant device identity. 
-	/// - Parameter capabilityDescriptorList: the capability descriptor list.      
+	/// - Parameter capabilityDescriptorList: the capability descriptor list. A list of
+	/// const char * objects.       
 	
 	public var capabilityDescriptor2: [String] = []
 	{
@@ -37880,7 +37937,8 @@ public class ParticipantDeviceIdentity : LinphoneObject
 	
 	/// Get the capability descriptor (currently +org.linphone.specs value) for this
 	/// participant device identity. 
-	/// - Returns: the capability descriptor list.      
+	/// - Returns: the capability descriptor list. A list of const char * objects.     
+	///  
 	public var capabilityDescriptorList: [String]
 	{
 	
@@ -39740,11 +39798,13 @@ public class PresenceService : LinphoneObject
 	}
 		
 	/// Sets the service descriptions of a presence service. 
-	/// - Parameter descriptions: The service descriptions.      
+	/// - Parameter descriptions: The service descriptions. A list of char * objects.  
+	///     
 	/// - Returns: 0 if successful, a value < 0 in case of error. 
 	
 	/// Gets the service descriptions of a presence service. 
-	/// - Returns: A   containing the services descriptions.      
+	/// - Returns: A A list of char * objects.    containing the services descriptions.
+	///      
 	/// The returned string is to be freed. 
 	public var serviceDescriptions: [String]
 	{
@@ -40670,12 +40730,12 @@ public class ProxyConfig : LinphoneObject
 	/// Sets a list of SIP route. 
 	/// When a route is set, all outgoing calls will go to the route's destination if
 	/// this proxy is the default one (see ``Core/setDefaultProxyConfig(config:)`` ). 
-	/// - Parameter routes: A   of routes    
+	/// - Parameter routes: A A list of const char * objects.    of routes    
 	/// - Returns: -1 if routes are invalid, 0 otherwise. 
 	/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 	
 	/// Gets the list of the routes set for this proxy config. 
-	/// - Returns: The list of routes as string.      
+	/// - Returns: The list of routes as string. A list of const char * objects.       
 	/// - Deprecated: 06/04/2020 Use ``Account`` object instead 
 	@available(*, deprecated)
 	public var routes: [String]
@@ -42537,7 +42597,7 @@ public class Tunnel : LinphoneObject
 		
 	
 	/// Get added servers. 
-	/// - Returns: The list of servers.      
+	/// - Returns: The list of servers. A list of ``TunnelConfig`` objects.       
 	public var servers: [TunnelConfig]
 	{
 	
@@ -43006,7 +43066,7 @@ public class Vcard : LinphoneObject
 		
 	
 	/// Returns the list of phone numbers in the vCard (all the TEL attributes) or nil. 
-	/// - Returns: The phone numbers as string.         
+	/// - Returns: The phone numbers as string. A list of char * objects.          
 	public var phoneNumbers: [String]
 	{
 	
@@ -43024,7 +43084,8 @@ public class Vcard : LinphoneObject
 		
 	
 	/// Returns the list of phone numbers in the vCard (all the TEL attributes) or nil. 
-	/// - Returns: The phone numbers as ``FriendPhoneNumber``.         
+	/// - Returns: The phone numbers as ``FriendPhoneNumber``. A list of
+	/// ``FriendPhoneNumber`` objects.          
 	public var phoneNumbersWithLabel: [FriendPhoneNumber]
 	{
 	
@@ -43069,7 +43130,7 @@ public class Vcard : LinphoneObject
 	
 	/// Returns the list of SIP addresses in the vCard (all the IMPP attributes that
 	/// has an URI value starting by "sip:") or nil. 
-	/// - Returns: The SIP addresses.      
+	/// - Returns: The SIP addresses. A list of ``Address`` objects.       
 	public var sipAddresses: [Address]
 	{
 	
@@ -43233,7 +43294,8 @@ public class Vcard : LinphoneObject
 	
 	/// Get the vCard extended properties values per property name. 
 	/// - Parameter name: the name to filter the extended properties on.    
-	/// - Returns: The extended properties values as string.         
+	/// - Returns: The extended properties values as string. A list of char * objects. 
+	///         
 	public func getExtendedPropertiesValuesByName(name:String) -> [String]
 	{
 		var swiftList = [String]()
@@ -43842,7 +43904,8 @@ public class XmlRpcRequest : LinphoneObject
 	
 	/// Get the response to an XML-RPC request sent with
 	/// ``XmlRpcSession/sendRequest(request:)`` and returning a string response. 
-	/// - Returns: A list of all string responses in the XML-RPC request.      
+	/// - Returns: A list of all string responses in the XML-RPC request. A list of
+	/// const char * objects.       
 	public var listResponse: [String]
 	{
 	
