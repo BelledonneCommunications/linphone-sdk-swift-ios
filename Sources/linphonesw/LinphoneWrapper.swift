@@ -21788,6 +21788,24 @@ public class Core : LinphoneObject
 		}
 	}
 		
+	/// Special function to enable the callkit. 
+	/// - Parameter enabled: true to enable callkit, false to disable it. 
+	
+	/// Special function to check if the callkit is enabled, False by default. 
+	/// - Returns: true if callkit is enabled, false otherwise. 
+	public var callkitEnabled: Bool
+	{
+	
+		get
+		{ 
+						return linphone_core_callkit_enabled(cPtr) != 0
+		}
+		set
+		{
+			linphone_core_enable_callkit(cPtr, newValue==true ? 1:0)
+		}
+	}
+		
 	
 	/// Gets the current list of calls. 
 	/// Note that this list is read-only and might be changed by the core after a
@@ -23721,6 +23739,20 @@ public class Core : LinphoneObject
 				listTemp = UnsafePointer<bctbx_list_t>(listTemp!.pointee.next)
 			}
 			return swiftList
+
+	}
+		
+	
+	/// Special function to check if the local network permission has been granted by
+	/// the user (useful for iOS). 
+	/// The test performed by this function may popup the local network permission
+	/// dialog, for that reason it could be a good idea to check it twice to conclude
+	/// that the user has deny the permission. 
+	/// - Returns: true if local permission request is granted, false otherwise. 
+	public var localPermissionEnabled: Bool
+	{
+	
+						return linphone_core_local_permission_enabled(cPtr) != 0
 
 	}
 		
@@ -26449,6 +26481,17 @@ public class Core : LinphoneObject
 	
 	
 	
+	/// Special function to indicate if the audio session is activated. 
+	/// Must be called when ProviderDelegate of the callkit notifies that the audio
+	/// session is activated or deactivated. 
+	/// - Parameter activated: true to activate the audio session, false to disable it. 
+	public func activateAudioSession(activated:Bool) 
+	{
+		linphone_core_activate_audio_session(cPtr, activated==true ? 1:0)
+	}
+	
+	
+	
 	/// Adds an account. 
 	/// This will start registration on the proxy, if registration is enabled. 
 	/// - Parameter account: the ``Account`` to add    
@@ -26604,6 +26647,17 @@ public class Core : LinphoneObject
 	
 	
 	
+	/// Special function to indicate if the audio route is changed. 
+	/// Must be called in the callback of AVAudioSessionRouteChangeNotification. 
+	/// - deprecated: 07/01/2020 now handled in the linphone SDK directly 
+	@available(*, deprecated)
+	public func audioRouteChanged() 
+	{
+		linphone_core_audio_route_changed(cPtr)
+	}
+	
+	
+	
 	/// Check whether ringing of calls is disabled. 
 	/// - Returns: true if call ringing is disabled 
 	public func callRingingDisabled() -> Bool
@@ -26707,6 +26761,16 @@ public class Core : LinphoneObject
 		guard exception_result == 0 else {
 			throw LinphoneError.exception(result: "configSync returned value \(exception_result)")
 		}
+	}
+	
+	
+	
+	/// Special function to configure audio session with default settings. 
+	/// Must be called in ProviderDelegate's callbacks when answer an incoming call and
+	/// start an outgoing call. 
+	public func configureAudioSession() 
+	{
+		linphone_core_configure_audio_session(cPtr)
 	}
 	
 	
