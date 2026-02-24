@@ -16669,8 +16669,8 @@ public class ChatRoom : LinphoneObject
 	}
 		
 	
-	/// Gets all contents for which content-type starts with either video/, audio/ or
-	/// image/. 
+	/// Gets all contents for which content-type starts with either video/, audio/
+	/// (except for voice messages) or image/. 
 	/// - Returns: A list of contents considered as "media".      
 	public var mediaContents: [Content]
 	{
@@ -17487,7 +17487,7 @@ public class ChatRoom : LinphoneObject
 	
 	
 	/// Gets the partial list of contents for which content-type starts with either
-	/// video/, audio/ or image/. 
+	/// video/, audio/ (except for voice messages) or image/. 
 	/// - Parameter begin: The first content of the range to be retrieved. Most recent
 	/// content has index 0. 
 	/// - Parameter end: The last content of the range to be retrieved. Oldest content
