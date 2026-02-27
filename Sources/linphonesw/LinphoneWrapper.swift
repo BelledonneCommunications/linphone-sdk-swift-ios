@@ -15788,16 +15788,17 @@ public class ChatParams : LinphoneObject
 
 	}
 		
-	/// Set lifetime (in seconds) for all new ephemral messages in the text
+	/// Set lifetime (in seconds) for all new ephemeral messages in the text
 	/// capabilities of the chat. 
 	/// After the message is read, it will be deleted after "time" seconds. - See also:
-	/// linphone_chat_params_ephemeral_enabled() 
-	/// - Parameter time: The ephemeral lifetime, default is disabled (0) 
+	/// ``ChatRoom/activateEphemeral(lifetime:)`` 
+	/// - deprecated: 20/02/2026 Use ``activateEphemeral(lifetime:)`` or
+	/// ``deactivateEphemeral()`` instead. 
 	
 	/// Get lifetime (in seconds) for all new ephemeral messages in the text
 	/// capabilities of the chat. 
 	/// After the message is read, it will be deleted after "time" seconds. - See also:
-	/// linphone_chat_params_ephemeral_enabled() 
+	/// ``ChatRoom/activateEphemeral(lifetime:)`` 
 	/// - Returns: the ephemeral lifetime (in seconds) 
 	public var ephemeralLifetime: Int
 	{
@@ -15806,6 +15807,7 @@ public class ChatParams : LinphoneObject
 		{ 
 						return Int(linphone_chat_params_get_ephemeral_lifetime(cPtr))
 		}
+	@available(*, deprecated)
 		set
 		{
 			linphone_chat_params_set_ephemeral_lifetime(cPtr, (newValue))
@@ -15854,6 +15856,21 @@ public class ChatParams : LinphoneObject
 		
 	
 	
+	/// Set lifetime (in seconds) for all new ephemeral messages in the text
+	/// capabilities of the chat. 
+	/// After the message is read, it will be deleted after "time" seconds. - See also:
+	/// ``ChatRoom/activateEphemeral(lifetime:)`` 
+	/// - Parameter lifetime: The ephemeral lifetime, strictly positive 
+	public func activateEphemeral(lifetime:UInt) throws 
+	{
+		let exception_result = linphone_chat_params_activate_ephemeral(cPtr, CUnsignedInt(lifetime))
+		guard exception_result == 0 else {
+			throw LinphoneError.exception(result: "activateEphemeral returned value \(exception_result)")
+		}
+	}
+	
+	
+	
 	/// Clone a ``ChatParams``. 
 	/// - Returns: An allocated ``ChatParams`` with the same parameters than params    
 	public func clone() -> ChatParams?
@@ -15865,6 +15882,15 @@ public class ChatParams : LinphoneObject
 		let result = ChatParams.getSwiftObject(cObject: cPointer!)
 		belle_sip_object_unref(UnsafeMutableRawPointer(cPointer))
 		return result
+	}
+	
+	
+	
+	/// Deactivate new ephemeral messages in the text capabilities of the chat. 
+	/// - See also: ``ChatRoom/deactivateEphemeral()`` 
+	public func deactivateEphemeral() 
+	{
+		linphone_chat_params_deactivate_ephemeral(cPtr)
 	}
 }
 
@@ -16290,6 +16316,8 @@ public class ChatRoom : LinphoneObject
 	/// starts when the message has been displayed at the recipent, which means:
 	/// - Parameter enable: true if the ephemeral message feature is enabled, false
 	/// otherwise. 
+	/// - deprecated: 20/02/2026. Use ``activateEphemeral(lifetime:)`` or
+	/// ``deactivateEphemeral()`` instead. 
 	
 	/// Returns whether or not the ephemeral message feature is enabled in the chat
 	/// room. 
@@ -16301,6 +16329,7 @@ public class ChatRoom : LinphoneObject
 		{ 
 						return linphone_chat_room_ephemeral_enabled(cPtr) != 0
 		}
+	@available(*, deprecated)
 		set
 		{
 			linphone_chat_room_enable_ephemeral(cPtr, newValue==true ? 1:0)
@@ -16312,10 +16341,12 @@ public class ChatRoom : LinphoneObject
 	/// ``ephemeralEnabled()`` 
 	/// - Parameter time: The ephemeral lifetime, default is 0 (disabled) 
 	/// - Warning: A value of "time" equal to 0 disables ephemeral messages 
+	/// - deprecated: 20/02/2026. Use ``activateEphemeral(lifetime:)`` or
+	/// ``deactivateEphemeral()`` instead. 
 	
 	/// Gets lifetime (in seconds) for all new ephemeral messages in the chat room. 
 	/// After the message is read, it will be deleted after "time" seconds. - See also:
-	/// ``ephemeralEnabled()`` 
+	/// ``activateEphemeral(lifetime:)`` 
 	/// - Returns: the ephemeral lifetime (in secoonds) 
 	public var ephemeralLifetime: Int
 	{
@@ -16324,6 +16355,7 @@ public class ChatRoom : LinphoneObject
 		{ 
 						return Int(linphone_chat_room_get_ephemeral_lifetime(cPtr))
 		}
+	@available(*, deprecated)
 		set
 		{
 			linphone_chat_room_set_ephemeral_lifetime(cPtr, (newValue))
@@ -16706,6 +16738,25 @@ public class ChatRoom : LinphoneObject
 		
 	
 	
+	/// Activate the ephemeral message feature in the chat room with a specified
+	/// timeout. 
+	/// Works only for flexisip-based chat room. An ephemeral message will
+	/// automatically disappear from the sender and recipient's chatrooms after a set
+	/// period of time. The timer starts when the message has been displayed at the
+	/// recipent, which means:
+	/// - Parameter lifetime: The ephemeral lifetime strictly positive. To disable the
+	/// feature, use ``deactivateEphemeral()``. 
+	/// - Returns: 0 if successful, -1 otherwise 
+	public func activateEphemeral(lifetime:UInt) throws 
+	{
+		let exception_result = linphone_chat_room_activate_ephemeral(cPtr, CUnsignedInt(lifetime))
+		guard exception_result == 0 else {
+			throw LinphoneError.exception(result: "activateEphemeral returned value \(exception_result)")
+		}
+	}
+	
+	
+	
 	/// Adds a participant to a chat room. 
 	/// This may fail if this type of chat room does not handle participants. Use
 	/// ``canHandleParticipants()`` to know if this chat room handles participants. 
@@ -16881,6 +16932,19 @@ public class ChatRoom : LinphoneObject
 		let result = ChatMessage.getSwiftObject(cObject: cPointer!)
 		belle_sip_object_unref(UnsafeMutableRawPointer(cPointer))
 		return result
+	}
+	
+	
+	
+	/// Disable the ephemeral message feature in the chat room. 
+	/// See ``activateEphemeral(lifetime:)`` for more details.
+	/// - Returns: 0 if successful, -1 otherwise 
+	public func deactivateEphemeral() throws 
+	{
+		let exception_result = linphone_chat_room_deactivate_ephemeral(cPtr)
+		guard exception_result == 0 else {
+			throw LinphoneError.exception(result: "deactivateEphemeral returned value \(exception_result)")
+		}
 	}
 	
 	
@@ -17424,11 +17488,11 @@ public class ChatRoomParams : LinphoneObject
 		}
 	}
 		
-	/// Set lifetime (in seconds) for all new ephemral messages in the chat room. 
+	/// Set lifetime (in seconds) for all new ephemeral messages in the chat room. 
 	/// After the message is read, it will be deleted after "time" seconds. - See also:
 	/// linphone_chat_room_params_ephemeral_enabled() 
 	/// - Parameter time: The ephemeral lifetime, default is disabled (0) 
-	/// - deprecated: 20/05/2024. Use ``ChatParams/setEphemeralLifetime(time:)``
+	/// - deprecated: 20/05/2024. Use ``ChatParams/activateEphemeral(lifetime:)``
 	/// instead. 
 	
 	/// Get lifetime (in seconds) for all new ephemeral messages in the chat room. 
