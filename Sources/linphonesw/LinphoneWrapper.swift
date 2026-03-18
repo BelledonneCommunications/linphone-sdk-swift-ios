@@ -21271,6 +21271,21 @@ public class Content : LinphoneObject
 	
 	
 	
+	/// Instantiate a new message content with values from source. 
+	/// - Returns: The newly created ``Content`` object.    
+	public func clone() -> Content?
+	{
+		let cPointer = linphone_content_clone(cPtr)
+		if (cPointer == nil) {
+			return nil
+		}
+		let result = Content.getSwiftObject(cObject: cPointer!)
+		belle_sip_object_unref(UnsafeMutableRawPointer(cPointer))
+		return result
+	}
+	
+	
+	
 	/// Generates a temporary plain copy of the file and returns its paths The caller
 	/// is responsible to then delete this temporary copy and the returned string. 
 	/// - Returns: The file path set for this content if it has been set, nil
@@ -33104,6 +33119,23 @@ public class Factory : LinphoneObject
 	
 	
 	
+	/// Creates a ``MessageWaitingIndication`` object from a ``Content``. 
+	/// - Parameter content: ``Content`` object.    
+	/// - Returns: The parsed message waiting indication if the content contains one,
+	/// nil otherwise.    
+	public func createMessageWaitingIndicationFromContent(content:Content) throws -> MessageWaitingIndication
+	{
+		let cPointer = linphone_factory_create_message_waiting_indication_from_content(cPtr, content.cPtr)
+		if (cPointer == nil) {
+			throw LinphoneError.exception(result: "create null MessageWaitingIndication value")
+		}
+		let result = MessageWaitingIndication.getSwiftObject(cObject: cPointer!)
+		belle_sip_object_unref(UnsafeMutableRawPointer(cPointer))
+		return result
+	}
+	
+	
+	
 	/// Create a ``ParticipantDeviceIdentity`` object. 
 	/// - Parameter address: ``Address`` object.    
 	/// - Parameter name: the name given to the device.    
@@ -36731,6 +36763,46 @@ public class MessageWaitingIndication : LinphoneObject
 		{
 			linphone_message_waiting_indication_set_account_address(cPtr, newValue?.cPtr)
 		}
+	}
+		
+	
+	/// Get the total number of new messages (for all the summaries). 
+	/// - Returns: The total number of new messages. 
+	public var nbNew: UInt32
+	{
+	
+						return linphone_message_waiting_indication_get_nb_new(cPtr)
+
+	}
+		
+	
+	/// Get the total number of new urgent messages (for all the summaries). 
+	/// - Returns: The total number of new urgent messages. 
+	public var nbNewUrgent: UInt32
+	{
+	
+						return linphone_message_waiting_indication_get_nb_new_urgent(cPtr)
+
+	}
+		
+	
+	/// Get the total number of old messages (for all the summaries). 
+	/// - Returns: The total number of old messages. 
+	public var nbOld: UInt32
+	{
+	
+						return linphone_message_waiting_indication_get_nb_old(cPtr)
+
+	}
+		
+	
+	/// Get the total number of old urgent messages (for all the summaries). 
+	/// - Returns: The total number of old urgent messages. 
+	public var nbOldUrgent: UInt32
+	{
+	
+						return linphone_message_waiting_indication_get_nb_old_urgent(cPtr)
+
 	}
 		
 	
