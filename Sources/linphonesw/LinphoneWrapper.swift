@@ -6408,8 +6408,7 @@ public class Account : LinphoneObject
 	
 	/// Get the custom parameter with key to this ``Account``. 
 	/// - Parameter key: key of the searched parameter.    
-	/// - Returns: The value of the parameter with key if found or an empty string
-	/// otherwise.    
+	/// - Returns: The value of the parameter with key if found, nil otherwise.    
 	public func getCustomParam(key:String) -> String
 	{
 		let cstr = linphone_account_get_custom_param(cPtr, key)
