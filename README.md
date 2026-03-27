@@ -9,7 +9,7 @@
 	import linphonesw
 	
 	[...]
-	print("Linphone SDK informations = \(linphonesw.sdkVersion) (\(linphonesw.sdkBranch))")
+	print("Linphone SDK informations = \(LinphoneSdkInfos.version) (\(LinphoneSdkInfos.branch))")
 	if let config = try?Factory.Instance.createConfig(path: "sometpath"),
 	   let core = try?Factory.Instance.createCoreWithConfig(config: config, systemContext: nil),
 	   let address = try?Factory.Instance.createAddress(addr: "sip:user@domain") {
@@ -20,8 +20,8 @@
 
 # Build information
 
-version : 5.5.0-beta.71+9c1012cedd
-branch : pipelines/110444
+version : 5.5.0-beta.72+b1ad05be23
+branch : pipelines/110468
 architecture : arm64 x86_64
 
 Enabled features:
@@ -94,8 +94,8 @@ Ensure it contains:
 - from terminal navigate to <build folder>/linphone-sdk-swift-ios
 - git init
 - git add .
-- git commit -a -m "Swift package 5.5.0-beta.71+9c1012cedd"
-- git tag -a 5.5.0-beta.71+9c1012cedd -m "linphone-sdk 5.5.0-beta.71+9c1012cedd"
+- git commit -a -m "Swift package 5.5.0-beta.72+b1ad05be23"
+- git tag -a 5.5.0-beta.72+b1ad05be23 -m "linphone-sdk 5.5.0-beta.72+b1ad05be23"
 - Open your Xcode Project
 - Menu File -> Add Package Dependencies
 - On top right entry field enter file://<build folder>/linphone-sdk-swift-ios
