@@ -30534,6 +30534,14 @@ public class Core : LinphoneObject
 	
 	
 	
+	/// Start the HID devices detection. 
+	public func startHidDevicesDetection() 
+	{
+		linphone_core_start_hid_devices_detection(cPtr)
+	}
+	
+	
+	
 	/// Stops a ``Core`` object after it has been instantiated and started. 
 	/// If stopped, it can be started again using ``start()``. Must be called only if
 	/// ``GlobalState`` is either On. State will changed to Shutdown and then Off. This
@@ -30578,6 +30586,14 @@ public class Core : LinphoneObject
 		guard exception_result == 0 else {
 			throw LinphoneError.exception(result: "stopEchoTester returned value \(exception_result)")
 		}
+	}
+	
+	
+	
+	/// Stop the HID devices detection. 
+	public func stopHidDevicesDetection() 
+	{
+		linphone_core_stop_hid_devices_detection(cPtr)
 	}
 	
 	
