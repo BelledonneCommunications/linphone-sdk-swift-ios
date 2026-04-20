@@ -11019,7 +11019,7 @@ public class Call : LinphoneObject
 	public enum Status:Int
 	{
 		
-		/// The call was sucessful. 
+		/// The call was successful. 
 		case Success = 0
 		/// The call was aborted (caller hanged up) 
 		case Aborted = 1
@@ -13084,6 +13084,31 @@ public class CallLog : LinphoneObject
 
 	}
 		
+	
+	
+	/// Update the call log from a text in Json. 
+	/// - Parameter jsonText: the Json to parse    
+	/// - Returns: -1 if json_text couldn't be parsed else 0. 
+	public func fromJson(jsonText:String) -> Int
+	{
+		return Int(linphone_call_log_from_json(cPtr, jsonText))
+	}
+	
+	
+	
+	/// Gets a Json representation of the call log. 
+	/// - See also: ``fromJson(jsonText:)`` for details.
+	/// - Returns: A Json format string describing the call.       
+	public func toJson() -> String
+	{
+		let cstr = linphone_call_log_to_json(cPtr)
+		let result = charArrayToString(charPointer: cstr)
+		if (cstr != nil) {
+			bctbx_free(cstr)
+		}
+		return result
+	}
+	
 	
 	
 	/// Gets a human readable string describing the call. 
@@ -15547,6 +15572,15 @@ public class ChatMessage : LinphoneObject
 		
 	
 	
+	/// Adds a call log content to the ChatMessage. 
+	/// - Parameter callLog: the ``CallLog`` object to add.    
+	public func addCallLogContent(callLog:CallLog) 
+	{
+		linphone_chat_message_add_call_log_content(cPtr, callLog.cPtr)
+	}
+	
+	
+	
 	/// Adds a content to the ChatMessage. 
 	/// - Parameter content: the ``Content`` object to add.    
 	public func addContent(content:Content) 
@@ -15673,6 +15707,15 @@ public class ChatMessage : LinphoneObject
 		}
 			bctbx_list_free_with_data(cList, belle_sip_object_unref)
 		return swiftList
+	}
+	
+	
+	
+	/// Indicates whether the chat message contains a call log in JSON format. 
+	/// - Returns: true if it has one, false otherwise. 
+	public func hasCallLogJsonContent() -> Bool
+	{
+		return linphone_chat_message_has_call_log_json_content(cPtr) != 0
 	}
 	
 	
@@ -17147,6 +17190,23 @@ public class ChatRoom : LinphoneObject
 	public func createMessage(message:String?) throws -> ChatMessage
 	{
 		let cPointer = linphone_chat_room_create_message(cPtr, message)
+		if (cPointer == nil) {
+			throw LinphoneError.exception(result: "create null ChatMessage value")
+		}
+		let result = ChatMessage.getSwiftObject(cObject: cPointer!)
+		belle_sip_object_unref(UnsafeMutableRawPointer(cPointer))
+		return result
+	}
+	
+	
+	
+	/// Creates a message attached to the given chat room with a call log json content
+	/// filled with the given call log. 
+	/// - Parameter callLog: the call log.    
+	/// - Returns: a new ``ChatMessage``    
+	public func createMessageFromCallLog(callLog:CallLog) throws -> ChatMessage
+	{
+		let cPointer = linphone_chat_room_create_message_from_call_log(cPtr, callLog.cPtr)
 		if (cPointer == nil) {
 			throw LinphoneError.exception(result: "create null ChatMessage value")
 		}
@@ -20928,6 +20988,17 @@ public class Content : LinphoneObject
 	{
 	
 						return Int(linphone_content_get_file_size(cPtr))
+
+	}
+		
+	
+	/// Tells whether or not this content contains a call log in json. 
+	/// - Returns: true if this content type is
+	/// 'application/vnd.linphone.call-log+json', false otherwise. 
+	public var isCallLogJson: Bool
+	{
+	
+						return linphone_content_is_call_log_json(cPtr) != 0
 
 	}
 		
