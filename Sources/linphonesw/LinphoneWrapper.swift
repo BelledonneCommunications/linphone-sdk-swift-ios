@@ -19875,9 +19875,11 @@ public class ConferenceParams : LinphoneObject
 	/// - Parameter type: Participant list type ``Conference.ParticipantListType``.
 	/// This allows to restrict the access to the conference to a selected set of
 	/// participants 
+	/// - Note: It is only applicable to conference servers 
 	
 	/// Get the participant list type. 
 	/// - Returns: participant list type ``Conference.ParticipantListType``. 
+	/// - Note: It is only applicable to conference servers 
 	public var participantListType: Conference.ParticipantListType
 	{
 	
@@ -22846,9 +22848,11 @@ public class Core : LinphoneObject
 		
 	/// Selects whether the default conference participant list is open or closed. 
 	/// - Parameter type: A ``Conference.ParticipantListType`` participant list type 
+	/// - Note: It is only applicable to conference servers 
 	
 	/// Tells whether the default conference participant list is open or closed. 
 	/// - Returns: A ``Conference.ParticipantListType`` participant list type 
+	/// - Note: It is only applicable to conference servers 
 	public var conferenceParticipantListType: Conference.ParticipantListType
 	{
 	
