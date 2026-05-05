@@ -22658,6 +22658,74 @@ public class Core : LinphoneObject
 
 	}
 		
+	/// Enable automatic deletion of files attached to ``ChatMessage`` . 
+	/// This deletion applies whatever the origin of chat message deletion is:
+	/// -clearing history of a chatroom
+	/// -automatic deletion of an ephemeral message
+	/// -manual deletion of a message For security, only files contained in the
+	/// directies listed by ``getChatMessageFilesDirectories()`` are considered for
+	/// deletion. 
+	
+	/// Returns whether automatic deletion of files attached to ``ChatMessage`` is
+	/// enabled. 
+	/// This deletion applies whatever the origin of chat message deletion is:
+	/// -clearing history of a chatroom
+	/// -automatic deletion of an ephemeral message
+	/// -manual deletion of a message For security, only files contained in the
+	/// directies listed by ``getChatMessageFilesDirectories()`` are considered for
+	/// deletion. 
+	public var chatMessageFilesDeletionEnabled: Bool
+	{
+	
+		get
+		{ 
+						return linphone_core_chat_message_files_deletion_enabled(cPtr) != 0
+		}
+		set
+		{
+			linphone_core_enable_chat_message_files_deletion(cPtr, newValue==true ? 1:0)
+		}
+	}
+		
+	/// Sets the directories used by the application to contain files attached to chat
+	/// messages. 
+	/// These directories are the ones for which the ``Core`` is authorized to suppress
+	/// files when chat messages containing files are deleted. See
+	/// ``enableChatMessageFilesDeletion(enabled:)`` for more information. 
+	/// - Parameter directories: A list of directories where file deletion is
+	/// authorized.      
+	
+	/// Gets the directories used by the application to contain files attached to chat
+	/// messages. 
+	/// These directories are the ones for which the ``Core`` is authorized to suppress
+	/// files when chat messages containing files are deleted. See
+	/// ``enableChatMessageFilesDeletion(enabled:)`` for more information. 
+	/// - Returns: list of directories where file deletion is authorized.      
+	public var chatMessageFilesDirectories: [String]
+	{
+	
+		get
+		{ 
+						var swiftList = [String]()
+			let cList = linphone_core_get_chat_message_files_directories(cPtr)
+			var listTemp = cList
+			while (listTemp != nil) {
+				swiftList.append(String(cString: unsafeBitCast(listTemp!.pointee.data, to: UnsafePointer<CChar>.self)))
+				listTemp = UnsafePointer<bctbx_list_t>(listTemp!.pointee.next)
+			}
+			return swiftList
+		}
+		set
+		{
+			var cList: UnsafeMutablePointer<bctbx_list_t>? = nil
+			for data in newValue {
+				let sData:NSString = data as NSString
+				cList = bctbx_list_append(cList, unsafeBitCast(sData.utf8String, to: UnsafeMutablePointer<CChar>.self))
+			}
+			linphone_core_set_chat_message_files_directories(cPtr, cList)
+		}
+	}
+		
 	/// Sets whether chat messages grouping is enabled or not. 
 	/// This optimisation is turned on by default. It allows to receive bulks of
 	/// incoming message faster, and notify them to the application in a row. Set [sip]
