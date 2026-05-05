@@ -24277,12 +24277,14 @@ public class Core : LinphoneObject
 		}
 	}
 		
-	/// This method is called by the application to notify the linphone core library
-	/// when network is reachable. 
-	/// Calling this method with true trigger linphone to initiate a registration
-	/// process for all proxies. Calling this method disables the automatic network
-	/// detection mode. It means you must call this method after each network state
-	/// changes.
+	/// This method can be used by the application to notify the Core when network is
+	/// reachable. 
+	/// By default, the ``Core`` automatically detects network's presence, but an
+	/// application may override its detection using this method. It may also use it
+	/// when automatic network monitoring is turned off, using [sip]/auto_net_state_mon
+	/// property to zero in ``Config`` . When the network becomes reachable,
+	/// liblinphone takes care of reconnecting and re-registering all SIP accounts.
+	/// When it becomes unreachable, all network connections are closed.
 	/// - Parameter reachable: true if network is reachable, false otherwise 
 	
 	public var networkReachable: Bool?
