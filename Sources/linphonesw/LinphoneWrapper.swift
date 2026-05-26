@@ -24810,6 +24810,30 @@ public class Core : LinphoneObject
 		}
 	}
 		
+	/// It sets the duration of the timer that starts just after the SUBSCRIBE is sent
+	/// to delay the sending of chat messages in group chats, when the core is running
+	/// inside an IOS app extension. 
+	/// - Parameter duration: the duration of the timer in seconds. A 0 or negative
+	/// number deactivates the feature. 
+	/// - Warning: it is only useful to set this property if
+	/// linphone_core_send_message_after_notify_enabled returns false 
+	
+	/// Returns the duration of the timer that delays the sending of chat messages,
+	/// when the core is running inside an IOS app extension. 
+	/// - Returns: the duration of the timer in seconds 
+	public var messageSendingDelayAppExt: Int
+	{
+	
+		get
+		{ 
+						return Int(linphone_core_get_message_sending_delay_app_ext(cPtr))
+		}
+		set
+		{
+			linphone_core_set_message_sending_delay_app_ext(cPtr, CInt(newValue))
+		}
+	}
+		
 	/// Enables or disables the microphone. 
 	/// This effectively enable or disable microphone (mute) for currently the running
 	/// call or conference if any, as well as it applies to future currently running
