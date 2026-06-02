@@ -297,6 +297,42 @@ public enum MediaEncryption:Int
 	case DTLS = 3
 }
 
+///Enum describing the error encountered by the media encryption layer. 
+public enum MediaEncryptionError:Int
+{
+	
+	case None = 0
+	
+	/// Could not verify peer's certificate during DTLS handshake. 
+	case DtlsCertificateVerificationFail = 1
+	
+	/// DTLS handshake went well and verified the certificate but it does not hold a
+	/// SAN or CN matching peer's sip uri. 
+	case DtlsCertificateSubjectMismatch = 2
+	
+	/// DTLS handshake failure (could be from an alert received from peer) 
+	case DtlsHandshakeFail = 3
+}
+
+///Enum describing the status of media encryption types. 
+public enum MediaEncryptionStatus:Int
+{
+	
+	case Failed = -1
+	
+	/// media encryption handshake or negotiation failed 
+	case Inactive = 0
+	
+	/// media encryption is negotiated, handshake is in progress 
+	case InProgress = 1
+	
+	case ZrtpSASCheckRequested = 2
+	
+	/// specific to ZRTP: encryption succesfully negotiated but the SAS verification is
+	/// needed 
+	case Active = 3
+}
+
 ///Enum representing the file format of a recording. 
 public enum MediaFileFormat:Int
 {
@@ -1645,7 +1681,13 @@ public protocol CallDelegate : AnyObject {
 	
 	/// Get the encryption changed callback. 
 	/// - Returns: The current encryption changed callback. 
+	/// - Deprecated: 19/05/2026 use
+	/// linphone_call_cbs_get_media_encryption_status_changed instead 
 	func onEncryptionChanged(call: Call, on: Bool, authenticationToken: String)
+	
+	/// Get the media encryption status changed callback. 
+	/// - Returns: The current media encryption status changed callback. 
+	func onMediaEncryptionStatusChanged(call: Call, status: MediaEncryptionStatus)
 	
 	/// Get the authentication token verified callback. 
 	/// - Returns: The current authentication token verified callback. 
@@ -1752,6 +1794,8 @@ public extension CallDelegate {
 	
 	func onEncryptionChanged(call: Call, on: Bool, authenticationToken: String) {}
 	
+	func onMediaEncryptionStatusChanged(call: Call, status: MediaEncryptionStatus) {}
+	
 	func onAuthenticationTokenVerified(call: Call, verified: Bool) {}
 	
 	func onSendMasterKeyChanged(call: Call, sendMasterKey: String) {}
@@ -1805,6 +1849,7 @@ public final class CallDelegateStub : CallDelegate
 	var _onGoclearAckSent: ((Call) -> Void)?
 	var _onSecurityLevelDowngraded: ((Call) -> Void)?
 	var _onEncryptionChanged: ((Call, Bool, String) -> Void)?
+	var _onMediaEncryptionStatusChanged: ((Call, MediaEncryptionStatus) -> Void)?
 	var _onAuthenticationTokenVerified: ((Call, Bool) -> Void)?
 	var _onSendMasterKeyChanged: ((Call, String) -> Void)?
 	var _onReceiveMasterKeyChanged: ((Call, String) -> Void)?
@@ -1837,6 +1882,8 @@ public final class CallDelegateStub : CallDelegate
 	public func onSecurityLevelDowngraded(call: Call){_onSecurityLevelDowngraded.map{$0(call)}}
 	
 	public func onEncryptionChanged(call: Call, on: Bool, authenticationToken: String){_onEncryptionChanged.map{$0(call, on, authenticationToken)}}
+	
+	public func onMediaEncryptionStatusChanged(call: Call, status: MediaEncryptionStatus){_onMediaEncryptionStatusChanged.map{$0(call, status)}}
 	
 	public func onAuthenticationTokenVerified(call: Call, verified: Bool){_onAuthenticationTokenVerified.map{$0(call, verified)}}
 	
@@ -1889,6 +1936,7 @@ public final class CallDelegateStub : CallDelegate
 		onGoclearAckSent: ((Call) -> Void)? = nil,
 		onSecurityLevelDowngraded: ((Call) -> Void)? = nil,
 		onEncryptionChanged: ((Call, Bool, String) -> Void)? = nil,
+		onMediaEncryptionStatusChanged: ((Call, MediaEncryptionStatus) -> Void)? = nil,
 		onAuthenticationTokenVerified: ((Call, Bool) -> Void)? = nil,
 		onSendMasterKeyChanged: ((Call, String) -> Void)? = nil,
 		onReceiveMasterKeyChanged: ((Call, String) -> Void)? = nil,
@@ -1917,6 +1965,7 @@ public final class CallDelegateStub : CallDelegate
 		self._onGoclearAckSent = onGoclearAckSent
 		self._onSecurityLevelDowngraded = onSecurityLevelDowngraded
 		self._onEncryptionChanged = onEncryptionChanged
+		self._onMediaEncryptionStatusChanged = onMediaEncryptionStatusChanged
 		self._onAuthenticationTokenVerified = onAuthenticationTokenVerified
 		self._onSendMasterKeyChanged = onSendMasterKeyChanged
 		self._onReceiveMasterKeyChanged = onReceiveMasterKeyChanged
@@ -1986,6 +2035,14 @@ class CallDelegateManager
 				let sObject = Call.getSwiftObject(cObject: call!)
 				let delegate = sObject.currentDelegate
 				delegate?.onEncryptionChanged(call: sObject, on: on != 0, authenticationToken: charArrayToString(charPointer: authenticationToken))
+			}
+		})
+
+		linphone_call_cbs_set_media_encryption_status_changed(cPtr, { (call, status) -> Void in
+			if (call != nil) {
+				let sObject = Call.getSwiftObject(cObject: call!)
+				let delegate = sObject.currentDelegate
+				delegate?.onMediaEncryptionStatusChanged(call: sObject, status: MediaEncryptionStatus(rawValue: Int(status.rawValue))!)
 			}
 		})
 
@@ -3839,7 +3896,13 @@ public protocol CoreDelegate : AnyObject {
 	
 	/// Gets the LinphoneCoreCbsCallEncryptionChangedCb callback. 
 	/// - Returns: The callback. 
+	/// - Deprecated: 19/05/2026 use
+	/// linphone_core_cbs_get_call_media_encryption_status_changed instead 
 	func onCallEncryptionChanged(core: Core, call: Call, mediaEncryptionEnabled: Bool, authenticationToken: String)
+	
+	/// Gets the LinphoneCoreCbsCallMediaEncryptionStatusChangedCb callback. 
+	/// - Returns: The callback. 
+	func onCallMediaEncryptionStatusChanged(core: Core, call: Call, status: MediaEncryptionStatus)
 	
 	/// Gets the LinphoneCoreCbsCallSendMasterKeyChangedCb callback. 
 	/// - Returns: The callback. 
@@ -4061,6 +4124,8 @@ public extension CoreDelegate {
 	
 	func onCallEncryptionChanged(core: Core, call: Call, mediaEncryptionEnabled: Bool, authenticationToken: String) {}
 	
+	func onCallMediaEncryptionStatusChanged(core: Core, call: Call, status: MediaEncryptionStatus) {}
+	
 	func onCallSendMasterKeyChanged(core: Core, call: Call, masterKey: String) {}
 	
 	func onCallReceiveMasterKeyChanged(core: Core, call: Call, masterKey: String) {}
@@ -4173,6 +4238,7 @@ public final class CoreDelegateStub : CoreDelegate
 	var _onReferReceived: ((Core, Address, Headers, Content?) -> Void)?
 	var _onCallGoclearAckSent: ((Core, Call) -> Void)?
 	var _onCallEncryptionChanged: ((Core, Call, Bool, String) -> Void)?
+	var _onCallMediaEncryptionStatusChanged: ((Core, Call, MediaEncryptionStatus) -> Void)?
 	var _onCallSendMasterKeyChanged: ((Core, Call, String) -> Void)?
 	var _onCallReceiveMasterKeyChanged: ((Core, Call, String) -> Void)?
 	var _onTransferStateChanged: ((Core, Call, Call.State) -> Void)?
@@ -4266,6 +4332,8 @@ public final class CoreDelegateStub : CoreDelegate
 	public func onCallGoclearAckSent(core: Core, call: Call){_onCallGoclearAckSent.map{$0(core, call)}}
 	
 	public func onCallEncryptionChanged(core: Core, call: Call, mediaEncryptionEnabled: Bool, authenticationToken: String){_onCallEncryptionChanged.map{$0(core, call, mediaEncryptionEnabled, authenticationToken)}}
+	
+	public func onCallMediaEncryptionStatusChanged(core: Core, call: Call, status: MediaEncryptionStatus){_onCallMediaEncryptionStatusChanged.map{$0(core, call, status)}}
 	
 	public func onCallSendMasterKeyChanged(core: Core, call: Call, masterKey: String){_onCallSendMasterKeyChanged.map{$0(core, call, masterKey)}}
 	
@@ -4377,6 +4445,7 @@ public final class CoreDelegateStub : CoreDelegate
 		onReferReceived: ((Core, Address, Headers, Content?) -> Void)? = nil,
 		onCallGoclearAckSent: ((Core, Call) -> Void)? = nil,
 		onCallEncryptionChanged: ((Core, Call, Bool, String) -> Void)? = nil,
+		onCallMediaEncryptionStatusChanged: ((Core, Call, MediaEncryptionStatus) -> Void)? = nil,
 		onCallSendMasterKeyChanged: ((Core, Call, String) -> Void)? = nil,
 		onCallReceiveMasterKeyChanged: ((Core, Call, String) -> Void)? = nil,
 		onTransferStateChanged: ((Core, Call, Call.State) -> Void)? = nil,
@@ -4445,6 +4514,7 @@ public final class CoreDelegateStub : CoreDelegate
 		self._onReferReceived = onReferReceived
 		self._onCallGoclearAckSent = onCallGoclearAckSent
 		self._onCallEncryptionChanged = onCallEncryptionChanged
+		self._onCallMediaEncryptionStatusChanged = onCallMediaEncryptionStatusChanged
 		self._onCallSendMasterKeyChanged = onCallSendMasterKeyChanged
 		self._onCallReceiveMasterKeyChanged = onCallReceiveMasterKeyChanged
 		self._onTransferStateChanged = onTransferStateChanged
@@ -4709,6 +4779,14 @@ class CoreDelegateManager
 				let sObject = Core.getSwiftObject(cObject: core!)
 				let delegate = sObject.currentDelegate
 				delegate?.onCallEncryptionChanged(core: sObject, call: Call.getSwiftObject(cObject: call!), mediaEncryptionEnabled: mediaEncryptionEnabled != 0, authenticationToken: charArrayToString(charPointer: authenticationToken))
+			}
+		})
+
+		linphone_core_cbs_set_call_media_encryption_status_changed(cPtr, { (core, call, status) -> Void in
+			if (core != nil) {
+				let sObject = Core.getSwiftObject(cObject: core!)
+				let delegate = sObject.currentDelegate
+				delegate?.onCallMediaEncryptionStatusChanged(core: sObject, call: Call.getSwiftObject(cObject: call!), status: MediaEncryptionStatus(rawValue: Int(status.rawValue))!)
 			}
 		})
 
@@ -8417,6 +8495,26 @@ public class AccountParams : LinphoneObject
 			let result = charArrayToString(charPointer: cPointer)
 			return result
 
+	}
+		
+	/// Indicates either or not, certificate must be verified during DTLS when using
+	/// this ``AccountParams``. 
+	/// - Parameter enable: If true, certificate will be verified during DTLS
+	/// handshake. 
+	
+	/// Returns whether the certificate verification during DTLS is enabled or not. 
+	/// - Returns: true if the certificate verification during DTLS is enabled. 
+	public var dtlsSrtpVerifyCertEnabled: Bool
+	{
+	
+		get
+		{ 
+						return linphone_account_params_dtls_srtp_verify_cert_enabled(cPtr) != 0
+		}
+		set
+		{
+			linphone_account_params_enable_dtls_srtp_verify_cert(cPtr, newValue==true ? 1:0)
+		}
 	}
 		
 	/// Sets the registration expiration time in seconds. 
@@ -13560,6 +13658,16 @@ public class CallParams : LinphoneObject
 		}
 	}
 		
+	
+	/// Get the current status of media encryption for the call. 
+	/// - Returns: The current ``MediaEncryptionStatus`` for the call. 
+	public var mediaEncryptionStatus: MediaEncryptionStatus
+	{
+	
+						return MediaEncryptionStatus(rawValue: Int(linphone_call_params_get_media_encryption_status(cPtr).rawValue))!
+
+	}
+		
 	/// Enable or disable the microphone at the call creation. 
 	/// - Warning: This method won't have any effect once the call has been created!
 	/// Instead use ``Call/setMicrophoneMuted(muted:)`` when call has been created. 
@@ -14381,6 +14489,16 @@ public class CallStats : LinphoneObject
 	{
 	
 						return linphone_call_stats_get_local_loss_rate(cPtr)
+
+	}
+		
+	
+	/// Get the media encryption error status. 
+	/// - Returns: The ``MediaEncryptionError`` error status 
+	public var mediaEncryptionError: MediaEncryptionError
+	{
+	
+						return MediaEncryptionError(rawValue: Int(linphone_call_stats_get_media_encryption_error(cPtr).rawValue))!
 
 	}
 		
