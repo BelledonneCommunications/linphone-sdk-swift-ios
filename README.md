@@ -20,8 +20,8 @@
 
 # Build information
 
-version : 5.4.119
-branch : tags/5.4.119^0
+version : 5.5.1-pre.2+1baa50bc8b
+branch : pipelines/113956
 architecture : arm64 x86_64
 
 Enabled features:
@@ -31,8 +31,6 @@ Enabled features:
  * Baudot, Baudot text transmission support.
  * BV16, BroadVoice 16 audio encoding/decoding support.
  * GSM, GSM audio encoding/decoding support.
- * iLBC, iLBC audio encoding/decoding support.
- * ISAC, ISAC audio encoding/decoding support.
  * MKV, MKV playing and recording support.
  * OPUS, OPUS audio encoding/decoding support.
  * Speex, Speex audio encoding/decoding and DSP support.
@@ -89,8 +87,8 @@ Ensure it contains:
 - from terminal navigate to <build folder>/linphone-sdk-swift-ios
 - git init
 - git add .
-- git commit -a -m "Swift package 5.4.119"
-- git tag -a 5.4.119 -m "linphone-sdk 5.4.119"
+- git commit -a -m "Swift package 5.5.1-pre.2+1baa50bc8b"
+- git tag -a 5.5.1-pre.2+1baa50bc8b -m "linphone-sdk 5.5.1-pre.2+1baa50bc8b"
 - Open your Xcode Project
 - Menu File -> Add Package Dependencies
 - On top right entry field enter file://<build folder>/linphone-sdk-swift-ios
