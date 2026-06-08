@@ -16,109 +16,115 @@ let package = Package(
         
 			.binaryTarget(
 				name: "bctoolbox-ios",
-				url: "https://download.linphone.org/releases/ios//spm//linphone-sdk-swift-ios-5.5.1-pre.2+1baa50bc8b/XCFrameworks/bctoolbox-ios.xcframework.zip",
-				checksum: "fa3804b4dcbc8f865ecda4bac2ccb4a8fdba60a6b8d971fbf85a7406ab13ad5b"
+				url: "https://download.linphone.org/releases/ios//spm//linphone-sdk-swift-ios-5.4.119/XCFrameworks/bctoolbox-ios.xcframework.zip",
+				checksum: "34b7432b633f5b0ed6d73c817dcdacb47314e76398d99b94474f3445ad141bbe"
 			),
 			
 			.binaryTarget(
 				name: "bctoolbox-tester",
-				url: "https://download.linphone.org/releases/ios//spm//linphone-sdk-swift-ios-5.5.1-pre.2+1baa50bc8b/XCFrameworks/bctoolbox-tester.xcframework.zip",
-				checksum: "062e6da08ee01d8bb8828d665d02bb8e1f61a2888c35b00be49dc3f90e2391f0"
+				url: "https://download.linphone.org/releases/ios//spm//linphone-sdk-swift-ios-5.4.119/XCFrameworks/bctoolbox-tester.xcframework.zip",
+				checksum: "1a88ad97a6446b6b413ee3c041d76a0eb3044e861f170bd2170b61c2b92c28ca"
 			),
 			
 			.binaryTarget(
 				name: "bctoolbox",
-				url: "https://download.linphone.org/releases/ios//spm//linphone-sdk-swift-ios-5.5.1-pre.2+1baa50bc8b/XCFrameworks/bctoolbox.xcframework.zip",
-				checksum: "cbc5b2386c9d3ed2b865a5abdc16e90f0b0a58d130dd7d7248de1466dfcc39a5"
+				url: "https://download.linphone.org/releases/ios//spm//linphone-sdk-swift-ios-5.4.119/XCFrameworks/bctoolbox.xcframework.zip",
+				checksum: "e1c640a60ffca10ce2583712e7324d620dba158f09b17ede95ecdd3729dc2c19"
 			),
 			
 			.binaryTarget(
 				name: "belcard",
-				url: "https://download.linphone.org/releases/ios//spm//linphone-sdk-swift-ios-5.5.1-pre.2+1baa50bc8b/XCFrameworks/belcard.xcframework.zip",
-				checksum: "633a5a4f5bdc3aa36912f2315c8b23fce7ff6ea21c4487e3b6342be94bb00e3b"
+				url: "https://download.linphone.org/releases/ios//spm//linphone-sdk-swift-ios-5.4.119/XCFrameworks/belcard.xcframework.zip",
+				checksum: "b9ee8be7af86eab31323f3ae31524c06c2d4ea30fda0d84b7d4c992d1827f9dd"
 			),
 			
 			.binaryTarget(
 				name: "belle-sip",
-				url: "https://download.linphone.org/releases/ios//spm//linphone-sdk-swift-ios-5.5.1-pre.2+1baa50bc8b/XCFrameworks/belle-sip.xcframework.zip",
-				checksum: "12a57d3092a92395bfbd5c9f1afdd60ffe0f6e224c1d3c6d08da209da36b3afd"
+				url: "https://download.linphone.org/releases/ios//spm//linphone-sdk-swift-ios-5.4.119/XCFrameworks/belle-sip.xcframework.zip",
+				checksum: "9c0a217a357349e2fe0e0f0a38de37017565a5e57d48c69a4012d51ca9e0530a"
 			),
 			
 			.binaryTarget(
 				name: "belr",
-				url: "https://download.linphone.org/releases/ios//spm//linphone-sdk-swift-ios-5.5.1-pre.2+1baa50bc8b/XCFrameworks/belr.xcframework.zip",
-				checksum: "ff9e0e36a24a6c41d89894795c72d38e254b6668c8b36d9af7ad0d48b2b553a0"
+				url: "https://download.linphone.org/releases/ios//spm//linphone-sdk-swift-ios-5.4.119/XCFrameworks/belr.xcframework.zip",
+				checksum: "92e734ffdf37e806dc0802158f8d6f97dae85ec206c414755ac1556204ae42fb"
 			),
 			
 			.binaryTarget(
 				name: "lime",
-				url: "https://download.linphone.org/releases/ios//spm//linphone-sdk-swift-ios-5.5.1-pre.2+1baa50bc8b/XCFrameworks/lime.xcframework.zip",
-				checksum: "50d79aa07d0ff4dfe37fb0f6a2729a39c4ff0f130b13d32f6440a0e061aa65ab"
+				url: "https://download.linphone.org/releases/ios//spm//linphone-sdk-swift-ios-5.4.119/XCFrameworks/lime.xcframework.zip",
+				checksum: "b25b94bfaceefa98118360daeaa923ddc10dc751787339cafd346b1e47da7d81"
 			),
 			
 			.binaryTarget(
 				name: "linphone",
-				url: "https://download.linphone.org/releases/ios//spm//linphone-sdk-swift-ios-5.5.1-pre.2+1baa50bc8b/XCFrameworks/linphone.xcframework.zip",
-				checksum: "a6af55c34d8d473251634e0b1a1888464dbefadd23f9328433591f15677231d9"
+				url: "https://download.linphone.org/releases/ios//spm//linphone-sdk-swift-ios-5.4.119/XCFrameworks/linphone.xcframework.zip",
+				checksum: "cdd60f42436c50627cc8f2093aada9e8a5b6847c8296e2333f9ee131a84a3102"
 			),
 			
 			.binaryTarget(
 				name: "linphonetester",
-				url: "https://download.linphone.org/releases/ios//spm//linphone-sdk-swift-ios-5.5.1-pre.2+1baa50bc8b/XCFrameworks/linphonetester.xcframework.zip",
-				checksum: "8caf4515d4070ad0f1a0ea99868952bf9f9dc7f8baa3fc6776e52d654fec26ec"
+				url: "https://download.linphone.org/releases/ios//spm//linphone-sdk-swift-ios-5.4.119/XCFrameworks/linphonetester.xcframework.zip",
+				checksum: "294cb864c1033f16fa9d5e30c4e7c03d401bf589bc4c3ce9cad1fd4dffcfd309"
 			),
 			
 			.binaryTarget(
 				name: "mbedcrypto",
-				url: "https://download.linphone.org/releases/ios//spm//linphone-sdk-swift-ios-5.5.1-pre.2+1baa50bc8b/XCFrameworks/mbedcrypto.xcframework.zip",
-				checksum: "f911740738ea977d1a77a081a99fb81ee37852208cdab9777a9d1ab82f308548"
+				url: "https://download.linphone.org/releases/ios//spm//linphone-sdk-swift-ios-5.4.119/XCFrameworks/mbedcrypto.xcframework.zip",
+				checksum: "6b0d474b1150401feec0ed41603982870617717ee5c9f0f29dca48886329b2dc"
 			),
 			
 			.binaryTarget(
 				name: "mbedtls",
-				url: "https://download.linphone.org/releases/ios//spm//linphone-sdk-swift-ios-5.5.1-pre.2+1baa50bc8b/XCFrameworks/mbedtls.xcframework.zip",
-				checksum: "87ae5d8e3dfc731075fcab89ff90fdba120a1b720c717b24aae91a7253557a84"
+				url: "https://download.linphone.org/releases/ios//spm//linphone-sdk-swift-ios-5.4.119/XCFrameworks/mbedtls.xcframework.zip",
+				checksum: "eb65cabeae9a9231a28c5c435cf15f7784d93c566c339574c56b8e71fd52db50"
 			),
 			
 			.binaryTarget(
 				name: "mbedx509",
-				url: "https://download.linphone.org/releases/ios//spm//linphone-sdk-swift-ios-5.5.1-pre.2+1baa50bc8b/XCFrameworks/mbedx509.xcframework.zip",
-				checksum: "a276f4a9ae24ae9e80b773e9b1a554956a2bec7cb6d331d7e22352db23fc7f15"
+				url: "https://download.linphone.org/releases/ios//spm//linphone-sdk-swift-ios-5.4.119/XCFrameworks/mbedx509.xcframework.zip",
+				checksum: "b125ff08f28c29f2b2f5da1142587a387ccbda81168275a915e26a2de9bb3b49"
 			),
 			
 			.binaryTarget(
 				name: "mediastreamer2",
-				url: "https://download.linphone.org/releases/ios//spm//linphone-sdk-swift-ios-5.5.1-pre.2+1baa50bc8b/XCFrameworks/mediastreamer2.xcframework.zip",
-				checksum: "e8abf65cf0c5778331669d9e5f798bd1c463ac3fc5a40ea81b411049bce9f291"
+				url: "https://download.linphone.org/releases/ios//spm//linphone-sdk-swift-ios-5.4.119/XCFrameworks/mediastreamer2.xcframework.zip",
+				checksum: "806312e984a6496594a39de0ed074260aecdaa6a75757d4266abc990928b6e82"
 			),
 			
 			.binaryTarget(
 				name: "msamr",
-				url: "https://download.linphone.org/releases/ios//spm//linphone-sdk-swift-ios-5.5.1-pre.2+1baa50bc8b/XCFrameworks/msamr.xcframework.zip",
-				checksum: "0400a42e3b724ec9e3cba45ec92db74190a4c0ed9f9c9ae5806ca9318eda2d75"
+				url: "https://download.linphone.org/releases/ios//spm//linphone-sdk-swift-ios-5.4.119/XCFrameworks/msamr.xcframework.zip",
+				checksum: "d8595326dc3622b495338281c8294f61754058988549eaae6d981dad7d144806"
 			),
 			
 			.binaryTarget(
 				name: "mscodec2",
-				url: "https://download.linphone.org/releases/ios//spm//linphone-sdk-swift-ios-5.5.1-pre.2+1baa50bc8b/XCFrameworks/mscodec2.xcframework.zip",
-				checksum: "b715ce85480f361f339709d72c41a20da8278adaa7867e72611899eed7387ee2"
+				url: "https://download.linphone.org/releases/ios//spm//linphone-sdk-swift-ios-5.4.119/XCFrameworks/mscodec2.xcframework.zip",
+				checksum: "1f7674d6e3be72b8d2a7f4ab67aaddb17d3222bd6f907defa6852769e1a827de"
 			),
 			
 			.binaryTarget(
 				name: "msopenh264",
-				url: "https://download.linphone.org/releases/ios//spm//linphone-sdk-swift-ios-5.5.1-pre.2+1baa50bc8b/XCFrameworks/msopenh264.xcframework.zip",
-				checksum: "93eaf19c2928228328cb739fd547d1217b58bb2e2240eee60235c80959efac87"
+				url: "https://download.linphone.org/releases/ios//spm//linphone-sdk-swift-ios-5.4.119/XCFrameworks/msopenh264.xcframework.zip",
+				checksum: "c000170a9cdc5f8aa37043033cd4334aef57b3a48499b6d181f759dad37daea9"
+			),
+			
+			.binaryTarget(
+				name: "mssilk",
+				url: "https://download.linphone.org/releases/ios//spm//linphone-sdk-swift-ios-5.4.119/XCFrameworks/mssilk.xcframework.zip",
+				checksum: "c4271b6d25f1c63bbb3685ed1ceed0a4a79ab0e6fd223250e3f1f839c06e3ebe"
 			),
 			
 			.binaryTarget(
 				name: "ortp",
-				url: "https://download.linphone.org/releases/ios//spm//linphone-sdk-swift-ios-5.5.1-pre.2+1baa50bc8b/XCFrameworks/ortp.xcframework.zip",
-				checksum: "8d0e7621705e115641b1e144bb18a8f9beb0551924a4f90326b0370b5e458775"
+				url: "https://download.linphone.org/releases/ios//spm//linphone-sdk-swift-ios-5.4.119/XCFrameworks/ortp.xcframework.zip",
+				checksum: "ad135b571d2e909f96d5a6afdebc94231ff09055fdefe187a9ea77df3b9c28c2"
 			),
 			
 		.target(
 			name: "linphonexcframeworks",
-			dependencies: ["bctoolbox-ios", "bctoolbox-tester", "bctoolbox", "belcard", "belle-sip", "belr", "lime", "linphone", "linphonetester", "mbedcrypto", "mbedtls", "mbedx509", "mediastreamer2", "msamr", "mscodec2", "msopenh264", "ortp"]
+			dependencies: ["bctoolbox-ios", "bctoolbox-tester", "bctoolbox", "belcard", "belle-sip", "belr", "lime", "linphone", "linphonetester", "mbedcrypto", "mbedtls", "mbedx509", "mediastreamer2", "msamr", "mscodec2", "msopenh264", "mssilk", "ortp"]
 		),
 
 		.target(
