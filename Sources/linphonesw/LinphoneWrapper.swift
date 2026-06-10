@@ -27774,6 +27774,15 @@ public class Core : LinphoneObject
 	
 	
 	
+	/// Clean all expired authentication informations. 
+	/// - Returns: the number of authentication informations that were removed. 
+	public func cleanAuthInfos() -> Int
+	{
+		return Int(linphone_core_clean_auth_infos(cPtr))
+	}
+	
+	
+	
 	/// Erases all accounts from config. 
 	public func clearAccounts() 
 	{
