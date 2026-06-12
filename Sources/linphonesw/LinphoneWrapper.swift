@@ -11121,7 +11121,7 @@ public class Call : LinphoneObject
 	public enum Status:Int
 	{
 		
-		/// The call was sucessful. 
+		/// The call was successful. 
 		case Success = 0
 		/// The call was aborted (caller hanged up) 
 		case Aborted = 1
@@ -13186,6 +13186,31 @@ public class CallLog : LinphoneObject
 
 	}
 		
+	
+	
+	/// Update the call log from a text in Json. 
+	/// - Parameter jsonText: the Json to parse    
+	/// - Returns: -1 if json_text couldn't be parsed else 0. 
+	public func fromJson(jsonText:String) -> Int
+	{
+		return Int(linphone_call_log_from_json(cPtr, jsonText))
+	}
+	
+	
+	
+	/// Gets a Json representation of the call log. 
+	/// - See also: ``fromJson(jsonText:)`` for details.
+	/// - Returns: A Json format string describing the call.       
+	public func toJson() -> String
+	{
+		let cstr = linphone_call_log_to_json(cPtr)
+		let result = charArrayToString(charPointer: cstr)
+		if (cstr != nil) {
+			bctbx_free(cstr)
+		}
+		return result
+	}
+	
 	
 	
 	/// Gets a human readable string describing the call. 
@@ -15671,6 +15696,15 @@ public class ChatMessage : LinphoneObject
 		
 	
 	
+	/// Adds a call log content to the ChatMessage. 
+	/// - Parameter callLog: the ``CallLog`` object to add.    
+	public func addCallLogContent(callLog:CallLog) 
+	{
+		linphone_chat_message_add_call_log_content(cPtr, callLog.cPtr)
+	}
+	
+	
+	
 	/// Adds a content to the ChatMessage. 
 	/// - Parameter content: the ``Content`` object to add.    
 	public func addContent(content:Content) 
@@ -15798,6 +15832,15 @@ public class ChatMessage : LinphoneObject
 		}
 			bctbx_list_free_with_data(cList, belle_sip_object_unref)
 		return swiftList
+	}
+	
+	
+	
+	/// Indicates whether the chat message contains a call log in JSON format. 
+	/// - Returns: true if it has one, false otherwise. 
+	public func hasCallLogJsonContent() -> Bool
+	{
+		return linphone_chat_message_has_call_log_json_content(cPtr) != 0
 	}
 	
 	
@@ -17277,6 +17320,23 @@ public class ChatRoom : LinphoneObject
 	public func createMessage(message:String?) throws -> ChatMessage
 	{
 		let cPointer = linphone_chat_room_create_message(cPtr, message)
+		if (cPointer == nil) {
+			throw LinphoneError.exception(result: "create null ChatMessage value")
+		}
+		let result = ChatMessage.getSwiftObject(cObject: cPointer!)
+		belle_sip_object_unref(UnsafeMutableRawPointer(cPointer))
+		return result
+	}
+	
+	
+	
+	/// Creates a message attached to the given chat room with a call log json content
+	/// filled with the given call log. 
+	/// - Parameter callLog: the call log.    
+	/// - Returns: a new ``ChatMessage``    
+	public func createMessageFromCallLog(callLog:CallLog) throws -> ChatMessage
+	{
+		let cPointer = linphone_chat_room_create_message_from_call_log(cPtr, callLog.cPtr)
 		if (cPointer == nil) {
 			throw LinphoneError.exception(result: "create null ChatMessage value")
 		}
@@ -19961,9 +20021,11 @@ public class ConferenceParams : LinphoneObject
 	/// - Parameter type: Participant list type ``Conference.ParticipantListType``.
 	/// This allows to restrict the access to the conference to a selected set of
 	/// participants 
+	/// - Note: It is only applicable to conference servers 
 	
 	/// Get the participant list type. 
 	/// - Returns: participant list type ``Conference.ParticipantListType``. 
+	/// - Note: It is only applicable to conference servers 
 	public var participantListType: Conference.ParticipantListType
 	{
 	
@@ -21075,6 +21137,17 @@ public class Content : LinphoneObject
 	{
 	
 						return Int(linphone_content_get_file_size(cPtr))
+
+	}
+		
+	
+	/// Tells whether or not this content contains a call log in json. 
+	/// - Returns: true if this content type is
+	/// 'application/vnd.linphone.call-log+json', false otherwise. 
+	public var isCallLogJson: Bool
+	{
+	
+						return linphone_content_is_call_log_json(cPtr) != 0
 
 	}
 		
@@ -22736,6 +22809,75 @@ public class Core : LinphoneObject
 
 	}
 		
+	/// Enable automatic deletion of files attached to ``ChatMessage`` . 
+	/// This deletion applies whatever the origin of chat message deletion is:
+	/// -clearing history of a chatroom
+	/// -automatic deletion of an ephemeral message
+	/// -manual deletion of a message For security, only files contained in the
+	/// directies listed by ``getChatMessageFilesDirectories()`` are considered for
+	/// deletion. 
+	
+	/// Returns whether automatic deletion of files attached to ``ChatMessage`` is
+	/// enabled. 
+	/// This deletion applies whatever the origin of chat message deletion is:
+	/// -clearing history of a chatroom
+	/// -automatic deletion of an ephemeral message
+	/// -manual deletion of a message For security, only files contained in the
+	/// directies listed by ``getChatMessageFilesDirectories()`` are considered for
+	/// deletion. 
+	public var chatMessageFilesDeletionEnabled: Bool
+	{
+	
+		get
+		{ 
+						return linphone_core_chat_message_files_deletion_enabled(cPtr) != 0
+		}
+		set
+		{
+			linphone_core_enable_chat_message_files_deletion(cPtr, newValue==true ? 1:0)
+		}
+	}
+		
+	/// Sets the directories used by the application to contain files attached to chat
+	/// messages. 
+	/// These directories are the ones for which the ``Core`` is authorized to suppress
+	/// files when chat messages containing files are deleted. See
+	/// ``enableChatMessageFilesDeletion(enabled:)`` for more information. 
+	/// - Parameter directories: A list of directories where file deletion is
+	/// authorized. A list of const char * objects.       
+	
+	/// Gets the directories used by the application to contain files attached to chat
+	/// messages. 
+	/// These directories are the ones for which the ``Core`` is authorized to suppress
+	/// files when chat messages containing files are deleted. See
+	/// ``enableChatMessageFilesDeletion(enabled:)`` for more information. 
+	/// - Returns: list of directories where file deletion is authorized. A list of
+	/// const char * objects.       
+	public var chatMessageFilesDirectories: [String]
+	{
+	
+		get
+		{ 
+						var swiftList = [String]()
+			let cList = linphone_core_get_chat_message_files_directories(cPtr)
+			var listTemp = cList
+			while (listTemp != nil) {
+				swiftList.append(String(cString: unsafeBitCast(listTemp!.pointee.data, to: UnsafePointer<CChar>.self)))
+				listTemp = UnsafePointer<bctbx_list_t>(listTemp!.pointee.next)
+			}
+			return swiftList
+		}
+		set
+		{
+			var cList: UnsafeMutablePointer<bctbx_list_t>? = nil
+			for data in newValue {
+				let sData:NSString = data as NSString
+				cList = bctbx_list_append(cList, unsafeBitCast(sData.utf8String, to: UnsafeMutablePointer<CChar>.self))
+			}
+			linphone_core_set_chat_message_files_directories(cPtr, cList)
+		}
+	}
+		
 	/// Sets whether chat messages grouping is enabled or not. 
 	/// This optimisation is turned on by default. It allows to receive bulks of
 	/// incoming message faster, and notify them to the application in a row. Set [sip]
@@ -22927,9 +23069,11 @@ public class Core : LinphoneObject
 		
 	/// Selects whether the default conference participant list is open or closed. 
 	/// - Parameter type: A ``Conference.ParticipantListType`` participant list type 
+	/// - Note: It is only applicable to conference servers 
 	
 	/// Tells whether the default conference participant list is open or closed. 
 	/// - Returns: A ``Conference.ParticipantListType`` participant list type 
+	/// - Note: It is only applicable to conference servers 
 	public var conferenceParticipantListType: Conference.ParticipantListType
 	{
 	
@@ -24846,6 +24990,30 @@ public class Core : LinphoneObject
 		}
 	}
 		
+	/// It sets the duration of the timer that starts just after the SUBSCRIBE is sent
+	/// to delay the sending of chat messages in group chats, when the core is running
+	/// inside an IOS app extension. 
+	/// - Parameter duration: the duration of the timer in seconds. A 0 or negative
+	/// number deactivates the feature. 
+	/// - Warning: it is only useful to set this property if
+	/// linphone_core_send_message_after_notify_enabled returns false 
+	
+	/// Returns the duration of the timer that delays the sending of chat messages,
+	/// when the core is running inside an IOS app extension. 
+	/// - Returns: the duration of the timer in seconds 
+	public var messageSendingDelayAppExt: Int
+	{
+	
+		get
+		{ 
+						return Int(linphone_core_get_message_sending_delay_app_ext(cPtr))
+		}
+		set
+		{
+			linphone_core_set_message_sending_delay_app_ext(cPtr, CInt(newValue))
+		}
+	}
+		
 	/// Enables or disables the microphone. 
 	/// This effectively enable or disable microphone (mute) for currently the running
 	/// call or conference if any, as well as it applies to future currently running
@@ -25144,12 +25312,14 @@ public class Core : LinphoneObject
 		}
 	}
 		
-	/// This method is called by the application to notify the linphone core library
-	/// when network is reachable. 
-	/// Calling this method with true trigger linphone to initiate a registration
-	/// process for all proxies. Calling this method disables the automatic network
-	/// detection mode. It means you must call this method after each network state
-	/// changes.
+	/// This method can be used by the application to notify the Core when network is
+	/// reachable. 
+	/// By default, the ``Core`` automatically detects network's presence, but an
+	/// application may override its detection using this method. It may also use it
+	/// when automatic network monitoring is turned off, using [sip]/auto_net_state_mon
+	/// property to zero in ``Config`` . When the network becomes reachable,
+	/// liblinphone takes care of reconnecting and re-registering all SIP accounts.
+	/// When it becomes unreachable, all network connections are closed.
 	/// - Parameter reachable: true if network is reachable, false otherwise 
 	
 	public var networkReachable: Bool?
