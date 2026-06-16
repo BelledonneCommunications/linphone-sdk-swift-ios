@@ -6534,6 +6534,65 @@ public class AccountCreator : LinphoneObject
 	}
 
 	
+	///Enum describing the status of server request, used by the ``AccountCreator``. 
+	public enum Status:Int
+	{
+		
+		/// Request status. 
+		case RequestOk = 0
+		/// Request failed. 
+		case RequestFailed = 1
+		/// Request failed due to missing argument(s) 
+		case MissingArguments = 2
+		/// Request failed due to missing callback(s) 
+		case MissingCallbacks = 3
+		/// Account status. 
+		case AccountCreated = 4
+		/// Account not created. 
+		case AccountNotCreated = 5
+		/// Account exist. 
+		case AccountExist = 6
+		/// Account exist with alias. 
+		case AccountExistWithAlias = 7
+		/// Account not exist. 
+		case AccountNotExist = 8
+		/// Account was created with Alias. 
+		case AliasIsAccount = 9
+		/// Alias exist. 
+		case AliasExist = 10
+		/// Alias not exist. 
+		case AliasNotExist = 11
+		/// Account activated. 
+		case AccountActivated = 12
+		/// Account already activated. 
+		case AccountAlreadyActivated = 13
+		/// Account not activated. 
+		case AccountNotActivated = 14
+		/// Account linked. 
+		case AccountLinked = 15
+		/// Account not linked. 
+		case AccountNotLinked = 16
+		/// Server. 
+		case ServerError = 17
+		/// Error cannot send SMS. 
+		case PhoneNumberInvalid = 18
+		/// Error key doesn't match. 
+		case WrongActivationCode = 19
+		/// Error too many SMS sent. 
+		case PhoneNumberOverused = 20
+		/// Error algo isn't MD5 or SHA-256. 
+		case AlgoNotSupported = 21
+		/// Generic error. 
+		case UnexpectedError = 22
+		/// This API isn't implemented in the current backend. 
+		case NotImplementedError = 23
+		/// Request has been denied, probably due to invalid auth token. 
+		case RequestNotAuthorized = 24
+		/// Request has been denied, due to too many requests sent in given period. 
+		case RequestTooManyRequests = 25
+	}
+
+	
 	///Enum describing transport checking, used by the ``AccountCreator``. 
 	public enum TransportStatus:Int
 	{
@@ -6663,65 +6722,6 @@ public class AccountCreator : LinphoneObject
 		case InvalidCountryCode = 8
 		/// Phone number invalid. 
 		case Invalid = 16
-	}
-
-	
-	///Enum describing the status of server request, used by the ``AccountCreator``. 
-	public enum Status:Int
-	{
-		
-		/// Request status. 
-		case RequestOk = 0
-		/// Request failed. 
-		case RequestFailed = 1
-		/// Request failed due to missing argument(s) 
-		case MissingArguments = 2
-		/// Request failed due to missing callback(s) 
-		case MissingCallbacks = 3
-		/// Account status. 
-		case AccountCreated = 4
-		/// Account not created. 
-		case AccountNotCreated = 5
-		/// Account exist. 
-		case AccountExist = 6
-		/// Account exist with alias. 
-		case AccountExistWithAlias = 7
-		/// Account not exist. 
-		case AccountNotExist = 8
-		/// Account was created with Alias. 
-		case AliasIsAccount = 9
-		/// Alias exist. 
-		case AliasExist = 10
-		/// Alias not exist. 
-		case AliasNotExist = 11
-		/// Account activated. 
-		case AccountActivated = 12
-		/// Account already activated. 
-		case AccountAlreadyActivated = 13
-		/// Account not activated. 
-		case AccountNotActivated = 14
-		/// Account linked. 
-		case AccountLinked = 15
-		/// Account not linked. 
-		case AccountNotLinked = 16
-		/// Server. 
-		case ServerError = 17
-		/// Error cannot send SMS. 
-		case PhoneNumberInvalid = 18
-		/// Error key doesn't match. 
-		case WrongActivationCode = 19
-		/// Error too many SMS sent. 
-		case PhoneNumberOverused = 20
-		/// Error algo isn't MD5 or SHA-256. 
-		case AlgoNotSupported = 21
-		/// Generic error. 
-		case UnexpectedError = 22
-		/// This API isn't implemented in the current backend. 
-		case NotImplementedError = 23
-		/// Request has been denied, probably due to invalid auth token. 
-		case RequestNotAuthorized = 24
-		/// Request has been denied, due to too many requests sent in given period. 
-		case RequestTooManyRequests = 25
 	}
 	
 	
@@ -9505,6 +9505,18 @@ public class Address : LinphoneObject
 		}
 	}
 		
+	/// Sets parameters from a raw string. 
+	/// - Parameter params: The parameters.    
+	
+	public var params: String = ""
+	{
+	
+		willSet
+		{
+			linphone_address_set_params(cPtr, newValue)
+		}
+	}
+		
 	/// Set the password encoded in the address. 
 	/// It is used for basic authentication (not recommended). 
 	/// - Parameter password: the password to set.    
@@ -9735,7 +9747,7 @@ public class Address : LinphoneObject
 	
 	
 	
-	/// Get the value of a parameter of the address. 
+	/// Gets the value of a parameter of the address. 
 	/// - Parameter paramName: The name of the parameter.    
 	/// - Returns: The value of the parameter or nil if it doesn't exists.    
 	public func getParam(paramName:String) -> String
@@ -9759,7 +9771,7 @@ public class Address : LinphoneObject
 	
 	
 	
-	/// Tell whether a parameter is present in the address. 
+	/// Tells whether a parameter is present in the address. 
 	/// - Parameter paramName: The name of the parameter.    
 	/// - Returns: A boolean value telling whether the parameter is present in the
 	/// address 
@@ -9813,7 +9825,7 @@ public class Address : LinphoneObject
 	
 	
 	
-	/// Set the value of a parameter of the address. 
+	/// Sets the value of a parameter of the address. 
 	/// - Parameter paramName: The name of the parameter.    
 	/// - Parameter paramValue: The new value of the parameter.    
 	public func setParam(paramName:String, paramValue:String?) 
@@ -22735,7 +22747,6 @@ public class Core : LinphoneObject
 	/// - Parameter enabled: true to wait for chat messages and notify them as at once,
 	/// false to keep legacy behavior. 
 	
-	/// End of group ldap. 
 	/// Returns whether chat messages grouping is enabled or not. 
 	/// - Returns: true if received chat messages will be notified as a bundle, false
 	/// otherwise. 
@@ -23930,22 +23941,14 @@ public class Core : LinphoneObject
 		}
 	}
 		
-	/// Tells ``Core`` to guess local hostname automatically in primary contact. 
-	/// - Parameter enable: whether to enable the guess hostname feature or not 
 	
 	/// Returns true if hostname part of primary contact is guessed automatically. 
 	/// - Returns: true if guess hostname enabled, false otherwise. 
 	public var guessHostname: Bool
 	{
 	
-		get
-		{ 
 						return linphone_core_get_guess_hostname(cPtr) != 0
-		}
-		set
-		{
-			linphone_core_set_guess_hostname(cPtr, newValue==true ? 1:0)
-		}
+
 	}
 		
 	/// Sets HTTP proxy address to be used for signaling during next channel
@@ -24436,7 +24439,7 @@ public class Core : LinphoneObject
 	/// Returns a list of entered LDAPs. 
 	/// Items must be freed with linphone_ldap_unref 
 	/// - Returns:         
-	/// - Deprecated: 18/11/2024 use ``getRemoteContactDirectories()`` instead. 
+	/// - Deprecated: 18/11/2024 use ``getRemoteContactDirectories()`` instead.
 	@available(*, deprecated)
 	public var ldapList: [Ldap]
 	{
@@ -27610,7 +27613,7 @@ public class Core : LinphoneObject
 	/// Add or update a LDAP server and save it to the configuration. 
 	/// - Parameter ldap: The ``Ldap`` object to add/update.    
 	/// - Deprecated: 18/11/2024 use
-	/// ``addRemoteContactDirectory(remoteContactDirectory:)`` instead. 
+	/// ``addRemoteContactDirectory(remoteContactDirectory:)`` instead.
 	@available(*, deprecated)
 	public func addLdap(ldap:Ldap) 
 	{
@@ -28451,7 +28454,7 @@ public class Core : LinphoneObject
 	/// configuration file.
 	/// - Returns: ``Ldap`` with default values set       
 	/// - Deprecated: 18/11/2024 use ``createLdapRemoteContactDirectory(params:)``
-	/// instead. 
+	/// instead.
 	@available(*, deprecated)
 	public func createLdap() throws -> Ldap
 	{
@@ -28469,7 +28472,7 @@ public class Core : LinphoneObject
 	/// Create a LDAP params using default values from Linphone core. 
 	/// Check ``LdapParams`` to update values. In order to add a new LDAP configuration
 	/// to ``MagicSearch``, these parameters must be passed to
-	/// linphone_core_create_ldap_with_params. Or, use ``Ldap/setParams(params:)``.
+	/// ``createLdapRemoteContactDirectory(params:)``.
 	/// - Returns: ``LdapParams`` with default values set.       
 	public func createLdapParams() throws -> LdapParams
 	{
@@ -28508,7 +28511,7 @@ public class Core : LinphoneObject
 	/// - Parameter params: ``LdapParams`` object    
 	/// - Returns: ``Ldap`` object       
 	/// - Deprecated: 18/11/2024 use ``createLdapRemoteContactDirectory(params:)``
-	/// instead. 
+	/// instead.
 	@available(*, deprecated)
 	public func createLdapWithParams(params:LdapParams) throws -> Ldap
 	{
@@ -30286,7 +30289,7 @@ public class Core : LinphoneObject
 	/// Remove a LDAP from the configuration. 
 	/// - Parameter ldap: The ``Ldap`` object to remove.    
 	/// - Deprecated: 18/11/2024 use
-	/// ``removeRemoteContactDirectory(remoteContactDirectory:)`` instead. 
+	/// ``removeRemoteContactDirectory(remoteContactDirectory:)`` instead.
 	@available(*, deprecated)
 	public func removeLdap(ldap:Ldap) 
 	{
