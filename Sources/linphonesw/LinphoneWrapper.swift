@@ -2627,6 +2627,10 @@ public protocol ChatRoomDelegate : AnyObject {
 	/// Gets the message retracted callback. 
 	/// - Returns: The current message retracted callback. 
 	func onMessageRetracted(chatRoom: ChatRoom, message: ChatMessage)
+	
+	/// Get the full state received callback. 
+	/// - Returns: The current full state received callback. 
+	func onFullStateReceived(chatRoom: ChatRoom)
 }
 
 public extension ChatRoomDelegate {
@@ -2702,6 +2706,8 @@ public extension ChatRoomDelegate {
 	func onMessageContentEdited(chatRoom: ChatRoom, message: ChatMessage) {}
 	
 	func onMessageRetracted(chatRoom: ChatRoom, message: ChatMessage) {}
+	
+	func onFullStateReceived(chatRoom: ChatRoom) {}
 }
 
 public final class ChatRoomDelegateStub : ChatRoomDelegate
@@ -2742,6 +2748,7 @@ public final class ChatRoomDelegateStub : ChatRoomDelegate
 	var _onNewMessageReaction: ((ChatRoom, ChatMessage, ChatMessageReaction) -> Void)?
 	var _onMessageContentEdited: ((ChatRoom, ChatMessage) -> Void)?
 	var _onMessageRetracted: ((ChatRoom, ChatMessage) -> Void)?
+	var _onFullStateReceived: ((ChatRoom) -> Void)?
 
 	
 	public func onIsComposingReceived(chatRoom: ChatRoom, remoteAddress: Address, isComposing: Bool){_onIsComposingReceived.map{$0(chatRoom, remoteAddress, isComposing)}}
@@ -2815,6 +2822,8 @@ public final class ChatRoomDelegateStub : ChatRoomDelegate
 	public func onMessageContentEdited(chatRoom: ChatRoom, message: ChatMessage){_onMessageContentEdited.map{$0(chatRoom, message)}}
 	
 	public func onMessageRetracted(chatRoom: ChatRoom, message: ChatMessage){_onMessageRetracted.map{$0(chatRoom, message)}}
+	
+	public func onFullStateReceived(chatRoom: ChatRoom){_onFullStateReceived.map{$0(chatRoom)}}
 
 	public init (
 		onIsComposingReceived: ((ChatRoom, Address, Bool) -> Void)? = nil,
@@ -2852,7 +2861,8 @@ public final class ChatRoomDelegateStub : ChatRoomDelegate
 		onChatRoomRead: ((ChatRoom) -> Void)? = nil,
 		onNewMessageReaction: ((ChatRoom, ChatMessage, ChatMessageReaction) -> Void)? = nil,
 		onMessageContentEdited: ((ChatRoom, ChatMessage) -> Void)? = nil,
-		onMessageRetracted: ((ChatRoom, ChatMessage) -> Void)? = nil
+		onMessageRetracted: ((ChatRoom, ChatMessage) -> Void)? = nil,
+		onFullStateReceived: ((ChatRoom) -> Void)? = nil
 	) {
 		self._onIsComposingReceived = onIsComposingReceived
 		self._onMessageReceived = onMessageReceived
@@ -2890,6 +2900,7 @@ public final class ChatRoomDelegateStub : ChatRoomDelegate
 		self._onNewMessageReaction = onNewMessageReaction
 		self._onMessageContentEdited = onMessageContentEdited
 		self._onMessageRetracted = onMessageRetracted
+		self._onFullStateReceived = onFullStateReceived
 	}
 }
 
@@ -3216,6 +3227,14 @@ class ChatRoomDelegateManager
 				let sObject = ChatRoom.getSwiftObject(cObject: chatRoom!)
 				let delegate = sObject.currentDelegate
 				delegate?.onMessageRetracted(chatRoom: sObject, message: ChatMessage.getSwiftObject(cObject: message!))
+			}
+		})
+
+		linphone_chat_room_cbs_set_full_state_received(cPtr, { (chatRoom) -> Void in
+			if (chatRoom != nil) {
+				let sObject = ChatRoom.getSwiftObject(cObject: chatRoom!)
+				let delegate = sObject.currentDelegate
+				delegate?.onFullStateReceived(chatRoom: sObject)
 			}
 		})
 	}
