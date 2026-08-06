@@ -8308,17 +8308,22 @@ public class AccountParams : LinphoneObject
 	/// The main use case for this function is provide the proxy additional information
 	/// regarding the user agent, like for example unique identifier or apple push id.
 	/// As an example, the contact address in the SIP register sent will look like
-	/// <sip:joe@15.128.128.93:50421>;apple-push-id=43143-DFE23F-2323-FA2232. 
+	/// <sip:joe@15.128.128.93:50421>;apple-push-id=43143-DFE23F-2323-FA2232. -
+	/// Deprecated: 22/07/2026 Use linphone_account_params_add_contact_parameters()
+	/// instead. 
 	/// The main use case for this function is provide the proxy additional information
 	/// regarding the user agent, like for example unique identifier or apple push id.
 	/// As an example, the contact address in the SIP register sent will look like
-	/// <sip:joe@15.128.128.93:50421>;apple-push-id=43143-DFE23F-2323-FA2232. 
+	/// <sip:joe@15.128.128.93:50421>;apple-push-id=43143-DFE23F-2323-FA2232. -
+	/// Deprecated: 22/07/2026 Use linphone_account_params_add_contact_parameters()
+	/// instead. 
 	
 	/// Returns the contact parameters. 
 	/// - Returns: The previously set contact parameters.    
+	/// - Deprecated: 22/07/2026 Use ``getContactParametersDictionary()`` instead. 
 	public var contactParameters: String?
 	{
-	
+	@available(*, deprecated)
 		get
 		{ 
 			
@@ -8329,10 +8334,26 @@ public class AccountParams : LinphoneObject
 			let result = charArrayToString(charPointer: cPointer)
 			return result
 		}
+	@available(*, deprecated)
 		set
 		{
 			linphone_account_params_set_contact_parameters(cPtr, newValue)
 		}
+	}
+		
+	
+	/// Returns the dictionary for contact parameters. 
+	/// - Returns: The previously set contact parameters.    
+	public var contactParametersDictionary: Dictionary?
+	{
+	
+						let cPointer = linphone_account_params_get_contact_parameters_dictionary(cPtr)
+			if (cPointer == nil) {
+				return nil
+			}
+			let result = Dictionary.getSwiftObject(cObject:cPointer!)
+			return result
+
 	}
 		
 	/// Set optional contact parameters that will be added to the contact information
@@ -8342,17 +8363,22 @@ public class AccountParams : LinphoneObject
 	/// The main use case for this function is provide the proxy additional information
 	/// regarding the user agent, like for example unique identifier or apple push id.
 	/// As an example, the contact address in the SIP register sent will look like
-	/// <sip:joe@15.128.128.93:50421;apple-push-id=43143-DFE23F-2323-FA2232>. 
+	/// <sip:joe@15.128.128.93:50421;apple-push-id=43143-DFE23F-2323-FA2232>. -
+	/// Deprecated: 22/07/2026 Use linphone_account_params_add_contact_uri_parameters()
+	/// instead. 
 	/// The main use case for this function is provide the proxy additional information
 	/// regarding the user agent, like for example unique identifier or apple push id.
 	/// As an example, the contact address in the SIP register sent will look like
-	/// <sip:joe@15.128.128.93:50421;apple-push-id=43143-DFE23F-2323-FA2232>. 
+	/// <sip:joe@15.128.128.93:50421;apple-push-id=43143-DFE23F-2323-FA2232>. -
+	/// Deprecated: 22/07/2026 Use linphone_account_params_add_contact_uri_parameters()
+	/// instead. 
 	
 	/// Return the contact URI parameters. 
 	/// - Returns: The previously set contact URI parameters.    
+	/// - Deprecated: 22/07/2026 Use ``getContactUriParametersDictionary()`` instead. 
 	public var contactUriParameters: String?
 	{
-	
+	@available(*, deprecated)
 		get
 		{ 
 			
@@ -8363,10 +8389,26 @@ public class AccountParams : LinphoneObject
 			let result = charArrayToString(charPointer: cPointer)
 			return result
 		}
+	@available(*, deprecated)
 		set
 		{
 			linphone_account_params_set_contact_uri_parameters(cPtr, newValue)
 		}
+	}
+		
+	
+	/// Return the dictionary of contact URI parameters. 
+	/// - Returns: The previously set contact URI parameters.    
+	public var contactUriParametersDictionary: Dictionary?
+	{
+	
+						let cPointer = linphone_account_params_get_contact_uri_parameters_dictionary(cPtr)
+			if (cPointer == nil) {
+				return nil
+			}
+			let result = Dictionary.getSwiftObject(cObject:cPointer!)
+			return result
+
 	}
 		
 	/// Indicates whether chat messages sent by this account in a ``Basic`` chat room
@@ -9374,12 +9416,68 @@ public class AccountParams : LinphoneObject
 		
 	
 	
+	/// Add an optional contact parameter that will be added to the contact information
+	/// sent in the registration. 
+	/// - Parameter key: A string containing the key of the additional parameter    
+	/// - Parameter value: A string containing the value of the additional parameter.
+	/// If null or empty, there will be only the key in contact information   
+	/// The main use case for this function is provide the proxy additional information
+	/// regarding the user agent, like for example unique identifier or apple push id.
+	/// As an example, the contact address in the SIP register sent will look like
+	/// <sip:joe@15.128.128.93:50421>;apple-push-id=43143-DFE23F-2323-FA2232. 
+	/// The main use case for this function is provide the proxy additional information
+	/// regarding the user agent, like for example unique identifier or apple push id.
+	/// As an example, the contact address in the SIP register sent will look like
+	/// <sip:joe@15.128.128.93:50421>;apple-push-id=43143-DFE23F-2323-FA2232. 
+	public func addContactParameter(key:String, value:String?) 
+	{
+		linphone_account_params_add_contact_parameter(cPtr, key, value)
+	}
+	
+	
+	
+	/// Add optional contact parameter that will be added to the contact information
+	/// sent in the registration, inside the URI. 
+	/// - Parameter key: A string containing the key of the additional parameter    
+	/// - Parameter value: A string containing the value of the additional parameter.
+	/// If null or empty, there will be only the key in contact information   
+	/// The main use case for this function is provide the proxy additional information
+	/// regarding the user agent, like for example unique identifier or apple push id.
+	/// As an example, the contact address in the SIP register sent will look like
+	/// <sip:joe@15.128.128.93:50421;apple-push-id=43143-DFE23F-2323-FA2232>. 
+	/// The main use case for this function is provide the proxy additional information
+	/// regarding the user agent, like for example unique identifier or apple push id.
+	/// As an example, the contact address in the SIP register sent will look like
+	/// <sip:joe@15.128.128.93:50421;apple-push-id=43143-DFE23F-2323-FA2232>. 
+	public func addContactUriParameter(key:String, value:String?) 
+	{
+		linphone_account_params_add_contact_uri_parameter(cPtr, key, value)
+	}
+	
+	
+	
 	/// Set one custom parameter to this ``AccountParams``. 
 	/// - Parameter key: key of the searched parameter.    
 	/// - Parameter value: value of the searched parameter.    
 	public func addCustomParam(key:String, value:String) 
 	{
 		linphone_account_params_add_custom_param(cPtr, key, value)
+	}
+	
+	
+	
+	/// Remove all parameters from the optional contact parameters. 
+	public func clearContactParameters() 
+	{
+		linphone_account_params_clear_contact_parameters(cPtr)
+	}
+	
+	
+	
+	/// Remove all parameters from the optional contact parameters. 
+	public func clearContactUriParameters() 
+	{
+		linphone_account_params_clear_contact_uri_parameters(cPtr)
 	}
 	
 	
@@ -9408,6 +9506,24 @@ public class AccountParams : LinphoneObject
 		let cstr = linphone_account_params_get_custom_param(cPtr, key)
 		let result = charArrayToString(charPointer: cstr)
 		return result
+	}
+	
+	
+	
+	/// Remove the parameter from the optional contact parameters. 
+	/// - Parameter key: The key string to remove.    
+	public func removeContactParameter(key:String) 
+	{
+		linphone_account_params_remove_contact_parameter(cPtr, key)
+	}
+	
+	
+	
+	/// Remove the parameter from the optional contact parameters. 
+	/// - Parameter key: The key string to remove.    
+	public func removeContactUriParameter(key:String) 
+	{
+		linphone_account_params_remove_contact_uri_parameter(cPtr, key)
 	}
 }
 
