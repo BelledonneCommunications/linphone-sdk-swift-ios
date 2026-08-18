@@ -30297,7 +30297,7 @@ public class Core : LinphoneObject
 	/// - Parameter expires: the lifetime of event being published, -1 if no associated
 	/// duration, in which case it will not be refreshed. 
 	/// - Parameter body: the actual published data    
-	/// - Returns: the ``Event`` holding the context of the publish.    
+	/// - Returns: the ``Event`` holding the context of the publish.       
 	public func publish(resource:Address, event:String, expires:Int, body:Content) -> Event?
 	{
 		let cPointer = linphone_core_publish(cPtr, resource.cPtr, event, CInt(expires), body.cPtr)
@@ -30305,6 +30305,7 @@ public class Core : LinphoneObject
 			return nil
 		}
 		let result = Event.getSwiftObject(cObject: cPointer!)
+		belle_sip_object_unref(UnsafeMutableRawPointer(cPointer))
 		return result
 	}
 	
@@ -30887,7 +30888,7 @@ public class Core : LinphoneObject
 	/// - Parameter event: the event name    
 	/// - Parameter expires: the whished duration of the subscription 
 	/// - Parameter body: an optional body, may be nil.    
-	/// - Returns: a ``Event`` holding the context of the created subcription.    
+	/// - Returns: a ``Event`` holding the context of the created subcription.       
 	public func subscribe(resource:Address, event:String, expires:Int, body:Content?) -> Event?
 	{
 		let cPointer = linphone_core_subscribe(cPtr, resource.cPtr, event, CInt(expires), body?.cPtr)
@@ -30895,6 +30896,7 @@ public class Core : LinphoneObject
 			return nil
 		}
 		let result = Event.getSwiftObject(cObject: cPointer!)
+		belle_sip_object_unref(UnsafeMutableRawPointer(cPointer))
 		return result
 	}
 	
