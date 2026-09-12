@@ -24950,15 +24950,17 @@ public class Core : LinphoneObject
 		}
 	}
 		
-	/// It sets the duration of the timer that starts just after the SUBSCRIBE is sent
-	/// to delay the sending of chat messages in group chats. 
+	/// Sets the maximum duration, in seconds, that a chatroom will wait for the NOTIFY
+	/// carrying the full state of an encrypted chatroom before sending the chat
+	/// message anyway. 
+	/// The timer starts when the SUBSCRIBE is sent and is cancelled as soon as the
+	/// NOTIFY is received.
 	/// - Parameter duration: the duration of the timer in seconds. A 0 or negative
 	/// number deactivates the feature. 
-	/// - Warning: it is only useful to set this property if
-	/// linphone_core_send_message_after_notify_enabled returns false 
 	
-	/// Returns the duration of the timer that delays the sending of chat messages. 
-	/// - Returns: the duration of the timer in seconds 
+	/// Returns the maximum duration, in seconds, that a chatroom waits for the NOTIFY
+	/// carrying the full state of an encrypted chatroom before sending chat messages
+	/// anyway. 
 	public var messageSendingDelay: Int
 	{
 	
@@ -24980,8 +24982,9 @@ public class Core : LinphoneObject
 	/// - Warning: it is only useful to set this property if
 	/// linphone_core_send_message_after_notify_enabled returns false 
 	
-	/// Returns the duration of the timer that delays the sending of chat messages,
-	/// when the core is running inside an IOS app extension. 
+	/// Returns the maximum duration, in seconds, that the chatroom waits for the
+	/// NOTIFY carrying the full state of an encrypted chatroom before sending chat
+	/// messages anyway, when the core is running inside an iOS app extension. 
 	/// - Returns: the duration of the timer in seconds 
 	public var messageSendingDelayAppExt: Int
 	{
@@ -26289,23 +26292,30 @@ public class Core : LinphoneObject
 		
 	/// Enable sending of chat message on group chats only after receiving the NOTIFY
 	/// full state If it is disabled, as it is the default value, message will be sent
-	/// after the delay set by linphone_core_get_message_sending_delay 
+	/// after the delay set by linphone_core_get_message_sending_delay When enabled,
+	/// the delay defaults to 10 seconds if no value has already been set using
+	/// ``setMessageSendingDelay(duration:)``. 
 	/// Enable sending of chat message on group chats only after receiving the NOTIFY
 	/// full state If it is disabled, as it is the default value, message will be sent
-	/// after the delay set by linphone_core_get_message_sending_delay 
+	/// after the delay set by linphone_core_get_message_sending_delay When enabled,
+	/// the delay defaults to 10 seconds if no value has already been set using
+	/// ``setMessageSendingDelay(duration:)``. 
 	/// - Parameter enabled: true if enabled, false otherwise. 
+	/// - Deprecated: 26/08/2026. Use linphone_core_set_message_sending_delay instead 
 	
 	/// Returns enablement of sending chat messages on group chats after receiving the
 	/// NOTIFY full state. 
-	/// - Returns: true if the core waits for the NOTIFY full statet before sending
+	/// - Returns: true if the core waits for the NOTIFY full state before sending
 	/// messages to group chats, false otherwise. 
+	/// - Deprecated: 26/08/2026. Use linphone_core_get_message_sending_delay instead 
 	public var sendMessageAfterNotifyEnabled: Bool
 	{
-	
+	@available(*, deprecated)
 		get
 		{ 
 						return linphone_core_send_message_after_notify_enabled(cPtr) != 0
 		}
+	@available(*, deprecated)
 		set
 		{
 			linphone_core_enable_send_message_after_notify(cPtr, newValue==true ? 1:0)
