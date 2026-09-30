@@ -21935,6 +21935,36 @@ public class Core : LinphoneObject
 		return linphone_core_vcard_supported() != 0
 	}
 	
+	/// Enables or disables the acceptance of rtcp-mux when proposed in an incoming
+	/// offer. 
+	/// See https://datatracker.ietf.org/doc/html/rfc5761 for more information about
+	/// rtcp-mux. This is enabled by default, so that liblinphone always accepts
+	/// rtcp-mux when a remote party proposes it, even if it wasn't proposed locally
+	/// (see ``enableRtcpMux(value:)``). 
+	/// See https://datatracker.ietf.org/doc/html/rfc5761 for more information about
+	/// rtcp-mux. This is enabled by default, so that liblinphone always accepts
+	/// rtcp-mux when a remote party proposes it, even if it wasn't proposed locally
+	/// (see ``enableRtcpMux(value:)``). 
+	/// - Parameter value: a boolean to indicate whether the feature is to be enabled. 
+	
+	/// Returns whether an incoming offer proposing rtcp-mux is accepted when rtcp-mux
+	/// is not otherwise already enabled locally, see ``rtcpMuxEnabled()``. 
+	/// It is enabled by default. 
+	/// - Returns: a boolean indicating whether an incoming rtcp-mux proposal is
+	/// accepted. 
+	public var acceptRtcpMuxEnabled: Bool
+	{
+	
+		get
+		{ 
+						return linphone_core_accept_rtcp_mux_enabled(cPtr) != 0
+		}
+		set
+		{
+			linphone_core_enable_accept_rtcp_mux(cPtr, newValue==true ? 1:0)
+		}
+	}
+		
 	/// Sets the ``AccountCreator`` backend on the ``Core``. 
 	/// - Parameter backend: The ``AccountCreator.Backend`` 
 	
@@ -26223,6 +26253,46 @@ public class Core : LinphoneObject
 		willSet
 		{
 			linphone_core_set_root_ca_data(cPtr, newValue)
+		}
+	}
+		
+	/// Enables or disables rtcp-mux. 
+	/// See https://datatracker.ietf.org/doc/html/rfc5761 for more information about
+	/// the feature. When enabled, liblinphone will propose to multiplex RTP and RTCP
+	/// traffic on the same port when doing an outgoing call, instead of using a
+	/// separate port for RTCP. rtcp-mux is automatically enabled when RTP bundle mode
+	/// or DTLS-SRTP is used, regardless of this setting. Even when disabled here, an
+	/// incoming offer proposing rtcp-mux may still be honored, see
+	/// ``acceptRtcpMuxEnabled()``. This feature can also be enabled per-call using
+	/// ``CallParams``. 
+	/// See https://datatracker.ietf.org/doc/html/rfc5761 for more information about
+	/// the feature. When enabled, liblinphone will propose to multiplex RTP and RTCP
+	/// traffic on the same port when doing an outgoing call, instead of using a
+	/// separate port for RTCP. rtcp-mux is automatically enabled when RTP bundle mode
+	/// or DTLS-SRTP is used, regardless of this setting. Even when disabled here, an
+	/// incoming offer proposing rtcp-mux may still be honored, see
+	/// ``acceptRtcpMuxEnabled()``. This feature can also be enabled per-call using
+	/// ``CallParams``. 
+	/// - Parameter value: a boolean to indicate whether the feature is to be enabled. 
+	
+	/// Returns whether rtcp-mux is enabled. 
+	/// See https://datatracker.ietf.org/doc/html/rfc5761 for more information about
+	/// the feature. Whether an incoming offer proposing rtcp-mux is accepted is
+	/// controlled independently, see ``acceptRtcpMuxEnabled()``. 
+	/// See https://datatracker.ietf.org/doc/html/rfc5761 for more information about
+	/// the feature. Whether an incoming offer proposing rtcp-mux is accepted is
+	/// controlled independently, see ``acceptRtcpMuxEnabled()``. 
+	/// - Returns: a boolean indicating whether rtcp-mux is enabled. 
+	public var rtcpMuxEnabled: Bool
+	{
+	
+		get
+		{ 
+						return linphone_core_rtcp_mux_enabled(cPtr) != 0
+		}
+		set
+		{
+			linphone_core_enable_rtcp_mux(cPtr, newValue==true ? 1:0)
 		}
 	}
 		
