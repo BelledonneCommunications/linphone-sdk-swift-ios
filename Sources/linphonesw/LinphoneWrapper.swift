@@ -18319,8 +18319,8 @@ public class ChatRoomParams : LinphoneObject
 	/// Enables or disables encryption for the chat room associated with the given
 	/// parameters. 
 	/// - Parameter encrypted: true to enable encryption, false to disable. 
-	/// - Deprecated: 20/05/2024. Use linphone_conference_params_enable_encryption()
-	/// instead. 
+	/// - Deprecated: 20/05/2024. Use
+	/// ``ConferenceParams/setSecurityLevel(securityLevel:)`` instead. 
 	
 	/// Gets the encryption status of the chat room associated with the given
 	/// parameters. 
