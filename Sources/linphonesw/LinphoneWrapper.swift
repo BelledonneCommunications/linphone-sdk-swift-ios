@@ -30664,6 +30664,17 @@ public class Core : LinphoneObject
 	
 	
 	
+	/// Check database if an upgrade is needed. 
+	/// It can be done before starting the core.
+	/// - Returns: true if database has missing tables/columns and needs to be
+	/// upgraded. 
+	public func needUpgradeDatabase() -> Bool
+	{
+		return linphone_core_need_upgrade_database(cPtr) != 0
+	}
+	
+	
+	
 	/// Notifies all friends that have subscribed. 
 	/// - Parameter presence: ``PresenceModel`` to notify    
 	public func notifyAllFriends(presence:PresenceModel) 
