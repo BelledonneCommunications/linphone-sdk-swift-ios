@@ -24148,6 +24148,24 @@ public class Core : LinphoneObject
 		}
 	}
 		
+	/// Enables or disables the HID (Human Interface Device) support for USB headsets. 
+	/// - Parameter enable: true to enable HID support, false to disable it. 
+	
+	/// Returns whether the HID support for USB headsets is enabled. 
+	/// - Returns: true if HID support is enabled, false otherwise. 
+	public var hidEnabled: Bool
+	{
+	
+		get
+		{ 
+						return linphone_core_hid_enabled(cPtr) != 0
+		}
+		set
+		{
+			linphone_core_enable_hid(cPtr, newValue==true ? 1:0)
+		}
+	}
+		
 	/// Sets HTTP proxy address to be used for signaling during next channel
 	/// connection. 
 	/// Use ``setNetworkReachable(reachable:)`` false/true to force channel restart. 
@@ -30897,6 +30915,8 @@ public class Core : LinphoneObject
 	
 	
 	/// Start the HID devices detection. 
+	/// - Deprecated: 14/10/2026 Use ``enableHid(enable:)`` instead. 
+	@available(*, deprecated)
 	public func startHidDevicesDetection() 
 	{
 		linphone_core_start_hid_devices_detection(cPtr)
@@ -30953,6 +30973,8 @@ public class Core : LinphoneObject
 	
 	
 	/// Stop the HID devices detection. 
+	/// - Deprecated: 14/10/2026 Use ``enableHid(enable:)`` instead. 
+	@available(*, deprecated)
 	public func stopHidDevicesDetection() 
 	{
 		linphone_core_stop_hid_devices_detection(cPtr)
