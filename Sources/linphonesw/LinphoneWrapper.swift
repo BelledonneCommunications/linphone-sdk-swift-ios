@@ -6073,7 +6073,7 @@ public class Account : LinphoneObject
 	/// - Parameter addr: a ``Address`` to use as contact.    
 	
 	/// Return the contact address of the account. 
-	/// - Returns: a ``Address`` correspong to the contact address of the account.    
+	/// - Returns: a ``Address`` corresponds to the contact address of the account.    
 	public var contactAddress: Address?
 	{
 	
@@ -16179,6 +16179,8 @@ public class ChatParams : LinphoneObject
 	/// When still not read, it will be deleted after "notReadLifetime" seconds to
 	/// avoid being persistent. - See also: linphone_chat_room_activate_ephemeral_2() 
 	/// - Returns: The ephemeral not read lifetime (in seconds) 
+	/// - Warning: this value is only taken into account if ``getEphemeralLifetime()``
+	/// returns a positive integer. 
 	public var ephemeralNotReadLifetime: Int
 	{
 	
@@ -23364,7 +23366,9 @@ public class Core : LinphoneObject
 	}
 		
 	/// Set the default ephemeral lifetime in seconds when not read. 
-	/// - Parameter value: lifetime of ephemeral messages in seconds when not read 
+	/// - Parameter value: lifetime of ephemeral messages in seconds when not read
+	/// - Warning: this value is only taken into account if regular ephemeral lifetime
+	/// is a positive integer. 
 	
 	/// Gets the default lifetime of ephemeral messages in seconds when they are not
 	/// read. 
@@ -28119,7 +28123,7 @@ public class Core : LinphoneObject
 	/// registration, calls, messages etc. Use ``addAccount(account:)`` to add it to
 	/// the ``Core``. 
 	/// - Parameter params: ``AccountParams`` object    
-	/// - Returns: ``Account`` with default values set    
+	/// - Returns: ``Account`` with default values set       
 	public func createAccount(params:AccountParams) throws -> Account
 	{
 		let cPointer = linphone_core_create_account(cPtr, params.cPtr)
