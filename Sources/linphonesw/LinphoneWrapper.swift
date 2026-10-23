@@ -6204,7 +6204,7 @@ public class Account : LinphoneObject
 	/// - Parameter addr: a ``Address`` to use as contact.    
 	
 	/// Return the contact address of the account. 
-	/// - Returns: a ``Address`` correspong to the contact address of the account.    
+	/// - Returns: a ``Address`` corresponds to the contact address of the account.    
 	public var contactAddress: Address?
 	{
 	
@@ -16401,6 +16401,8 @@ public class ChatParams : LinphoneObject
 	/// When still not read, it will be deleted after "notReadLifetime" seconds to
 	/// avoid being persistent. - See also: linphone_chat_room_activate_ephemeral_2() 
 	/// - Returns: The ephemeral not read lifetime (in seconds) 
+	/// - Warning: this value is only taken into account if ``getEphemeralLifetime()``
+	/// returns a positive integer. 
 	public var ephemeralNotReadLifetime: Int
 	{
 	
@@ -17445,7 +17447,10 @@ public class ChatRoom : LinphoneObject
 	/// -at recipient side when ``markAsRead()`` is called.
 	/// -at sender side, when the message enters the state
 	/// LinphoneChatMessageStateDisplayed (when receiving the displayed IMDN).
-	/// At least one from lifetime or notReadLifetime must be strictly positive.
+	/// The feature will only be enabled if argument lifetime is a strictly positive
+	/// integer.
+	/// The feature will only be enabled if argument lifetime is a strictly positive
+	/// integer.
 	/// - Parameter lifetime: The ephemeral lifetime strictly positive. To disable the
 	/// feature, use ``deactivateEphemeral()``. 
 	/// - Parameter notReadLifetime: The ephemeral not read lifetime strictly positive. 
@@ -23687,7 +23692,9 @@ public class Core : LinphoneObject
 	}
 		
 	/// Set the default ephemeral lifetime in seconds when not read. 
-	/// - Parameter value: lifetime of ephemeral messages in seconds when not read 
+	/// - Parameter value: lifetime of ephemeral messages in seconds when not read
+	/// - Warning: this value is only taken into account if regular ephemeral lifetime
+	/// is a positive integer. 
 	
 	/// Gets the default lifetime of ephemeral messages in seconds when they are not
 	/// read. 
@@ -24470,6 +24477,24 @@ public class Core : LinphoneObject
 		set
 		{
 			linphone_core_set_guess_hostname(cPtr, newValue==true ? 1:0)
+		}
+	}
+		
+	/// Enables or disables the HID (Human Interface Device) support for USB headsets. 
+	/// - Parameter enable: true to enable HID support, false to disable it. 
+	
+	/// Returns whether the HID support for USB headsets is enabled. 
+	/// - Returns: true if HID support is enabled, false otherwise. 
+	public var hidEnabled: Bool
+	{
+	
+		get
+		{ 
+						return linphone_core_hid_enabled(cPtr) != 0
+		}
+		set
+		{
+			linphone_core_enable_hid(cPtr, newValue==true ? 1:0)
 		}
 	}
 		
@@ -28495,7 +28520,7 @@ public class Core : LinphoneObject
 	/// registration, calls, messages etc. Use ``addAccount(account:)`` to add it to
 	/// the ``Core``. 
 	/// - Parameter params: ``AccountParams`` object    
-	/// - Returns: ``Account`` with default values set    
+	/// - Returns: ``Account`` with default values set       
 	public func createAccount(params:AccountParams) throws -> Account
 	{
 		let cPointer = linphone_core_create_account(cPtr, params.cPtr)
@@ -31305,6 +31330,8 @@ public class Core : LinphoneObject
 	
 	
 	/// Start the HID devices detection. 
+	/// - Deprecated: 14/10/2026 Use ``enableHid(enable:)`` instead. 
+	@available(*, deprecated)
 	public func startHidDevicesDetection() 
 	{
 		linphone_core_start_hid_devices_detection(cPtr)
@@ -31361,6 +31388,8 @@ public class Core : LinphoneObject
 	
 	
 	/// Stop the HID devices detection. 
+	/// - Deprecated: 14/10/2026 Use ``enableHid(enable:)`` instead. 
+	@available(*, deprecated)
 	public func stopHidDevicesDetection() 
 	{
 		linphone_core_stop_hid_devices_detection(cPtr)
