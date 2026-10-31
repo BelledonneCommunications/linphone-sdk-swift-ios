@@ -31495,9 +31495,12 @@ public class Core : LinphoneObject
 	
 	/// Upgrade the database manually to the latest schema. 
 	/// It can be done before starting the core.
-	public func upgradeDatabase() 
+	/// - Returns: 0 if database has been upgraded else negative value : -1: Cannot
+	/// open database -2: Couldn't upgrade database (should not happen) -3: Couldn't
+	/// upgrade database with caught exception 
+	public func upgradeDatabase() -> Int
 	{
-		linphone_core_upgrade_database(cPtr)
+		return Int(linphone_core_upgrade_database(cPtr))
 	}
 	
 	
