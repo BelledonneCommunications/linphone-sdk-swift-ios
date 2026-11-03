@@ -28268,6 +28268,44 @@ public class Core : LinphoneObject
 	
 	
 	
+	/// Add a custom DNS A record to be used by the internal DNS resolver. 
+	/// - Parameter name: Hostname.    
+	/// - Parameter ip: IPv4 address string (e.g. "192.168.1.1").    
+	/// - Parameter ttl: Time To Live in seconds (0 for default). 
+	public func addDnsAEntry(name:String, ip:String, ttl:Int) 
+	{
+		linphone_core_add_dns_a_entry(cPtr, name, ip, CInt(ttl))
+	}
+	
+	
+	
+	/// Add a custom DNS AAAA record to be used by the internal DNS resolver. 
+	/// - Parameter name: Hostname.    
+	/// - Parameter ip: IPv6 address string (e.g. "::1").    
+	/// - Parameter ttl: Time To Live in seconds (0 for default). 
+	public func addDnsAaaaEntry(name:String, ip:String, ttl:Int) 
+	{
+		linphone_core_add_dns_aaaa_entry(cPtr, name, ip, CInt(ttl))
+	}
+	
+	
+	
+	/// Add a custom DNS SRV record to be used by the internal DNS resolver. 
+	/// - Parameter service: Service name, typically "sip".    
+	/// - Parameter transport: Transport name, e.g. "udp", "tcp", "tls".    
+	/// - Parameter domain: Domain name.    
+	/// - Parameter target: Target hostname.    
+	/// - Parameter port: Target port. 
+	/// - Parameter priority: Priority. 
+	/// - Parameter weight: Weight. 
+	/// - Parameter ttl: Time To Live in seconds (0 for default). 
+	public func addDnsSrvEntry(service:String, transport:String, domain:String, target:String, port:Int, priority:Int, weight:Int, ttl:Int) 
+	{
+		linphone_core_add_dns_srv_entry(cPtr, service, transport, domain, target, CInt(port), CInt(priority), CInt(weight), CInt(ttl))
+	}
+	
+	
+	
 	/// Add a friend list. 
 	/// - Parameter list: ``FriendList`` object    
 	public func addFriendList(list:FriendList) 
@@ -28459,6 +28497,14 @@ public class Core : LinphoneObject
 	public func clearCallLogs() 
 	{
 		linphone_core_clear_call_logs(cPtr)
+	}
+	
+	
+	
+	/// Clear all custom DNS records configured on the core's SIP stack. 
+	public func clearCustomDnsEntries() 
+	{
+		linphone_core_clear_custom_dns_entries(cPtr)
 	}
 	
 	
