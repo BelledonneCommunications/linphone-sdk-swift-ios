@@ -35918,6 +35918,9 @@ public class FriendList : LinphoneObject
 	/// contains the vCard(s) to parse. 
 	/// - Parameter vcardBuffer: the buffer that contains the vCard(s) to parse    
 	/// - Returns: the amount of linphone friends created 
+	/// - Deprecated: 2026/10/29 use ``importFriendsFromVcardBuffer(vcardBuffer:)``
+	/// instead 
+	@available(*, deprecated)
 	public func importFriendsFromVcard4Buffer(vcardBuffer:String) -> Int
 	{
 		return Int(linphone_friend_list_import_friends_from_vcard4_buffer(cPtr, vcardBuffer))
@@ -35930,9 +35933,36 @@ public class FriendList : LinphoneObject
 	/// - Parameter vcardFile: the path to a file that contains the vCard(s) to parse  
 	///  
 	/// - Returns: the amount of linphone friends created 
+	/// - Deprecated: 2026/10/29 use ``importFriendsFromVcardFile(vcardFile:)`` instead 
+	@available(*, deprecated)
 	public func importFriendsFromVcard4File(vcardFile:String) -> Int
 	{
 		return Int(linphone_friend_list_import_friends_from_vcard4_file(cPtr, vcardFile))
+	}
+	
+	
+	
+	/// Creates and adds ``Friend`` objects to ``FriendList`` from a buffer that
+	/// contains the vCard(s) to parse. 
+	/// The buffer must contains only one version of vCard: 4.0 or 3.0 
+	/// - Parameter vcardBuffer: the buffer that contains the vCard(s) to parse    
+	/// - Returns: the amount of linphone friends created 
+	public func importFriendsFromVcardBuffer(vcardBuffer:String) -> Int
+	{
+		return Int(linphone_friend_list_import_friends_from_vcard_buffer(cPtr, vcardBuffer))
+	}
+	
+	
+	
+	/// Creates and adds ``Friend`` objects to ``FriendList`` from a file that contains
+	/// the vCard(s) to parse. 
+	/// The file must contains only one version of vCard: 4.0 or 3.0 
+	/// - Parameter vcardFile: the path to a file that contains the vCard(s) to parse  
+	///  
+	/// - Returns: the amount of linphone friends created 
+	public func importFriendsFromVcardFile(vcardFile:String) -> Int
+	{
+		return Int(linphone_friend_list_import_friends_from_vcard_file(cPtr, vcardFile))
 	}
 	
 	
