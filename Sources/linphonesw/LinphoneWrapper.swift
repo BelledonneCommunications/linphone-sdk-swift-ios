@@ -18889,8 +18889,11 @@ public class Conference : LinphoneObject
 	}
 		
 	
-	/// Retrieves the volume of a specific participant. 
-	/// - Returns: The volume of the participant expressed in dbm0. 
+	/// Gets the measured input (record) volume level of the local participant in the
+	/// conference, in dbm0. 
+	/// - Returns: The input volume level expressed in dbm0. 
+	/// - Deprecated: 03/11/2026 Use ``getRecordVolume()`` instead. 
+	@available(*, deprecated)
 	public var inputVolume: Float
 	{
 	
@@ -18937,12 +18940,14 @@ public class Conference : LinphoneObject
 
 	}
 		
-	/// Get microphone muted state. 
+	/// Sets the microphone muted state in the conference. 
 	/// Note that the microphone may be disabled globally if false was given to
 	/// ``Core/enableMic(enable:)``. 
 	/// - Parameter muted: The microphone muted state 
 	
-	/// Retrieves the volume of a specific participant. 
+	/// Gets the microphone muted state in the conference. 
+	/// Note that the microphone may be disabled globally if false was given to
+	/// ``Core/enableMic(enable:)``. 
 	/// - Returns: true if the microphone is muted, false otherwise 
 	public var microphoneMuted: Bool
 	{
@@ -19059,6 +19064,17 @@ public class Conference : LinphoneObject
 	}
 		
 	
+	/// Gets the measured play (output) volume level of the local participant in the
+	/// conference, in dbm0. 
+	/// - Returns: The play volume level expressed in dbm0. 
+	public var playVolume: Float
+	{
+	
+						return linphone_conference_get_play_volume(cPtr)
+
+	}
+		
+	
 	/// Gets a player associated with the conference to play a local file and stream it
 	/// to the remote peers. 
 	/// - Returns: A ``Player`` object.    
@@ -19071,6 +19087,17 @@ public class Conference : LinphoneObject
 			}
 			let result = Player.getSwiftObject(cObject:cPointer!)
 			return result
+
+	}
+		
+	
+	/// Gets the measured record (input) volume level of the local participant in the
+	/// conference, in dbm0. 
+	/// - Returns: The record volume level expressed in dbm0. 
+	public var recordVolume: Float
+	{
+	
+						return linphone_conference_get_record_volume(cPtr)
 
 	}
 		
@@ -23404,7 +23431,7 @@ public class Core : LinphoneObject
 	
 	/// Returns the input volume of the local participant. 
 	/// - Returns: A value inside [0.0 ; 1.0] 
-	/// - Deprecated: 23/01/2025 Use ``Conference/getInputVolume()`` instead. 
+	/// - Deprecated: 23/01/2025 Use ``Conference/getRecordVolume()`` instead. 
 	@available(*, deprecated)
 	public var conferenceLocalInputVolume: Float
 	{
