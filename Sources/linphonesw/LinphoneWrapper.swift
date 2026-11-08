@@ -12291,6 +12291,38 @@ public class Call : LinphoneObject
 	}
 		
 	
+	/// Returns the serialized value of the Replaces header or URI parameters. 
+	/// Returns the serialized value of the Replaces header or URI parameters. 
+	/// In the case of a call transfer, this method returns the Refer-To's Replaces URI
+	/// parameter of the incoming REFER message. Otherwise, the Replaces's header value
+	/// is returned for INVITEs if set. 
+	/// In the case of a call transfer, this method returns the Refer-To's Replaces URI
+	/// parameter of the incoming REFER message. Otherwise, the Replaces's header value
+	/// is returned for INVITEs if set. 
+	/// In the case of a call transfer, this method returns the Refer-To's Replaces URI
+	/// parameter of the incoming REFER message. Otherwise, the Replaces's header value
+	/// is returned for INVITEs if set. 
+	/// In the case of a call transfer, this method returns the Refer-To's Replaces URI
+	/// parameter of the incoming REFER message. Otherwise, the Replaces's header value
+	/// is returned for INVITEs if set. 
+	/// In the case of a call transfer, this method returns the Refer-To's Replaces URI
+	/// parameter of the incoming REFER message. Otherwise, the Replaces's header value
+	/// is returned for INVITEs if set. 
+	/// - Returns: the Replaces header value set or nil.    
+	public var replaces: String?
+	{
+	
+			
+			let cPointer = linphone_call_get_replaces(cPtr)
+			if (cPointer == nil) {
+				return nil
+			}
+			let result = charArrayToString(charPointer: cPointer)
+			return result
+
+	}
+		
+	
 	/// The address to which the call has been sent, taken directly from the SIP
 	/// request-URI of the INVITE. 
 	/// Usually equal to the To field, except when e.g. using a fallback contact
@@ -12576,6 +12608,8 @@ public class Call : LinphoneObject
 	
 	
 	
+	/// Accepts and execute a transfer (ie an incoming REFER request), to use when
+	/// [sip] 'auto_accept_refer' property is false. 
 	/// Accepts and execute a transfer (ie an incoming REFER request), to use when
 	/// [sip] 'auto_accept_refer' property is false. 
 	/// Default behaviour is to accept and execute the transfer automatically. 
