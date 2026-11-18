@@ -8363,6 +8363,35 @@ public class AccountParams : LinphoneObject
 		}
 	}
 		
+	/// Set the URL of the HTTP backup server used by ``Core/postHttpBackup()`` for
+	/// this account. 
+	/// An empty or nil URL disables the backup of this account. Params created with
+	/// ``Core/createAccountParams()`` start with the URL set with
+	/// ``Core/setBackupServerUrl(url:)``. 
+	/// - Parameter url: The URL of the backup server.    
+	
+	/// Get the URL of the HTTP backup server used by ``Core/postHttpBackup()`` for
+	/// this account. 
+	/// - Returns: The URL of the backup server set on this account.    
+	public var backupServerUrl: String?
+	{
+	
+		get
+		{ 
+			
+			let cPointer = linphone_account_params_get_backup_server_url(cPtr)
+			if (cPointer == nil) {
+				return nil
+			}
+			let result = charArrayToString(charPointer: cPointer)
+			return result
+		}
+		set
+		{
+			linphone_account_params_set_backup_server_url(cPtr, newValue)
+		}
+	}
+		
 	/// Set the CCMP server address. 
 	/// - Parameter url: The URL of the CCMP server.    
 	
@@ -22892,6 +22921,35 @@ public class Core : LinphoneObject
 		}
 	}
 		
+	/// Globally sets the default URL of the HTTP backup server used by
+	/// ``postHttpBackup()``. 
+	/// Account params created afterwards with ``createAccountParams()`` start with
+	/// this URL. An account can use another server, or none, with
+	/// ``AccountParams/setBackupServerUrl(url:)``. 
+	/// - Parameter url: URL of the backup server.    
+	
+	/// Gets the default URL of the HTTP backup server, set with
+	/// ``setBackupServerUrl(url:)``. 
+	/// - Returns: URL of the backup server.    
+	public var backupServerUrl: String?
+	{
+	
+		get
+		{ 
+			
+			let cPointer = linphone_core_get_backup_server_url(cPtr)
+			if (cPointer == nil) {
+				return nil
+			}
+			let result = charArrayToString(charPointer: cPointer)
+			return result
+		}
+		set
+		{
+			linphone_core_set_backup_server_url(cPtr, newValue)
+		}
+	}
+		
 	/// Enable text sending via Baudot tones in the audio stream. 
 	/// It is disabled by default. Enablement requires a SDK built with full Baudot
 	/// support: -DENABLE_BAUDOT=ON . 
@@ -30880,6 +30938,19 @@ public class Core : LinphoneObject
 		guard exception_result == 0 else {
 			throw LinphoneError.exception(result: "playLocal returned value \(exception_result)")
 		}
+	}
+	
+	
+	
+	/// Backs up the list of group chat rooms of each account on its HTTP backup
+	/// server. 
+	/// One HTTP POST request is sent per account having a backup server, and it
+	/// contains only the group chat rooms of this account. The server of an account is
+	/// the one set with ``AccountParams/setBackupServerUrl(url:)``, and accounts
+	/// without a server are skipped. 
+	public func postHttpBackup() 
+	{
+		linphone_core_post_http_backup(cPtr)
 	}
 	
 	
