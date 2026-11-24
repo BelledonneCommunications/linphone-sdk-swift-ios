@@ -15546,7 +15546,7 @@ public class ChatMessage : LinphoneObject
 		
 	
 	/// Returns the event log associated to the chat message. 
-	/// - Returns: The event log, if exists, nil otherwise    
+	/// - Returns: The event log, if exists, nil otherwise       
 	public var eventLog: EventLog?
 	{
 	
@@ -15555,6 +15555,7 @@ public class ChatMessage : LinphoneObject
 				return nil
 			}
 			let result = EventLog.getSwiftObject(cObject:cPointer!)
+			belle_sip_object_unref(UnsafeMutableRawPointer(cPointer))
 			return result
 
 	}
