@@ -12092,6 +12092,38 @@ public class Call : LinphoneObject
 	}
 		
 	
+	/// Returns the serialized value of the Replaces header or URI parameters. 
+	/// Returns the serialized value of the Replaces header or URI parameters. 
+	/// In the case of a call transfer, this method returns the Refer-To's Replaces URI
+	/// parameter of the incoming REFER message. Otherwise, the Replaces's header value
+	/// is returned for INVITEs if set. 
+	/// In the case of a call transfer, this method returns the Refer-To's Replaces URI
+	/// parameter of the incoming REFER message. Otherwise, the Replaces's header value
+	/// is returned for INVITEs if set. 
+	/// In the case of a call transfer, this method returns the Refer-To's Replaces URI
+	/// parameter of the incoming REFER message. Otherwise, the Replaces's header value
+	/// is returned for INVITEs if set. 
+	/// In the case of a call transfer, this method returns the Refer-To's Replaces URI
+	/// parameter of the incoming REFER message. Otherwise, the Replaces's header value
+	/// is returned for INVITEs if set. 
+	/// In the case of a call transfer, this method returns the Refer-To's Replaces URI
+	/// parameter of the incoming REFER message. Otherwise, the Replaces's header value
+	/// is returned for INVITEs if set. 
+	/// - Returns: the Replaces header value set or nil.    
+	public var replaces: String?
+	{
+	
+			
+			let cPointer = linphone_call_get_replaces(cPtr)
+			if (cPointer == nil) {
+				return nil
+			}
+			let result = charArrayToString(charPointer: cPointer)
+			return result
+
+	}
+		
+	
 	/// The address to which the call has been sent, taken directly from the SIP
 	/// request-URI of the INVITE. 
 	/// Usually equal to the To field, except when e.g. using a fallback contact
@@ -12377,6 +12409,8 @@ public class Call : LinphoneObject
 	
 	
 	
+	/// Accepts and execute a transfer (ie an incoming REFER request), to use when
+	/// [sip] 'auto_accept_refer' property is false. 
 	/// Accepts and execute a transfer (ie an incoming REFER request), to use when
 	/// [sip] 'auto_accept_refer' property is false. 
 	/// Default behaviour is to accept and execute the transfer automatically. 
@@ -15263,7 +15297,7 @@ public class ChatMessage : LinphoneObject
 		
 	
 	/// Returns the event log associated to the chat message. 
-	/// - Returns: The event log, if exists, nil otherwise    
+	/// - Returns: The event log, if exists, nil otherwise       
 	public var eventLog: EventLog?
 	{
 	
@@ -15272,6 +15306,7 @@ public class ChatMessage : LinphoneObject
 				return nil
 			}
 			let result = EventLog.getSwiftObject(cObject:cPointer!)
+			belle_sip_object_unref(UnsafeMutableRawPointer(cPointer))
 			return result
 
 	}
@@ -35429,6 +35464,9 @@ public class FriendList : LinphoneObject
 	/// contains the vCard(s) to parse. 
 	/// - Parameter vcardBuffer: the buffer that contains the vCard(s) to parse    
 	/// - Returns: the amount of linphone friends created 
+	/// - Deprecated: 2026/10/29 use ``importFriendsFromVcardBuffer(vcardBuffer:)``
+	/// instead 
+	@available(*, deprecated)
 	public func importFriendsFromVcard4Buffer(vcardBuffer:String) -> Int
 	{
 		return Int(linphone_friend_list_import_friends_from_vcard4_buffer(cPtr, vcardBuffer))
@@ -35441,9 +35479,36 @@ public class FriendList : LinphoneObject
 	/// - Parameter vcardFile: the path to a file that contains the vCard(s) to parse  
 	///  
 	/// - Returns: the amount of linphone friends created 
+	/// - Deprecated: 2026/10/29 use ``importFriendsFromVcardFile(vcardFile:)`` instead 
+	@available(*, deprecated)
 	public func importFriendsFromVcard4File(vcardFile:String) -> Int
 	{
 		return Int(linphone_friend_list_import_friends_from_vcard4_file(cPtr, vcardFile))
+	}
+	
+	
+	
+	/// Creates and adds ``Friend`` objects to ``FriendList`` from a buffer that
+	/// contains the vCard(s) to parse. 
+	/// The buffer must contains only one version of vCard: 4.0 or 3.0 
+	/// - Parameter vcardBuffer: the buffer that contains the vCard(s) to parse    
+	/// - Returns: the amount of linphone friends created 
+	public func importFriendsFromVcardBuffer(vcardBuffer:String) -> Int
+	{
+		return Int(linphone_friend_list_import_friends_from_vcard_buffer(cPtr, vcardBuffer))
+	}
+	
+	
+	
+	/// Creates and adds ``Friend`` objects to ``FriendList`` from a file that contains
+	/// the vCard(s) to parse. 
+	/// The file must contains only one version of vCard: 4.0 or 3.0 
+	/// - Parameter vcardFile: the path to a file that contains the vCard(s) to parse  
+	///  
+	/// - Returns: the amount of linphone friends created 
+	public func importFriendsFromVcardFile(vcardFile:String) -> Int
+	{
+		return Int(linphone_friend_list_import_friends_from_vcard_file(cPtr, vcardFile))
 	}
 	
 	
