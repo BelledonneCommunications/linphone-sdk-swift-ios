@@ -10746,6 +10746,24 @@ public class AuthInfo : LinphoneObject
 		}
 	}
 		
+	/// Set the requested method for the current authentication information. 
+	/// - Parameter method: The ``AuthMethod`` requested method. 
+	
+	/// Gets the requested method for the current authentication information. 
+	/// - Returns: the ``AuthMethod`` requested method. 
+	public var requestedMethod: AuthMethod
+	{
+	
+		get
+		{ 
+						return AuthMethod(rawValue: Int(linphone_auth_info_get_requested_method(cPtr).rawValue))!
+		}
+		set
+		{
+			linphone_auth_info_set_requested_method(cPtr, LinphoneAuthMethod(rawValue: CUnsignedInt(newValue.rawValue)))
+		}
+	}
+		
 	/// Sets the TLS certificate. 
 	/// - Parameter tlsCert: The TLS certificate.    
 	
