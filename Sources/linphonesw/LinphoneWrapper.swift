@@ -10974,6 +10974,24 @@ public class AuthInfo : LinphoneObject
 		}
 	}
 		
+	/// Set the requested method for the current authentication information. 
+	/// - Parameter method: The ``AuthMethod`` requested method. 
+	
+	/// Gets the requested method for the current authentication information. 
+	/// - Returns: the ``AuthMethod`` requested method. 
+	public var requestedMethod: AuthMethod
+	{
+	
+		get
+		{ 
+						return AuthMethod(rawValue: Int(linphone_auth_info_get_requested_method(cPtr).rawValue))!
+		}
+		set
+		{
+			linphone_auth_info_set_requested_method(cPtr, LinphoneAuthMethod(rawValue: CUnsignedInt(newValue.rawValue)))
+		}
+	}
+		
 	/// Sets the TLS certificate. 
 	/// - Parameter tlsCert: The TLS certificate.    
 	
@@ -13716,6 +13734,7 @@ public class CallParams : LinphoneObject
 		
 	/// Enable camera stream. 
 	/// - Parameter enabled: A boolean value telling whether to enable camera or not. 
+	/// - Deprecated: 25/11/2026 Use linphone_call_params_enable_sending_camera_stream 
 	
 	/// Tell whether camera is enabled or not. 
 	/// The value returned by this function has a different meaning whether it is from
@@ -13725,13 +13744,15 @@ public class CallParams : LinphoneObject
 	/// is part of a conference a core will understand that the remote party disabled
 	/// its camera if the thumbnail stream's direction is inactive. 
 	/// - Returns: A boolean value telling whether camera is enabled or not. 
+	/// - Deprecated: 25/11/2026 Use linphone_call_params_sending_camera_stream_enabled 
 	public var cameraEnabled: Bool
 	{
-	
+	@available(*, deprecated)
 		get
 		{ 
 						return linphone_call_params_camera_enabled(cPtr) != 0
 		}
+	@available(*, deprecated)
 		set
 		{
 			linphone_call_params_enable_camera(cPtr, newValue==true ? 1:0)
@@ -14279,6 +14300,31 @@ public class CallParams : LinphoneObject
 		set
 		{
 			linphone_call_params_enable_screen_sharing(cPtr, newValue==true ? 1:0)
+		}
+	}
+		
+	/// Enable sending camera stream. 
+	/// - Parameter enabled: A boolean value telling whether to send the camera stream
+	/// or not. 
+	
+	/// Tell whether camera stream is sent or not. 
+	/// The value returned by this function has a different meaning whether it is from
+	/// local or remote parameters. The former states the will of the user to use the
+	/// camera stream. On the other hand, the latter is just a guess to know whether
+	/// the remote party enabled its camera stream or not. For example, while the call
+	/// is part of a conference a core will understand that the remote party disabled
+	/// its camera stream if the thumbnail stream's direction is inactive. 
+	/// - Returns: A boolean value telling whether camera stream is sent or not. 
+	public var sendingCameraStreamEnabled: Bool
+	{
+	
+		get
+		{ 
+						return linphone_call_params_sending_camera_stream_enabled(cPtr) != 0
+		}
+		set
+		{
+			linphone_call_params_enable_sending_camera_stream(cPtr, newValue==true ? 1:0)
 		}
 	}
 		
